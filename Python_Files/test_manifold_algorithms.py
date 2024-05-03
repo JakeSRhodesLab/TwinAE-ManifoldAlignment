@@ -178,6 +178,7 @@ class test_manifold_algorithms():
 
         return split_a, split_b
 
+    # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         df = pd.read_csv(os.getcwd()[:-12] + "CSV Files/" + csv_file)
         features, self.labels = utils.dataprep(df, label_col_idx=0)
@@ -527,7 +528,7 @@ def clear_directory():
     """CAREFUL. THIS WIPES THE MANIFOLD DATA DIRECTORY CLEAN"""
 
     #Use all of our files
-    file_names = ["artifical_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
+    file_names = ["artificial_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
                 "crx", "diabetes", "ecoli_5", "flare1", "glass", "heart_disease", "heart_failure", "hepatitis",
                 "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                 "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
@@ -565,7 +566,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     #Use all of our files
     if csv_files == "all":
-        csv_files = ["artifical_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
+        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
                     "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
                     "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
                     "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
@@ -607,7 +608,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
 
     if run_SPUD:
@@ -619,19 +620,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=1)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=1)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=1)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
 
     return manifold_instances
 
@@ -643,7 +644,7 @@ def visualize_results(file_names = "all"):
 
     #Use all of our files
     if file_names == "all":
-        file_names = ["artifical_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
+        file_names = ["artificial_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
                     "crx", "diabetes", "ecoli_5", "flare1", "glass", "heart_disease", "heart_failure", "hepatitis",
                     "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                     "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
