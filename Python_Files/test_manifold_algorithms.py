@@ -889,7 +889,7 @@ def upload_to_DataFrame():
                 
                     #Loop through each Knn
                     for k in range(0, 10):
-                        knn = (j*knn_increment) + 2
+                        knn = (k*knn_increment) + 2
                         data_dict["KNN"] = knn
 
                         #Loop through each Anchor percentage
@@ -921,7 +921,7 @@ def upload_to_DataFrame():
         elif data_dict["method"] == "DTA":
             #Loop through each Knn
             for i in range(0, 10):
-                knn = (j*knn_increment) + 2
+                knn = (i*knn_increment) + 2
                 data_dict["KNN"] = knn
 
                 #Loop through each Anchor percentage
@@ -939,7 +939,7 @@ def upload_to_DataFrame():
         else: 
             #Loop through each Knn
             for i in range(0, 10):
-                knn = (j*knn_increment) + 2
+                knn = (i*knn_increment) + 2
                 data_dict["KNN"] = knn
 
                 #Loop through each Anchor percentage
