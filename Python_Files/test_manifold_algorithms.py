@@ -12,7 +12,22 @@ Task List:
 2. Put all the results in a DataFrame -> Use of Random states
 
 Potential Ideas:
-1. Instead of storing the arguments used in the class name, we can add an additional spot in the array that stores a dictionary, and has a key for each argument and a boolean value stating whether or not that is prsent or not
+TODO:
+1) The loop only saves a file after the entire dataset/argument combo is completed, such as DIG(r1825)_PR(None-off-diagonal-full)_AP(0.05-0.1-0.15-0.2-0.3)_47. 
+When things take a long time to run, it can be helpful to save files in smaller increments. That way, if the loop crashes, you have at least saved some of the 
+implemented methods.
+
+2) When saving results files, it helps to store the parameters as a dictionary and write a .json file. This helps when reading in the results files.  Since you
+already have assembled a loop for this (upload_to_Dataframe), you don't need to do this here, but it can be helpful for future projects.
+
+TODO: Don't repeat "mini tasks" either
+3) I have found for these type of larger experiment loops it is helpful to check if a particular results file already exists, that way if you end up needing to
+rerun some tests, you don't need to redo the files that have already been saved. This can be done with a simple if file.exists()... continue.
+
+4) Eventually, (in general) you will want to catch any errors such a loop throws. In the interim, it may be helpful to add a try: catch: statement in the test 
+functions so the loop can keep going if some particular data/method/split combo fails. Then the rest of the files can keep processing and the failed ones can be 
+tried again later.
+
 """
 
 #Import libraries
@@ -222,34 +237,6 @@ class test_manifold_algorithms():
         
         Kind should be a tuple of the different opperations wanted to run. All are included by default."""
 
-        #Store the data in a numpy array
-        spud_scores = np.zeros((len(operations), len(kind), len(self.knn_range), len(self.percent_of_anchors), 2))
-
-
-        #We are going to run test with every variation
-        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[38:-1] + "   -------------------------------------\n")
-        for i, operation in enumerate(operations):
-            print(f"Operation {operation}")
-            for j, type in enumerate(kind):
-                print(f"    Kind {type}")
-                for k, knn in enumerate(self.knn_range):
-                    print(f"        KNN {knn}")
-                    for l, anchor_percent in enumerate(self.percent_of_anchors):
-                        print(f"            Percent of Anchors {anchor_percent}")
-                        #Create the class with all the arguments
-                        spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation, kind = type)
-
-                        #Get the metrics
-                        spud_FOSCTTM = self.FOSCTTM(spud_class.matrix_AB)
-                        spud_scores[i, j, k, l, 0] = spud_FOSCTTM
-                        print(f"                FOSCTTM Score: {spud_FOSCTTM}")
-
-
-                        emb = self.mds.fit_transform(spud_class.block)
-                        spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                        spud_scores[i, j, k, l, 1] = spud_CE
-                        print(f"                CE Score: {spud_CE}")
-
         #Create filename 
         filename = 'SPUD(' + self.split[0] + str(self.random_state) + ')_O(' #Short for Operations
         for name in operations:
@@ -269,6 +256,55 @@ class test_manifold_algorithms():
         #Finish file name
         filename = self.base_directory + filename + ".npy"
 
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the data in a numpy array
+        spud_scores = np.zeros((len(operations), len(kind), len(self.knn_range), len(self.percent_of_anchors), 2))
+
+        #We are going to run test with every variation
+        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[38:-1] + "   -------------------------------------\n")
+        for i, operation in enumerate(operations):
+            print(f"Operation {operation}")
+            for j, type in enumerate(kind):
+                print(f"    Kind {type}")
+                for k, knn in enumerate(self.knn_range):
+                    print(f"        KNN {knn}")
+                    for l, anchor_percent in enumerate(self.percent_of_anchors):
+                        print(f"            Percent of Anchors {anchor_percent}")
+
+                        try:
+                            #Create the class with all the arguments
+                            spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation, kind = type)
+                        except:
+                            print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                            spud_scores[i, j, k, l, 0] = np.NaN
+                            spud_scores[i, j, k, l, 1] = np.NaN
+                            continue
+
+                        #FOSCTTM METRICS
+                        try:
+                            spud_FOSCTTM = self.FOSCTTM(spud_class.matrix_AB)
+                            print(f"                FOSCTTM Score: {spud_FOSCTTM}")
+                        except:
+                            print("                Unable to calculate FOSCTTM")
+                            spud_FOSCTTM = np.NaN
+                        
+                        spud_scores[i, j, k, l, 0] = spud_FOSCTTM
+
+                        #Cross Embedding Metrics
+                        try:
+                            emb = self.mds.fit_transform(spud_class.block)
+                            spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                            print(f"                CE Score: {spud_CE}")
+                        except:
+                            print("                Unable to calculate Cross Embedding")
+                            spud_CE = np.NaN
+                        
+                        spud_scores[i, j, k, l, 1] = spud_CE
+
         #Save the numpy array
         np.save(filename, spud_scores)
 
@@ -281,44 +317,6 @@ class test_manifold_algorithms():
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
         NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same"""
-
-        #Store the data in a numpy array
-        DIG_scores = np.zeros((len(page_ranks), len(self.knn_range), len(self.percent_of_anchors), 2 + predict))
-
-        #Run through the tests with every variatioin
-        print("\n-------------------------------------   DIG TESTS " + self.base_directory[38:-1] + "   -------------------------------------\n")
-        for i, link in enumerate(page_ranks):
-            print(f"Page rank applied: {link}")
-            for j, knn in enumerate(self.knn_range):
-                print(f"    KNN {knn}")
-                for k, anchor_percent in enumerate(self.percent_of_anchors):
-                    print(f"        Percent of Anchors {anchor_percent}")
-
-                    #Create our class to run the tests
-                    DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
-
-                    #Get Evaluation metrics
-                    DIG_FOSCTTM = self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A])
-                    DIG_scores[i, j, k, 0] = DIG_FOSCTTM
-                    print(f"            FOSCTTM Score: {DIG_FOSCTTM}")
-
-                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
-                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                    DIG_scores[i, j, k, 1] = DIG_CE
-                    print(f"            CE Score: {DIG_CE}")
-
-                    #Predict features test
-                    if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
-                        #Testing the PREDICT labels features
-                        features_pred_B = DIG_class.predict_feature(predict="B")
-                        features_pred_A = DIG_class.predict_feature(predict="A")
-
-                        #Get the MAE for each set and average them
-                        DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                        DIG_scores[i, j, k, 2] = DIG_MAE
-                        print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
-
-
 
         #Create filename
         filename = 'DIG(' +  self.split[0] + str(self.random_state) + ')_PR(' #PR is short for Page Rank
@@ -335,6 +333,69 @@ class test_manifold_algorithms():
         #Finish file name
         filename = self.base_directory + filename + ".npy"
 
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the data in a numpy array
+        DIG_scores = np.zeros((len(page_ranks), len(self.knn_range), len(self.percent_of_anchors), 2 + predict))
+
+        #Run through the tests with every variatioin
+        print("\n-------------------------------------   DIG TESTS " + self.base_directory[38:-1] + "   -------------------------------------\n")
+        for i, link in enumerate(page_ranks):
+            print(f"Page rank applied: {link}")
+            for j, knn in enumerate(self.knn_range):
+                print(f"    KNN {knn}")
+                for k, anchor_percent in enumerate(self.percent_of_anchors):
+                    print(f"        Percent of Anchors {anchor_percent}")
+
+                    try:
+                        #Create our class to run the tests
+                        DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
+                    except:
+                        print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                        DIG_scores[i, j, k, 0] = np.NaN
+                        DIG_scores[i, j, k, 1] = np.NaN
+
+                        #If we are using predict, this must also be NaN
+                        if predict:
+                            DIG_scores[i, j, k, 2] = np.NaN
+                        continue
+
+                    #FOSCTTM Evaluation Metrics
+                    try:
+                        DIG_FOSCTTM = self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A])
+                        print(f"            FOSCTTM Score: {DIG_FOSCTTM}")
+                    except:
+                        print("            Failed to calculate FOSCTTM")
+                        DIG_FOSCTTM = np.NaN
+
+                    DIG_scores[i, j, k, 0] = DIG_FOSCTTM
+
+                    #Cross Embedding Evaluation Metric
+                    try:
+                        emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                        DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                        print(f"            CE Score: {DIG_CE}")
+                    except:
+                        print("            Failed to calculate CE")
+                        DIG_CE = np.NaN
+
+                    DIG_scores[i, j, k, 1] = DIG_CE
+
+                    #Predict features test
+                    if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                        #Testing the PREDICT labels features
+                        features_pred_B = DIG_class.predict_feature(predict="B")
+                        features_pred_A = DIG_class.predict_feature(predict="A")
+
+                        #Get the MAE for each set and average them
+                        DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                        DIG_scores[i, j, k, 2] = DIG_MAE
+                        print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+
         #Save the numpy array
         np.save(filename, DIG_scores)
 
@@ -343,30 +404,6 @@ class test_manifold_algorithms():
 
     def run_NAMA_tests(self):
         """Needs no additional parameters"""
-
-        #Store the results in an array
-        NAMA_scores = np.zeros((len(self.percent_of_anchors), 2))
-
-        #Create the Nama object on the dataset
-        nama = NAMA(ot_reg = 0.001)
-
-        print("\n-------------------------------------   NAMA TESTS  " + self.base_directory[38:-1] + "  -------------------------------------\n")
-        
-        for i, anchor_percent in enumerate(self.percent_of_anchors):
-            print(f"Percent of Anchors {anchor_percent}")
-            #Fit the value
-            nama.fit(self.anchors[:int(len(self.anchors)*anchor_percent)], self.split_A, self.split_B)
-
-            #Test FOSCTTM
-            nama_FOSCTTM = self.FOSCTTM(nama.cross_domain_dists)
-            NAMA_scores[i, 0] = nama_FOSCTTM
-            print(f"    FOSCTTM: {nama_FOSCTTM}")
-
-            #Get embedding for CE
-            emb = self.mds.fit_transform(nama.block)
-            nama_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-            NAMA_scores[i, 1] = nama_CE
-            print(f"    Cross Embedding: {nama_CE}")
 
         #Finish file name
         filename = 'NAMA(' + self.split[0] + str(self.random_state) + ")_AP(" #Short for Anchor Percent
@@ -380,6 +417,50 @@ class test_manifold_algorithms():
         #Finish file name
         filename = self.base_directory + filename + ".npy"
 
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the results in an array
+        NAMA_scores = np.zeros((len(self.percent_of_anchors), 2))
+
+        #Create the Nama object on the dataset
+        nama = NAMA(ot_reg = 0.001)
+
+        print("\n-------------------------------------   NAMA TESTS  " + self.base_directory[38:-1] + "  -------------------------------------\n")
+        
+        for i, anchor_percent in enumerate(self.percent_of_anchors):
+            print(f"Percent of Anchors {anchor_percent}")
+
+            #Fit NAMA
+            try:
+                nama.fit(self.anchors[:int(len(self.anchors)*anchor_percent)], self.split_A, self.split_B)
+            except:
+                print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                NAMA_scores[i, 0] = np.NaN
+                NAMA_scores[i, 1] = np.NaN
+                continue
+
+            #Test FOSCTTM
+            try:
+                nama_FOSCTTM = self.FOSCTTM(nama.cross_domain_dists)
+                print(f"    FOSCTTM: {nama_FOSCTTM}")
+            except:
+                print("    Failed to calculate FOSCTTM")
+                nama_FOSCTTM = np.NaN
+            NAMA_scores[i, 0] = nama_FOSCTTM
+
+            #Get embedding for CE
+            try:
+                emb = self.mds.fit_transform(nama.block)
+                nama_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                print(f"    Cross Embedding: {nama_CE}")
+            except:
+                print("     Failed to calculate the Cross Embedding")
+                nama_CE = np.NaN
+            NAMA_scores[i, 1] = nama_CE
+
         #Save the numpy array
         np.save(filename, NAMA_scores)
 
@@ -389,6 +470,22 @@ class test_manifold_algorithms():
     def run_DTA_tests(self):
         """Needs no additional parameters"""
 
+        #Add the last index for knn range so we know what knn values were used
+        filename = 'DTA(' + self.split[0] + str(self.random_state) + ")_AP(" #Short for Anchor Percent
+        for name in self.percent_of_anchors:
+            filename += str(name) + "-"
+            
+        #Add the last index for knn range so we know what knn values were used
+        filename = filename[:-1] + ")_" + str(self.knn_range[-1])
+
+        #Finish file name
+        filename = self.base_directory + filename + ".npy"
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
         #Store the results in an array
         DTA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
 
@@ -405,37 +502,41 @@ class test_manifold_algorithms():
             for j, anchor_percent in enumerate(self.percent_of_anchors):
                 print(f"    Percent of Anchors {anchor_percent}")
 
-                #Reformat the anchors 
-                sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
-                sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
-                labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
-                #labelsh2 = self.labels[self.anchors.T[1]]
-                labels_extended = np.concatenate((self.labels, labelsh1))
+                #In case the class initialization fails
+                try:
+                    #Reformat the anchors 
+                    sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
+                    sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
+                    labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
+                    #labelsh2 = self.labels[self.anchors.T[1]]
+                    labels_extended = np.concatenate((self.labels, labelsh1))
 
-                #Fit it
-                DTA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2) 
+                    #Fit it
+                    DTA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+                except:
+                    print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                    DTA_scores[i, j, 0] = np.NaN
+                    DTA_scores[i, j, 1] = np.NaN
+                    continue
 
                 #FOSCTTM scores
-                DTA_FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(DTA_class.W12)) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                try:
+                    DTA_FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(DTA_class.W12)) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    print(f"        FOSCTTM {DTA_FOSCTTM}")
+                except:
+                    print("         Unable to Calculate FOSCTTM")
+                    DTA_FOSCTTM = np.NaN
                 DTA_scores[i, j, 0] = DTA_FOSCTTM
-                print(f"        FOSCTTM {DTA_FOSCTTM}")
 
                 #Cross Embedding Scores
-                emb = self.mds.fit_transform(1 - self.normalize_0_to_1(DTA_class.W))
-                DTA_CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                try:
+                    emb = self.mds.fit_transform(1 - self.normalize_0_to_1(DTA_class.W))
+                    DTA_CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                    print(f"        Cross Embedding: {DTA_CE}")
+                except:
+                    print("         Failed to calculate Cross Embedding")
+                    DTA_CE = np.NaN
                 DTA_scores[i, j, 1] = DTA_CE
-                print(f"        Cross Embedding: {DTA_CE}")
-
-        #Add the last index for knn range so we know what knn values were used
-        filename = 'DTA(' + self.split[0] + str(self.random_state) + ")_AP(" #Short for Anchor Percent
-        for name in self.percent_of_anchors:
-            filename += str(name) + "-"
-            
-        #Add the last index for knn range so we know what knn values were used
-        filename = filename[:-1] + ")_" + str(self.knn_range[-1])
-
-        #Finish file name
-        filename = self.base_directory + filename + ".npy"
 
         #Save the numpy array
         np.save(filename, DTA_scores)
@@ -446,6 +547,22 @@ class test_manifold_algorithms():
     def run_SSMA_tests(self):
         """ No Additional arguments needed"""
 
+        #Add the last index for knn range so we know what knn values were used
+        filename = 'SSMA(' + self.split[0] + str(self.random_state) + ")_AP(" #Short for Anchor Percent
+        for name in self.percent_of_anchors:
+            filename += str(name) + "-"
+            
+        #Add the last index for knn range so we know what knn values were used
+        filename = filename[:-1] + ")_" + str(self.knn_range[-1])
+
+        #Finish file name
+        filename = self.base_directory + filename + ".npy"
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
         #Create an array to store the important data in 
         SSMA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
 
@@ -460,41 +577,41 @@ class test_manifold_algorithms():
             for j, anchor_percent in enumerate(self.percent_of_anchors):
                 print(f"    Percent of Anchors {anchor_percent}")
 
-                #Reformat the anchors 
-                sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
-                sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
-                labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
-                #labelsh2 = self.labels[self.anchors.T[1]]
-                labels_extended = np.concatenate((self.labels, labelsh1))
+                #Test to see if class initialization fails
+                try:
+                    #Reformat the anchors 
+                    sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
+                    sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
+                    labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
+                    #labelsh2 = self.labels[self.anchors.T[1]]
+                    labels_extended = np.concatenate((self.labels, labelsh1))
 
-                #Fit it
-                SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2) 
-
-                #Normalize the W block
-                #normalized_W = self.normalize_0_to_1(SSMA_class.W)
+                    #Fit it
+                    SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+                except:
+                    print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                    SSMA_scores[i, j, 0] = np.NaN
+                    SSMA_scores[i, j, 1] = np.NaN
+                    continue
 
                 #FOSCTTM scores
-                len(self.split_A) + len(self.anchors)
-                SSMA_FOSCTTM = self.FOSCTTM(1 - SSMA_class.W[len(SSMA_class.domain1):, :len(SSMA_class.domain1)]) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                try:
+                    SSMA_FOSCTTM = self.FOSCTTM(1 - SSMA_class.W[len(SSMA_class.domain1):, :len(SSMA_class.domain1)]) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    print(f"        FOSCTTM {SSMA_FOSCTTM}")
+                except:
+                    print("         Unable to calculate FOSCTTM")
+                    SSMA_FOSCTTM = np.NaN
                 SSMA_scores[i, j, 0] = SSMA_FOSCTTM
-                print(f"        FOSCTTM {SSMA_FOSCTTM}")
 
                 #Cross Embedding Scores
-                emb = self.mds.fit_transform(1 - SSMA_class.W)
-                SSMA_CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                try:
+                    emb = self.mds.fit_transform(1 - SSMA_class.W)
+                    SSMA_CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                    print(f"        Cross Embedding: {SSMA_CE}")
+                except:
+                    print("         Unable to calculate Cross Embedding")
+                    SSMA_CE = np.NaN
                 SSMA_scores[i, j, 1] = SSMA_CE
-                print(f"        Cross Embedding: {SSMA_CE}")
-
-        #Add the last index for knn range so we know what knn values were used
-        filename = 'SSMA(' + self.split[0] + str(self.random_state) + ")_AP(" #Short for Anchor Percent
-        for name in self.percent_of_anchors:
-            filename += str(name) + "-"
-            
-        #Add the last index for knn range so we know what knn values were used
-        filename = filename[:-1] + ")_" + str(self.knn_range[-1])
-
-        #Finish file name
-        filename = self.base_directory + filename + ".npy"
 
         #Save the numpy array
         np.save(filename, SSMA_scores)
