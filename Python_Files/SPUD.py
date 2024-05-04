@@ -196,8 +196,9 @@ class SPUD:
     #Convert to an array
     node_distance_matrix = np.array(node_distance_matrix) #Question: code might run faster if we start it as an array
 
-    #Scale it
-    node_distance_matrix = node_distance_matrix / np.max(node_distance_matrix[~np.isinf(node_distance_matrix)])
+    #Scale it and check to ensure no devision by 0
+    if np.max(node_distance_matrix[~np.isinf(node_distance_matrix)]) != 0:
+      node_distance_matrix = node_distance_matrix / np.max(node_distance_matrix[~np.isinf(node_distance_matrix)])
 
     #Reset inf values
     node_distance_matrix[np.isinf(node_distance_matrix)] = 1
