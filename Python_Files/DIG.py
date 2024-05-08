@@ -52,8 +52,8 @@ class DIG: #Diffusion Integration with Graphs
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, t, link = link)
 
         #Try doing diffusion the empy block way
-        self.empty_block = self.get_zeros_and_ones_block()
-        self.empty_diffused, __, __ = self.get_diffusion(self.empty_block, t, link = link) #NOTE: We currently do not store these projections
+        """self.empty_block = self.get_zeros_and_ones_block()
+        self.empty_diffused, __, __ = self.get_diffusion(self.empty_block, t, link = link) #NOTE: We currently do not store these projections"""
 
     """EVALUATION FUNCTIONS BELOW"""
     def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
@@ -70,7 +70,7 @@ class DIG: #Diffusion Integration with Graphs
 
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
     
-    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 1}):
+    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}):
         """Evaluation Metric that computes how many of the closest neighbors are correct"""
         (y1, y2) = Y
 

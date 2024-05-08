@@ -1,14 +1,28 @@
-"""The code runs, but it doesn't get the same results"""
+"""NOTE:
+Will require creating a new environment to run and older version of tensorflow. Can be accomplished through the following commands
+
+conda create -n tf115 python=3.7  
+
+conda activate tf115   
+
+conda install tensorflow==1.15.0   
+
+python Python_Files/MAGAN.py
+
+conda deactivate
+
+"""
+
 
 import tensorflow as tf
-from tensorflow.compat.v1 import variable_scope, placeholder, add_to_collection, global_variables, global_variables_initializer, get_collection, train#, layers
 import os
 import numpy as np
 
 print(f"MAGAN is running on TensorFlow {tf.__version__}")
 
-#To run with the older functions, we must include this:
-tf.compat.v1.disable_eager_execution()
+def lrelu(x, leak=0.2, name="lrelu"):
+    """A leaky Rectified Linear Unit."""
+    return tf.maximum(x, leak * x)
 
 def nameop(op, name):
     """Give the current op this name, so it can be retrieved in another session."""
@@ -17,11 +31,11 @@ def nameop(op, name):
 
 def tbn(name):
     """Get a tensor of the given name from the graph."""
-    return tf.compat.v1.get_default_graph().get_tensor_by_name(name)
+    return tf.get_default_graph().get_tensor_by_name(name)
 
 def obn(name):
     """Get an object of the given name from the graph."""
-    return tf.compat.v1.get_default_graph().get_operation_by_name(name)
+    return tf.get_default_graph().get_operation_by_name(name)
 
 def correspondence_loss(b1, b2):
     """
@@ -108,13 +122,12 @@ class MAGAN(object):
         dim_b1,
         dim_b2,
         correspondence_loss,
-        activation= "leaky_relu",
+        activation=lrelu,
         learning_rate=.001,
         restore_folder='',
         limit_gpu_fraction=1.,
         no_gpu=False,
         nfilt=64):
-        
         """Initialize the model."""
         self.dim_b1 = dim_b1
         self.dim_b2 = dim_b2
@@ -127,11 +140,11 @@ class MAGAN(object):
             self._restore(restore_folder)
             return
 
-        self.xb1 = placeholder(tf.float32, shape=[None, self.dim_b1], name='xb1')
-        self.xb2 = placeholder(tf.float32, shape=[None, self.dim_b2], name='xb2')
+        self.xb1 = tf.placeholder(tf.float32, shape=[None, self.dim_b1], name='xb1')
+        self.xb2 = tf.placeholder(tf.float32, shape=[None, self.dim_b2], name='xb2')
 
-        self.lr = placeholder(tf.float32, shape=[], name='lr')
-        self.is_training = placeholder(tf.bool, shape=[], name='is_training')
+        self.lr = tf.placeholder(tf.float32, shape=[], name='lr')
+        self.is_training = tf.placeholder(tf.bool, shape=[], name='is_training')
 
         self._build()
         self.init_session(limit_gpu_fraction=limit_gpu_fraction, no_gpu=no_gpu)
@@ -140,22 +153,22 @@ class MAGAN(object):
     def init_session(self, limit_gpu_fraction=.4, no_gpu=False):
         """Initialize the session."""
         if no_gpu:
-            config = tf.compat.v1.ConfigProto(device_count={'GPU': 0})
-            self.sess = tf.compat.v1.Session(config=config)
+            config = tf.ConfigProto(device_count={'GPU': 0})
+            self.sess = tf.Session(config=config)
         elif limit_gpu_fraction:
-            gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=limit_gpu_fraction)
-            config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-            self.sess = tf.compat.v1.Session(config=config)
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=limit_gpu_fraction)
+            config = tf.ConfigProto(gpu_options=gpu_options)
+            self.sess = tf.Session(config=config)
         else:
-            self.sess = tf.compat.v1.Session()
+            self.sess = tf.Session()
 
     def graph_init(self, sess=None):
         """Initialize graph variables."""
         if not sess: sess = self.sess
 
-        self.saver = train.Saver(global_variables(), max_to_keep=1)
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
-        sess.run(global_variables_initializer())
+        sess.run(tf.global_variables_initializer())
 
         return self.saver
 
@@ -174,8 +187,8 @@ class MAGAN(object):
         """Restore the model from a saved checkpoint."""
         tf.reset_default_graph()
         self.init_session()
-        ckpt = train.get_checkpoint_state(restore_folder)
-        self.saver = train.import_meta_graph('{}.meta'.format(ckpt.model_checkpoint_path))
+        ckpt = tf.train.get_checkpoint_state(restore_folder)
+        self.saver = tf.train.import_meta_graph('{}.meta'.format(ckpt.model_checkpoint_path))
         self.saver.restore(self.sess, ckpt.model_checkpoint_path)
         print("Model restored from {}".format(restore_folder))
 
@@ -213,8 +226,8 @@ class MAGAN(object):
         self._build_loss_G()
         self.loss_D = nameop(self.loss_D, 'loss_D')
         self.loss_G = nameop(self.loss_G, 'loss_G')
-        add_to_collection('losses', self.loss_D)
-        add_to_collection('losses', self.loss_G)
+        tf.add_to_collection('losses', self.loss_D)
+        tf.add_to_collection('losses', self.loss_G)
 
     def _build_loss_D(self):
         """Discriminator loss."""
@@ -244,22 +257,22 @@ class MAGAN(object):
 
     def _build_optimization(self):
         """Build optimization components."""
-        Gvars = [tv for tv in global_variables() if 'G12' in tv.name or 'G21' in tv.name]
-        Dvars = [tv for tv in global_variables() if 'D1' in tv.name or 'D2' in tv.name]
+        Gvars = [tv for tv in tf.global_variables() if 'G12' in tv.name or 'G21' in tv.name]
+        Dvars = [tv for tv in tf.global_variables() if 'D1' in tv.name or 'D2' in tv.name]
 
-        update_ops = get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         G_update_ops = [op for op in update_ops if 'G12' in op.name or 'G21' in op.name]
         D_update_ops = [op for op in update_ops if 'D1' in op.name or 'D2' in op.name]
 
         with tf.control_dependencies(G_update_ops):
-            optG = train.AdamOptimizer(self.lr, beta1=.5, beta2=.99)
+            optG = tf.train.AdamOptimizer(self.lr, beta1=.5, beta2=.99)
             self.train_op_G = optG.minimize(self.loss_G, var_list=Gvars, name='train_op_G')
 
         with tf.control_dependencies(D_update_ops):
-            optD = train.AdamOptimizer(self.lr, beta1=.5, beta2=.99)
+            optD = tf.train.AdamOptimizer(self.lr, beta1=.5, beta2=.99)
             self.train_op_D = optD.minimize(self.loss_D, var_list=Dvars, name='train_op_D')
 
-    def train_model(self, xb1, xb2):
+    def train(self, xb1, xb2):
         """Take a training step with batches from each domain."""
         self.iteration += 1
 
@@ -286,7 +299,7 @@ class MAGAN(object):
 
     def get_loss_names(self):
         """Return a string for the names of the loss values."""
-        losses = [tns.name[:-2].replace('loss_', '').split('/')[-1] for tns in get_collection('losses')]
+        losses = [tns.name[:-2].replace('loss_', '').split('/')[-1] for tns in tf.get_collection('losses')]
         return "Losses: {}".format(' '.join(losses))
 
     def get_loss(self, xb1, xb2):
@@ -295,7 +308,7 @@ class MAGAN(object):
                 tbn('xb2:0'): xb2,
                 tbn('is_training:0'): False}
 
-        ls = [tns for tns in get_collection('losses')]
+        ls = [tns for tns in tf.get_collection('losses')]
         losses = self.sess.run(ls, feed_dict=feed)
 
         lstring = ' '.join(['{:.3f}'.format(loss) for loss in losses])
@@ -308,8 +321,7 @@ class Generator(object):
     def __init__(self,
         output_dim,
         name='',
-        activation= tf.nn.relu):
-
+        activation=tf.nn.relu):
         """"Initialize the generator."""
         self.output_dim = output_dim
         self.activation = activation
@@ -317,12 +329,12 @@ class Generator(object):
 
     def __call__(self, x, reuse=False):
         """Perform the feedforward for the generator."""
-        with variable_scope(self.name, reuse = reuse):
-            h1 = tf.keras.layers.Dense(200, activation=self.activation,  name='h1')(x)
-            h2 = tf.keras.layers.Dense(100, activation=self.activation, name='h2')(h1)
-            h3 = tf.keras.layers.Dense(50, activation=self.activation, name='h3')(h2)
+        with tf.variable_scope(self.name):
+            h1 = tf.layers.dense(x, 200, activation=self.activation, reuse=reuse, name='h1')
+            h2 = tf.layers.dense(h1, 100, activation=self.activation, reuse=reuse, name='h2')
+            h3 = tf.layers.dense(h2, 50, activation=self.activation, reuse=reuse, name='h3')
 
-            out = tf.keras.layers.Dense(self.output_dim, activation=None, name='out')(h3)
+            out = tf.layers.dense(h3, self.output_dim, activation=None, reuse=reuse, name='out')
 
         return out
 
@@ -331,22 +343,21 @@ class Discriminator(object):
 
     def __init__(self,
         name='',
-        activation= tf.nn.relu):
-
+        activation=tf.nn.relu):
         """Initialize the discriminator."""
         self.activation = activation
         self.name = name
 
     def __call__(self, x, reuse=False):
         """Perform the feedforward for the discriminator."""
-        with variable_scope(self.name, reuse = reuse):
-            h1 = tf.keras.layers.Dense(800, activation=self.activation, name='h1')(x)
-            h2 = tf.keras.layers.Dense(400, activation=self.activation, name='h2')(h1)
-            h3 = tf.keras.layers.Dense(200, activation=self.activation, name='h3')(h2)
-            h4 = tf.keras.layers.Dense(100, activation=self.activation, name='h4')(h3)
-            h5 = tf.keras.layers.Dense(50, activation=self.activation, name='h5')(h4)
+        with tf.variable_scope(self.name):
+            h1 = tf.layers.dense(x, 800, activation=self.activation, reuse=reuse, name='h1')
+            h2 = tf.layers.dense(h1, 400, activation=self.activation, reuse=reuse, name='h2')
+            h3 = tf.layers.dense(h2, 200, activation=self.activation, reuse=reuse, name='h3')
+            h4 = tf.layers.dense(h3, 100, activation=self.activation, reuse=reuse, name='h4')
+            h5 = tf.layers.dense(h4, 50, activation=self.activation, reuse=reuse, name='h5')
 
-            out = tf.keras.layers.Dense(1, activation=None, name='out')(h5)
+            out = tf.layers.dense(h5, 1, activation=None, reuse=reuse, name='out')
 
         return out
 
@@ -366,58 +377,71 @@ def get_data(n_batches=2, n_pts_per_cluster=5000):
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1):
-    """xb1 should be split_a
-    sb2 should be split_b
-    labels1 should just be the labels"""
-    labels2 = labels1
-    
-    print("Batch 1 shape: {} Batch 2 shape: {}".format(xb1.shape, xb2.shape))
+def correspondence_loss(b1, b2):
+    """
+    The correspondence loss.
 
-    # Prepare the loaders
-    loadb1 = Loader(xb1, labels=labels1, shuffle=True)
-    loadb2 = Loader(xb2, labels=labels2, shuffle=True)
-    batch_size = 100
+    :param b1: a tensor representing the object in the graph of the current minibatch from domain one
+    :param b2: a tensor representing the object in the graph of the current minibatch from domain two
+    :returns a scalar tensor of the correspondence loss
+    """
+    domain1cols = [0]
+    domain2cols = [0]
+    loss = tf.constant(0.)
+    for c1, c2 in zip(domain1cols, domain2cols):
+        loss += tf.reduce_mean((b1[:, c1] - b2[:, c2])**2)
 
-    # Build the tf graph
-    magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss)
+    return loss
 
-    # Train
-    for i in range(1, 100000):
-        xb1_, labels1_ = loadb1.next_batch(batch_size)
-        xb2_, labels2_ = loadb2.next_batch(batch_size)
-
-        magan.train_model(xb1_, xb2_)
-
-        # Evaluate the loss and plot
-        if i % 500 == 0:
-            xb1_, labels1_ = loadb1.next_batch(10 * batch_size)
-            xb2_, labels2_ = loadb2.next_batch(10 * batch_size)
-
-            lstring = magan.get_loss(xb1_, xb2_)
-            print("{} {}".format(magan.get_loss_names(), lstring))
+# Load the data
+xb1, xb2, labels1, labels2 = get_data()
 
 
-            xb1 = magan.get_layer(xb1_, xb2_, 'xb1')
-            xb2 = magan.get_layer(xb1_, xb2_, 'xb2')
-            Gb1 = magan.get_layer(xb1_, xb2_, 'Gb1')
-            Gb2 = magan.get_layer(xb1_, xb2_, 'Gb2')
+print("Batch 1 shape: {} Batch 2 shape: {}".format(xb1.shape, xb2.shape))
 
-            import matplotlib.pyplot as plt
-            fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
-            axes[0, 0].set_title('Original')
-            axes[0, 1].set_title('Generated')
-            axes[0, 0].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[0, 0].scatter(0,0, s=100, c='w'); axes[0, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[0, 1].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[0, 1].scatter(0,0, s=100, c='w'); axes[0, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[1, 0].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[1, 0].scatter(0,0, s=100, c='w'); axes[1, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[1, 1].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[1, 1].scatter(0,0, s=100, c='w'); axes[1, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+# Prepare the loaders
+loadb1 = Loader(xb1, labels=labels1, shuffle=True)
+loadb2 = Loader(xb2, labels=labels2, shuffle=True)
+batch_size = 100
 
-            for lab, marker in zip([0, 1, 2], ['x', 'D', '.']):
-                axes[0, 0].scatter(xb1[labels1_ == lab, 0], xb1[labels1_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
-                axes[0, 1].scatter(Gb2[labels1_ == lab, 0], Gb2[labels1_ == lab, 1], s=45, alpha=.5, c='r', marker=marker)
-            for lab, marker in zip([0, 1, 2], ['x', 'D', '.']):
-                axes[1, 0].scatter(xb2[labels2_ == lab, 0], xb2[labels2_ == lab, 1], s=45, alpha=.5, c='r', marker=marker)
-                axes[1, 1].scatter(Gb1[labels2_ == lab, 0], Gb1[labels2_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
-            fig.canvas.draw()
-            plt.pause(1)
+# Build the tf graph
+magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss)
 
+# Train
+for i in range(1, 100000):
+    xb1_, labels1_ = loadb1.next_batch(batch_size)
+    xb2_, labels2_ = loadb2.next_batch(batch_size)
+
+    magan.train(xb1_, xb2_)
+
+    # Evaluate the loss and plot
+    if i % 500 == 0:
+        xb1_, labels1_ = loadb1.next_batch(10 * batch_size)
+        xb2_, labels2_ = loadb2.next_batch(10 * batch_size)
+
+        lstring = magan.get_loss(xb1_, xb2_)
+        print("{} {}".format(magan.get_loss_names(), lstring))
+
+
+        xb1 = magan.get_layer(xb1_, xb2_, 'xb1')
+        xb2 = magan.get_layer(xb1_, xb2_, 'xb2')
+        Gb1 = magan.get_layer(xb1_, xb2_, 'Gb1')
+        Gb2 = magan.get_layer(xb1_, xb2_, 'Gb2')
+
+        import matplotlib.pyplot as plt
+        fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
+        axes[0, 0].set_title('Original')
+        axes[0, 1].set_title('Generated')
+        axes[0, 0].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[0, 0].scatter(0,0, s=100, c='w'); axes[0, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+        axes[0, 1].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[0, 1].scatter(0,0, s=100, c='w'); axes[0, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+        axes[1, 0].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[1, 0].scatter(0,0, s=100, c='w'); axes[1, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+        axes[1, 1].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[1, 1].scatter(0,0, s=100, c='w'); axes[1, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+
+        for lab, marker in zip([0, 1, 2], ['x', 'D', '.']):
+            axes[0, 0].scatter(xb1[labels1_ == lab, 0], xb1[labels1_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
+            axes[0, 1].scatter(Gb2[labels1_ == lab, 0], Gb2[labels1_ == lab, 1], s=45, alpha=.5, c='r', marker=marker)
+        for lab, marker in zip([0, 1, 2], ['x', 'D', '.']):
+            axes[1, 0].scatter(xb2[labels2_ == lab, 0], xb2[labels2_ == lab, 1], s=45, alpha=.5, c='r', marker=marker)
+            axes[1, 1].scatter(Gb1[labels2_ == lab, 0], Gb1[labels2_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
+        fig.canvas.draw()
+        plt.pause(1)
