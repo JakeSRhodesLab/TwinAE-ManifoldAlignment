@@ -41,14 +41,14 @@ class SPUD:
           self.graphB = self.construct_connected_graph(dataB)
 
         else:
-          Gx = graphtools.Graph(dataA, knn = knn, decay = self.decay, knn_max= knn) #Knn is the number of how many nearest neighbors it finds
-          Gy = graphtools.Graph(dataB, knn = knn, decay = self.decay, knn_max= knn) #Decay is the rate of alpha decay (Which means the farther it gets the less similar they are)
+          Gx = graphtools.Graph(dataA, knn = knn, decay = self.decay, knn_max= knn) 
+          Gy = graphtools.Graph(dataB, knn = knn, decay = self.decay, knn_max= knn)
 
-          #Create the igraph distances... Could this be the same as the above?
+          #Create the igraph distances
           self.graphA = Gx.to_igraph()
           self.graphB = Gy.to_igraph()
 
-        #Create pure SGDM for graph 1 and graph 2
+        #Create Same Graph Distance Matricies by direct connections
         self.pure_matrix_A, self.pure_matrix_B = self.get_pure_distance(dataA, dataB)
         self.pure_similar_A, self.pure_similar_B = self.get_pure_similarities(dataA, dataB)
 
@@ -64,7 +64,7 @@ class SPUD:
         self.edge_paths_A = self.make_edge_paths(self.graphA, self.known_anchors_A)
         self.edge_paths_B = self.make_edge_paths(self.graphB, self.known_anchors_B)
 
-        #All .matrix are distance matrix
+        #Get Same Graph Distance matricies by following the closest neighbor paths
         self.matrix_A, self.scales_A = self.get_SGDM_and_scale(self.graphA)
         self.matrix_B, self.scales_B = self.get_SGDM_and_scale(self.graphB)
 
@@ -291,9 +291,6 @@ class SPUD:
           #Do the math
           XY[x_index][y_index] = self.AvgTwoNodes(x_index, y_index)
 
-      #Set inf values to 2... We are removing this for consistency, since the other graphs don't have it
-      #####XY[np.isinf(XY)] = 2
-
       #Returns the matrix
       return XY
 
@@ -310,15 +307,12 @@ class SPUD:
                                [self.matrix_AB.T, self.pure_similar_B]])
 
     elif self.kind == "distance":
-      block_matrix = np.block([[self.pure_matrix_A, self.matrix_AB],
+      block_matrix = np.block([[self.pure_matrix_A, self.matrix_AB], #interestingly, it does better with the pure
                                [self.matrix_AB.T, self.pure_matrix_B]])
 
     else:
       print(f"Did not understand your input for kind = {self.kind}. /n Please use 'pure', 'distance' or 'similarity'")
       return None
-
-    #We will set the inf values to five... currently unneeded because we set the inf values for the SGDM. It seems to help
-    #block_matrix[np.isinf(block_matrix)] = 5
 
     #Plot the block matrix
     if self.show:
