@@ -279,7 +279,7 @@ class test_manifold_algorithms():
                             #Create the class with all the arguments
                             spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation, kind = type)
                         except:
-                            print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                            print("<><><><><><>   UNABLE TO CREATE CLASS, SPUD. TEST FAILED   <><><><><><>")
                             spud_scores[i, j, k, l, 0] = np.NaN
                             spud_scores[i, j, k, l, 1] = np.NaN
                             continue
@@ -354,7 +354,7 @@ class test_manifold_algorithms():
                         #Create our class to run the tests
                         DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
                     except:
-                        print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                        print("<><><><><><>   UNABLE TO CREATE CLASS, DIG. TEST FAILED   <><><><><><>")
                         DIG_scores[i, j, k, 0] = np.NaN
                         DIG_scores[i, j, k, 1] = np.NaN
 
@@ -437,7 +437,7 @@ class test_manifold_algorithms():
             try:
                 nama.fit(self.anchors[:int(len(self.anchors)*anchor_percent)], self.split_A, self.split_B)
             except:
-                print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                print("<><><><><><>   UNABLE TO CREATE CLASS, NAMA. TEST FAILED   <><><><><><>")
                 NAMA_scores[i, 0] = np.NaN
                 NAMA_scores[i, 1] = np.NaN
                 continue
@@ -514,7 +514,7 @@ class test_manifold_algorithms():
                     #Fit it
                     DTA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
                 except:
-                    print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                    print("<><><><><><>   UNABLE TO CREATE CLASS, DTA. TEST FAILED   <><><><><><>")
                     DTA_scores[i, j, 0] = np.NaN
                     DTA_scores[i, j, 1] = np.NaN
                     continue
@@ -589,7 +589,7 @@ class test_manifold_algorithms():
                     #Fit it
                     SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
                 except:
-                    print("<><><><><><>   UNABLE TO CREATE CLASS. TEST FAILED   <><><><><><>")
+                    print("<><><><><><>   UNABLE TO CREATE CLASS, SSMA. TEST FAILED   <><><><><><>")
                     SSMA_scores[i, j, 0] = np.NaN
                     SSMA_scores[i, j, 1] = np.NaN
                     continue
