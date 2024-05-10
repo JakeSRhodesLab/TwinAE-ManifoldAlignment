@@ -13,19 +13,24 @@ Task List:
 
 Changes Log:
 
+
+
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 
 
 
 TASKS:
-1. Get BYU VPN for the statrm website
+1. Get BYU VPN for the statrm website DONE
 2. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
 3. Download tmux -- (Zombies)
 4. Create new visuals (have one that is ordered going up)
 5. Email Red Rock about student presentation options -> Begin to prepare presentation
 6. Go through TODOS
 
+----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
+Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
+Resource Monitor Websitee: http://newstatrm.byu.edu/
 
 """
 
@@ -728,7 +733,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
 
     if run_SPUD:
@@ -740,19 +745,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=1)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=1)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=1)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
 
     return manifold_instances
 
