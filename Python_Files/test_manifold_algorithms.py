@@ -9,15 +9,23 @@ General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
 
 Task List:
-1. Compare MAGAN
+
 
 Changes Log:
-1. Fixed an issue dealing with continous labels that made CE unable to compute
-2. Added Smarter Exception Handling
-3. Added more file saves, and create a file name function. This will save more time on calculating repeat data
 
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
+
+
+
+TASKS:
+1. Get BYU VPN for the statrm website
+2. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
+3. Download tmux -- (Zombies)
+4. Create new visuals (have one that is ordered going up)
+5. Email Red Rock about student presentation options -> Begin to prepare presentation
+6. Go through TODOS
+
 
 """
 
@@ -45,7 +53,7 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 #Directory Constant
-MANIFOLD_DATA_DIR = os.getcwd()[:-12] + "ManifoldData/"
+MANIFOLD_DATA_DIR = os.getcwd()[:-12] + "ManifoldData/" #os.getcwd()[:-12] +
 
 #Create function to do everything
 class test_manifold_algorithms():
@@ -637,11 +645,35 @@ def clear_directory():
 
     return True
 
+def flatten(data, ndim):
+    """Helper function to flatten data arrays to be a list of the last dimensions, or to flatten along the metrics
+    
+    Returns flattened array"""
+
+    """
+    Shape KNN, AP, Me
+    DTA   (10, 3,  2) -- 30 items of (2)
+
+    First iteration:
+    [(3,2),  (3,2),     (3,2),      (3,2),      (3,2),      (3,2),      (3,2),      (3,2),      (3,2),      (3,2)]
+
+    Second Iteration
+    [(2), (2), (2)] * 10
+    """
+
+    #Minus one to not flatten the last array
+    ndim -= 1
+
+    for dim in range(ndim):
+        data = [item for sublist in data for item in sublist]
+
+    return data
+
 def get_evaluation_avg(data, mode = 0):
     """Data should be the array and mode should be 0 for FOSCTTM, 1 for CE, or 2 for MAE Predict
     
     returns the data avegerage for each KNN value"""
-    return np.mean(np.mean(np.array(data)[..., mode], axis = -1), axis = 0)
+    return np.mean(np.array(data)[..., mode], axis = 0)
 
 """IMPORTANT FUNCTIONS"""
 def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, **kwargs):
@@ -724,7 +756,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     return manifold_instances
 
-def visualize_results(file_names = "all"):
+def visualize_results(file_names = "all"): 
     """Creates and shows four plots that compare the scores of each method to each other
     
     csv_files tells us which data set we want to compare are data against. It can be a list of files or a 
@@ -758,27 +790,72 @@ def visualize_results(file_names = "all"):
     SPUD_abs_data = []
 
     for file in files:
+        #Check to make sure we can actually load the file
+        try:
+            data = np.load(file) #allow_pickle=True
+        except Exception as e:
+            print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing Loop without uploading file\n-------------------------------------------------------------------------------------------------------")
+            continue
+
         #Sort if data belongs to Nama
         if "NAMA" in file:
-            NAMA_data.append(np.load(file))
+            NAMA_data.append(data)
         elif "DTA" in file:
-            DTA_data.append(np.load(file))
+            DTA_data.append(data)
         elif "SSMA" in file:
-            SSMA_data.append(np.load(file))
+            SSMA_data.append(data)
         elif "DIG" in file:
+            #Add np.NaN if predict was false
+            if data.shape[-1] == 2:
+                #Create the new_data with the right shape
+                new_data = np.empty((data.shape[:-1], 3))
+                new_data.fill(np.NaN)
+
+                #Translate that data to the new array
+                new_data[:, :, :2] = data
+            else:
+                new_data = data
+            
             #Sort these based off of page rank values
             if "None" in file:
-                DIG_none_data.append(np.load(file))
+                DIG_none_data.append(new_data)
             elif "off-diagonal" in file:
-                DIG_off_diagonal_data.append(np.load(file))
+                DIG_off_diagonal_data.append(new_data)
             else:
-                DIG_full_data.append(np.load(file))
+                DIG_full_data.append(new_data)
+            
         else: #Its SPUD data NOTE: we currently do not seperate based on kind, because distance is arbitrary the best
             #Sort based on operation
             if "average" in file:
-                SPUD_avg_data.append(np.load(file)) 
+                SPUD_avg_data.append(data) 
             else: #Its abs 
-                SPUD_abs_data.append(np.load(file))
+                SPUD_abs_data.append(data)
+
+    #Reorder the Arrays
+    NAMA_data = flatten(NAMA_data, 2)
+    DTA_data = flatten(DTA_data, 3)
+    SSMA_data = flatten(SSMA_data, 3)
+    SPUD_avg_data = flatten(SPUD_avg_data, 3)
+    SPUD_abs_data = flatten(SPUD_abs_data, 3)
+
+    DIG_full_data = flatten(DIG_full_data, 3)
+    DIG_none_data = flatten(DIG_none_data, 3)
+    DIG_off_diagonal_data = flatten(DIG_off_diagonal_data, 3)
+
+
+    #Reshape the arrays so it is flat
+    NAMA_data = np.array(NAMA_data).reshape(-1, 2)
+    DTA_data = np.array(DTA_data).reshape(-1, 10, 2)
+    SSMA_data = np.array(SSMA_data).reshape(-1, 10, 2)
+    SPUD_avg_data = np.array(SPUD_avg_data).reshape(-1, 10, 2)
+    SPUD_abs_data = np.array(SPUD_abs_data).reshape(-1, 10, 2)
+
+
+    #Dig Data is shapped differently
+    DIG_full_data = np.array(DIG_full_data).reshape(-1, 10, 3)
+    DIG_none_data = np.array(DIG_none_data).reshape(-1, 10, 3)
+    DIG_off_diagonal_data = np.array(DIG_off_diagonal_data).reshape(-1, 10, 3)
+
         
     #Create graphs. X = KNN values based by percentage (each tick goes up by 1%), and Y = Score
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -820,9 +897,9 @@ def visualize_results(file_names = "all"):
         axs[0,1].plot(x_values, get_evaluation_avg(SPUD_avg_data, mode = 1) - get_evaluation_avg(SPUD_avg_data, mode = 0), label = "SPUD: Avg")
 
     if len(SPUD_abs_data) > 0:
-            axs[0,0].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 0), label = "SPUD: Abs")
-            axs[1,0].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 1), label = "SPUD: Abs")
-            axs[0,1].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 1) - get_evaluation_avg(SPUD_abs_data, mode = 0), label = "SPUD: Abs")
+        axs[0,0].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 0), label = "SPUD: Abs")
+        axs[1,0].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 1), label = "SPUD: Abs")
+        axs[0,1].plot(x_values, get_evaluation_avg(SPUD_abs_data, mode = 1) - get_evaluation_avg(SPUD_abs_data, mode = 0), label = "SPUD: Abs")
 
 
     #Top left graph will be FOSCTTM scores
@@ -877,7 +954,11 @@ def upload_to_DataFrame():
     #Sort through the Numpy arrays to get the data out
     for file in files:
         #Load in the numpy array
-        data = np.load(MANIFOLD_DATA_DIR + file)
+        try:
+            data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
+        except Exception as e:
+            print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing Loop without uploading file\n-------------------------------------------------------------------------------------------------------")
+            continue
 
         #Create a dictionary to use to add rows to our DataFame
         data_dict = {}
@@ -1032,5 +1113,113 @@ def upload_to_DataFrame():
                     df = df._append(data_dict, ignore_index=True)
 
     return df
+
+def change_old_files_to_new():
+    """Goes through all files and changes them to be consistent with the new file formatting"""
+    #Loop through each directory to get all the file names
+    files = []
+    for directory in os.listdir(MANIFOLD_DATA_DIR):
+        if os.path.isdir(MANIFOLD_DATA_DIR + directory): #Check to make sure its a directory
+            files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
+    #Create DataFrame
+    df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", "Percent_of_Anchors", 
+                                "FOSCTTM", "Cross_Embedding_KNN", "Page_Rank", "Predicted_Feature_MAE",
+                                "Operation", "SPUDS_Algorithm"])
+    #Sort through the Numpy arrays to get the data out
+    for file in files:
+
+        #Check to make sure we can load the file
+        try:
+            data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
+        except Exception as e:
+            print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing Loop without uploading file\n-------------------------------------------------------------------------------------------------------")
+            continue
+
+        #Get the name of the csv_file and then cut the csv file out of the name
+        csv_file_index = file.find('/')
+
+        #Get the method out of the file
+        method_index = file.find('(')
+        method = file[csv_file_index + 1 : method_index]
+        
+        #Split based on method
+        if method == "DIG":
+
+            #Get Page Rank indicies
+            PageRank_index = file.find('_PR(')
+            end_PageRank_index = PageRank_index + file[PageRank_index:].find(')') + 1
+
+            #Check to see if file is not already correct
+            if PageRank_index == -1:
+                #File is already new
+                continue
+
+            #Loop through each Page Rank Argument in order and add the values to corresponding list
+            for i, link in enumerate(find_words_order(file, ("None", "off-diagonal", "full"))):
+                if link == "None":
+                    P_file = file[:PageRank_index] + '_Pag(None)' + file[end_PageRank_index:]
+                elif link == "off-diagonal":
+                    P_file = file[:PageRank_index] + '_Pag(off-diagonal)' + file[end_PageRank_index:]
+                else: #Then it is full
+                    P_file = file[:PageRank_index] + '_Pag(full)' + file[end_PageRank_index:]
+
+                #If file aready exists, then we are done :)
+                P_file = MANIFOLD_DATA_DIR + P_file
+                if os.path.exists(P_file):
+                    continue
+                else:
+                    #Save the numpy array
+                    np.save(P_file, data[i])
+
+            #Delete original file
+            os.remove(MANIFOLD_DATA_DIR + file)
+
+        #Method SPUD
+        elif method == "SPUD":
+
+            #Get operation indicies
+            O_index = file.find('_O(')
+            end_O_index = O_index + file[O_index:].find(')') + 1
+
+            #Check to see if file is not already correct
+            if O_index == -1:
+                #File is already new
+                continue
+
+            #Loop through each word in order and add the values to corresponding list
+            for i, operation in enumerate(find_words_order(file, ("average", "abs"))):
+                if operation == "average":
+                    O_file = file[:O_index] + '_Ope(average)' + file[end_O_index:]
+                else: 
+                    O_file = file[:O_index] + '_Ope(abs)' + file[end_O_index:]
+
+                #Get Kind indicies
+                K_index = O_file.find('_K(')
+                end_K_index = K_index + O_file[K_index:].find(')') + 1
+
+                #Loop through each kind
+                for j, kind in enumerate(find_words_order(file, (("distance", "pure", "similarity")))):
+                    if kind == "distance":
+                        K_file = O_file[:K_index] + '_Kin(distance)' + O_file[end_K_index:]
+                    elif kind == "pure": #We should touch up on the SPUD algorithm for this
+                       K_file = O_file[:K_index] + '_Kin(pure)' + O_file[end_K_index:]
+                    else:
+                        K_file = O_file[:K_index] + '_Kin(similarity)' + O_file[end_K_index:]
+
+                    #If file aready exists, then we are done :)
+                    K_file = MANIFOLD_DATA_DIR + K_file
+                    if os.path.exists(K_file):
+                        continue
+                    else:
+                        #Save the numpy array
+                        np.save(K_file, data[i, j])
+            
+            #Delete original filw
+            os.remove(MANIFOLD_DATA_DIR + file)
+    
+    print("<><><><><><><><><><><><><><><><><><><><><><><>     Updates completed     <><><><><><><><><><><><><><><><><><><><><><><>")
+    return True
+
+
 
 #Later -> Add a main function to call the function. Now, we can just call it

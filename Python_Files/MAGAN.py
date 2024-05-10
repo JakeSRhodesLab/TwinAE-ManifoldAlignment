@@ -366,7 +366,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000):
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1):
+def run_MAGAN(xb1, xb2, labels1, labels2):
     """xb1 should be split_a
     sb2 should be split_b
     labels1 should just be the labels"""
