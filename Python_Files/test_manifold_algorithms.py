@@ -2,14 +2,11 @@
 
 """
 Questions:
-1. Check with Professor to make sure SSMA is implemented right
-2. Check on MAGAN -> why does it not progress?
+1. Ask and see how tmux works
+
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
-
-Task List:
-
 
 Changes Log:
 
@@ -17,15 +14,15 @@ Changes Log:
 
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
+2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
 
 
 
 TASKS:
-1. Get BYU VPN for the statrm website DONE
-2. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
-3. Download tmux -- (Zombies)
-4. Create new visuals (have one that is ordered going up)
-5. Email Red Rock about student presentation options -> Begin to prepare presentation
+0. Run tests wtih different SPUD methods
+1. Implement old datasets (S-curve and things)
+2. Create a High Level presentation -> Copy from the slides to make a presentation
+3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
 6. Go through TODOS
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
@@ -952,9 +949,11 @@ def upload_to_DataFrame():
             files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
 
     #Create DataFrame
-    df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", "Percent_of_Anchors", 
-                                "FOSCTTM", "Cross_Embedding_KNN", "Page_Rank", "Predicted_Feature_MAE",
-                                "Operation", "SPUDS_Algorithm"])
+    df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
+                                "Percent_of_KNN", "Percent_of_Anchors", 
+                                "Page_Rank", "Predicted_Feature_MAE",
+                                "Operation", "SPUDS_Algorithm", 
+                                "FOSCTTM", "Cross_Embedding_KNN"])
 
     #Sort through the Numpy arrays to get the data out
     for file in files:
@@ -1018,6 +1017,9 @@ def upload_to_DataFrame():
             for j in range(0, 10):
                 knn = (j*knn_increment) + 2
                 data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] == (j * 0.02) + 0.01
 
                 #Loop through each Anchor percentage
                 for k in range(len(AP_values)):
