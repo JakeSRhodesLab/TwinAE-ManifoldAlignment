@@ -234,7 +234,7 @@ class test_manifold_algorithms():
     def create_Scurve(self):
         """Create Scurve Data"""
         #Create all the data
-        self.split_A, self.split_B, self.labels, labels2  = utils.make_swiss_s(n_samples = 300, noise = 0, random_state = self.random_state, n_categories = 3)
+        self.split_A, self.split_B, self.labels, labels2  = utils.make_swiss_s(n_samples = 200, noise = 0, random_state = self.random_state, n_categories = 3)
 
         #Double the labels so we can evaluate the effectiveness of the methods
         self.labels_doubled = np.concatenate((self.labels, labels2))
