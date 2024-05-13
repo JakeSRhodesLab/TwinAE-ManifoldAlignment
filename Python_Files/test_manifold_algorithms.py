@@ -68,7 +68,8 @@ class test_manifold_algorithms():
         
         split can be 'skewed' (for the features to be split by more important and less important),
         or 'random' for the split to be completely random, or 'even' for each split to have both 
-        important or unimportant features
+        important or unimportant features. If split = "Distort", then it will create a second dataset, 
+        with the features distorted in the second one. 
         
         Verbose has different levels. 0 includes no additional prints. 1 prints a little bit more, and
         2 everything."""
@@ -153,6 +154,16 @@ class test_manifold_algorithms():
             # Use the shuffled indices to split the features array into two parts
             split_a = features[:, column_indices[:split_index]]
             split_b = features[:, column_indices[split_index:]]
+        
+        elif self.split == "distort":
+            if self.verbose > 0:
+                print("Creating a mirror dataset and distorting the features in the second Domain")
+
+            #Split A remains the same
+            split_a = features
+
+            #Add noise to split B
+            split_b = features + np.random.normal(scale = 0.05, size = np.shape(features))
 
         else:
             # Splitting the dataset into training and testing sets
@@ -195,7 +206,7 @@ class test_manifold_algorithms():
                 split_b = features[:, split_b_indexes]
             
             else:
-                raise NameError("Split type not recognized. Please type 'even', 'skewed', or 'random'.")
+                raise NameError("Split type not recognized. Please type 'even', 'skewed', 'distort', or 'random'.")
 
         #Reshape if they only have one sample
         if split_a.shape[1] == 1:
@@ -967,7 +978,7 @@ def visualize_results(file_names = "all"):
     plt.tight_layout()
     plt.show()
 
-def upload_to_DataFrame():
+def upload_to_DataFrame(): #TODO: If I want to make it faster
     """Returns a Panda's DataFrame from all the test data"""
 
     #Loop through each directory to get all the file names
@@ -1047,7 +1058,7 @@ def upload_to_DataFrame():
                 data_dict["KNN"] = knn
 
                 #These percents are rough, and not exact. This is so we can have similar estimates to compare
-                data_dict["Percent_of_KNN"] == (j * 0.02) + 0.01
+                data_dict["Percent_of_KNN"] = (j * 0.02) + 0.01
 
                 #Loop through each Anchor percentage
                 for k in range(len(AP_values)):
@@ -1086,6 +1097,9 @@ def upload_to_DataFrame():
                 knn = (k*knn_increment) + 2
                 data_dict["KNN"] = knn
 
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (k * 0.02) + 0.01
+
                 #Loop through each Anchor percentage
                 for l in range(len(AP_values)):
                     data_dict["Percent_of_Anchors"] = AP_values[l]
@@ -1118,6 +1132,9 @@ def upload_to_DataFrame():
                 knn = (i*knn_increment) + 2
                 data_dict["KNN"] = knn
 
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
+
                 #Loop through each Anchor percentage
                 for j in range(len(AP_values)):
                     data_dict["Percent_of_Anchors"] = AP_values[j]
@@ -1135,6 +1152,9 @@ def upload_to_DataFrame():
             for i in range(0, 10):
                 knn = (i*knn_increment) + 2
                 data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
 
                 #Loop through each Anchor percentage
                 for j in range(len(AP_values)):
