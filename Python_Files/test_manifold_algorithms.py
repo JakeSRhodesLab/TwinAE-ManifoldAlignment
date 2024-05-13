@@ -19,7 +19,7 @@ Future Ideas:
 
 
 TASKS:
-0. Run tests wtih different SPUD methods -- DONE
+0. Run tests wtih different SPUD methods -- FAILED
 1. Implement old datasets (S-curve and things)
 2. Create a High Level presentation -> Copy from the slides to make a presentation
 3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
@@ -58,8 +58,13 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-#Directory Constant yunity/arusty/Graph-Manifold-Alignment/Python_FilesManifoldData/S-curve/
-MANIFOLD_DATA_DIR = os.getcwd()[:-12] + "ManifoldData/" #os.getcwd()[:-12] + 
+#Logic to ensure the right directory is always used
+if os.getcwd()[:-12] == "Python_Files":
+    CURR_DIR = os.getcwd()[:-13]
+else:
+    CURR_DIR = os.getcwd()
+#Directory Constant
+MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
 #Create function to do everything
 class test_manifold_algorithms():
@@ -224,7 +229,7 @@ class test_manifold_algorithms():
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         #Read in file and seperate feautres and labels
-        df = pd.read_csv(os.getcwd()[:-12] + "/CSV Files/" + csv_file) #os.getcwd()[:-12]
+        df = pd.read_csv(CURR_DIR + "/CSV Files/" + csv_file)
         features, self.labels = utils.dataprep(df, label_col_idx=0)
 
         #Ensure that labels are continuous
@@ -308,7 +313,7 @@ class test_manifold_algorithms():
         Kind should be a tuple of the different opperations wanted to run. All are included by default."""
 
         #We are going to run test with every variation
-        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[38:-1] + "   -------------------------------------\n")
+        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for operation in operations:
             print(f"Operation {operation}")
             for type in kind:
@@ -374,7 +379,7 @@ class test_manifold_algorithms():
         NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same"""
 
         #Run through the tests with every variatioin
-        print("\n-------------------------------------   DIG TESTS " + self.base_directory[38:-1] + "   -------------------------------------\n")
+        print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for link in page_ranks:
             print(f"Page rank applied: {link}")
 
@@ -462,7 +467,7 @@ class test_manifold_algorithms():
         #Create the Nama object on the dataset
         nama = NAMA(ot_reg = 0.001)
 
-        print("\n-------------------------------------   NAMA TESTS  " + self.base_directory[38:-1] + "  -------------------------------------\n")
+        print("\n-------------------------------------   NAMA TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
         
         for i, anchor_percent in enumerate(self.percent_of_anchors):
             print(f"Percent of Anchors {anchor_percent}")
@@ -515,7 +520,7 @@ class test_manifold_algorithms():
         #Store the results in an array
         DTA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
 
-        print("\n--------------------------------------   DTA TESTS " + self.base_directory[38:-1] + "   --------------------------------------\n")
+        print("\n--------------------------------------   DTA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
 
         #Repeat through each knn value
         for i, knn in enumerate(self.knn_range):
@@ -584,7 +589,7 @@ class test_manifold_algorithms():
         #Create an array to store the important data in 
         SSMA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
 
-        print("\n--------------------------------------   SSMA TESTS " + self.base_directory[38:-1] + "   --------------------------------------\n")
+        print("\n--------------------------------------   SSMA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
         #Repeat through each knn value
         for i, knn in enumerate(self.knn_range):
             print(f"KNN {knn}")
