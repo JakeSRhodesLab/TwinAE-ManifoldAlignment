@@ -58,8 +58,8 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-#Logic to ensure the right directory is always used
-if os.getcwd()[:-12] == "Python_Files":
+#Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
+if os.getcwd()[-12:] == "Python_Files":
     CURR_DIR = os.getcwd()[:-13]
 else:
     CURR_DIR = os.getcwd()
@@ -73,7 +73,7 @@ class test_manifold_algorithms():
         
         split can be 'skewed' (for the features to be split by more important and less important),
         or 'random' for the split to be completely random, or 'even' for each split to have both 
-        important or unimportant features. If split = "Distort", then it will create a second dataset, 
+        important or unimportant features. If split = "distort", then it will create a second dataset, 
         with the features distorted in the second one. 
         
         Verbose has different levels. 0 includes no additional prints. 1 prints a little bit more, and
@@ -1034,6 +1034,8 @@ def upload_to_DataFrame(): #TODO: If I want to make it faster
             data_dict["split"] = "random"
         elif file[0] == 's':
             data_dict["split"] = 'skewed'
+        elif file[0] == 'd':
+            data_dict["split"] = "distort"
         else: #File split was even
             data_dict["split"] = "even"
 
