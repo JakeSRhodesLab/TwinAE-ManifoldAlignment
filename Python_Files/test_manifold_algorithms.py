@@ -58,10 +58,8 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-#On Supercomputer --> Edits need to be made to the splicing of files
-
-#Directory Constant
-MANIFOLD_DATA_DIR = os.getcwd() + "ManifoldData/" #os.getcwd()[:-12] + 
+#Directory Constant yunity/arusty/Graph-Manifold-Alignment/Python_FilesManifoldData/S-curve/
+MANIFOLD_DATA_DIR = os.getcwd()[:-12] + "ManifoldData/" #os.getcwd()[:-12] + 
 
 #Create function to do everything
 class test_manifold_algorithms():
@@ -215,7 +213,7 @@ class test_manifold_algorithms():
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         #Read in file and seperate feautres and labels
-        df = pd.read_csv(os.getcwd() + "/CSV Files/" + csv_file) #os.getcwd()[:-12]
+        df = pd.read_csv(os.getcwd()[:-12] + "/CSV Files/" + csv_file) #os.getcwd()[:-12]
         features, self.labels = utils.dataprep(df, label_col_idx=0)
 
         #Ensure that labels are continuous
@@ -291,7 +289,6 @@ class test_manifold_algorithms():
         filename = self.base_directory + filename + ".npy"
 
         return filename
-
 
     """RUN TESTS FUNCTIONS"""
     def run_SPUD_tests(self, operations = ("average", "abs"), kind = ("distance", "pure", "similarity")): #NOTE: After lots of tests, Distance seems to always be the best in every scenario
