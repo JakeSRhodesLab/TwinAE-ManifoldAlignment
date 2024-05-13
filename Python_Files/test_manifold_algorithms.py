@@ -19,7 +19,7 @@ Future Ideas:
 
 
 TASKS:
-0. Run tests wtih different SPUD methods
+0. Run tests wtih different SPUD methods -- DONE
 1. Implement old datasets (S-curve and things)
 2. Create a High Level presentation -> Copy from the slides to make a presentation
 3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
@@ -28,6 +28,10 @@ TASKS:
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://newstatrm.byu.edu/
+
+To Set up Git:
+  git config --global user.email "rustadadam@gmail.com"
+  git config --global user.name "rustadadam"
 
 """
 
@@ -54,13 +58,15 @@ import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+#On Supercomputer --> Edits need to be made to the splicing of files
+
 #Directory Constant
-MANIFOLD_DATA_DIR = os.getcwd()[:-12] + "ManifoldData/" #os.getcwd()[:-12] +
+MANIFOLD_DATA_DIR = os.getcwd() + "ManifoldData/" #os.getcwd()[:-12] + 
 
 #Create function to do everything
 class test_manifold_algorithms():
     def __init__(self, csv_file, split = "skewed", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
-        """csv_file should be the name of the csv file
+        """csv_file should be the name of the csv file. If set to 'S-curve', it will create a toy data set. 
         
         split can be 'skewed' (for the features to be split by more important and less important),
         or 'random' for the split to be completely random, or 'even' for each split to have both 
@@ -77,8 +83,20 @@ class test_manifold_algorithms():
         self.random_state = random_state
         random.seed(self.random_state)
 
-        self.split = split
-        self.prep_data(csv_file)
+        #Since Scurve does not require reading a csv file, we have a different process
+        if csv_file != "S-curve":
+            self.split = split
+            self.prep_data(csv_file)
+
+        else:
+            if self.verbose > 1:
+                print(f"Creating swiss rolls and S curve data")
+            #Create labels, and Data
+            self.create_Scurve()
+            self.split = "None"
+
+            #Just so all of the file naming conventions remain the same
+            csv_file = "S-curve.csv"
 
         #Create anchors
         self.anchors = self.create_anchors()
@@ -197,7 +215,7 @@ class test_manifold_algorithms():
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         #Read in file and seperate feautres and labels
-        df = pd.read_csv(os.getcwd()[:-12] + "CSV Files/" + csv_file) 
+        df = pd.read_csv(os.getcwd() + "/CSV Files/" + csv_file) #os.getcwd()[:-12]
         features, self.labels = utils.dataprep(df, label_col_idx=0)
 
         #Ensure that labels are continuous
@@ -214,6 +232,17 @@ class test_manifold_algorithms():
 
         if self.verbose > 1:
             print(f"MDS initialized with {n_comp} components")
+
+    def create_Scurve(self):
+        """Create Scurve Data"""
+        #Create all the data
+        self.split_A, self.split_B, self.labels, labels2  = utils.make_swiss_s(n_samples = 300, noise = 0, random_state = self.random_state, n_categories = 3)
+
+        #Double the labels so we can evaluate the effectiveness of the methods
+        self.labels_doubled = np.concatenate((self.labels, labels2))
+
+        #Set and train the mds
+        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = 2)
 
     def create_anchors(self):
         #Generate anchors that can be subsetted
@@ -692,7 +721,8 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
                     "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
                     "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
                     "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
-                    "winequality-red.csv", "zoo.csv"]
+                    "winequality-red.csv", "zoo.csv", 
+                    "S-curve"] #Toy data sets -- It will automatically create them
         
     """Convert csv_files to class instances"""
     #Create the dictionary
@@ -730,7 +760,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=5)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
 
     if run_SPUD:
@@ -742,19 +772,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=5)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=5)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=5)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=5)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
 
     return manifold_instances
 
@@ -770,7 +800,8 @@ def visualize_results(file_names = "all"):
                     "crx", "diabetes", "ecoli_5", "flare1", "glass", "heart_disease", "heart_failure", "hepatitis",
                     "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                     "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
-                    "winequality-red", "zoo"]
+                    "winequality-red", "zoo",
+                    "S-curve"]
 
     #Modify the file names to become directory names
     directories = [MANIFOLD_DATA_DIR + file_name for file_name in file_names] #/Users/user/Desktop/Work/ManifoldData/iris/DIG-42-PageRank_None_off-diagonal_full_20.npy
