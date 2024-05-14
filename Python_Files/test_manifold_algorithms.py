@@ -11,7 +11,8 @@ Changes Log:
 1. Added S-curve as a valid csv file option
 2. Added the "distort" split method
 3. Added "Percent of KNN" to make it easy to graph
-4. 
+4. Added embedding veiwing :)
+5. 
 
 
 
@@ -39,6 +40,9 @@ To Set up Git:
 
 Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
+
+Tmux Zombies
+1. distort 
 
 """
 
@@ -1051,7 +1055,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-10)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
 
     if run_SPUD:
@@ -1063,19 +1067,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-10)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-10)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=-10)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-10)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
 
     return manifold_instances
 
