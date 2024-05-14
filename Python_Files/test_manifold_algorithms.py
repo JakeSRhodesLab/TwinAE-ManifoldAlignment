@@ -682,6 +682,11 @@ class test_manifold_algorithms():
         #Choose the most anchors given
         anchor_percent = self.percent_of_anchors[-1]
 
+        #Print the Metrics
+        if self.verbose > 0:
+            print(f"Percent of anchors used: {anchor_percent}")
+            print(f"The amount of Nearest Neighbors: {knn}")
+
         #Create Spuds embedding
         filtered_kwargs = {}
         if "operation" in kwargs:
@@ -822,7 +827,7 @@ def _upload_file(file):
         data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
     except Exception as e:
         print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing without uploading file\n-------------------------------------------------------------------------------------------------------")
-        return {}
+        pass
 
     #Create a dictionary to use to add rows to our DataFame
     data_dict = {}
