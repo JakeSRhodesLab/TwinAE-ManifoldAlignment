@@ -4,11 +4,14 @@
 Questions:
 1. Ask and see how tmux works
 
-
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
 
 Changes Log:
+1. Added S-curve as a valid csv file option
+2. Added the "distort" split method
+3. Added "Percent of KNN" to make it easy to graph
+4. 
 
 
 
@@ -19,10 +22,11 @@ Future Ideas:
 
 
 TASKS:
-0. Run tests wtih different SPUD methods -- FAILED
+0. Run tests wtih different SPUD methods -- FAILED; trying again
 1. Implement old datasets (S-curve and things)
 2. Create a High Level presentation -> Copy from the slides to make a presentation
 3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
+4. Create a function that visualizes all the embeddings -- For Presentation
 6. Go through TODOS
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
@@ -69,7 +73,7 @@ MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 #Create function to do everything
 class test_manifold_algorithms():
     def __init__(self, csv_file, split = "skewed", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
-        """csv_file should be the name of the csv file. If set to 'S-curve', it will create a toy data set. 
+        """csv_file should be the name of the csv file. If set to 'S-curve' or "blobs", it will create a toy data set. 
         
         split can be 'skewed' (for the features to be split by more important and less important),
         or 'random' for the split to be completely random, or 'even' for each split to have both 
@@ -87,17 +91,21 @@ class test_manifold_algorithms():
         self.random_state = random_state
         random.seed(self.random_state)
 
+        #Since Blobs does not require a csv file, if it is chosen we make the dataset in house
+        if csv_file == "blobs":
+            self.create_blobs()
+
+            #Just so all of the file naming conventions remain the same
+            csv_file = "blobs.csv"
+            
         #Since Scurve does not require reading a csv file, we have a different process
-        if csv_file != "S-curve":
+        elif csv_file != "S-curve":
             self.split = split
             self.prep_data(csv_file)
 
         else:
-            if self.verbose > 1:
-                print(f"Creating swiss rolls and S curve data")
             #Create labels, and Data
             self.create_Scurve()
-            self.split = "None"
 
             #Just so all of the file naming conventions remain the same
             csv_file = "S-curve.csv"
@@ -226,6 +234,19 @@ class test_manifold_algorithms():
 
         return split_a, split_b
 
+    def create_blobs(self): #TODO: FINISH DAKINE
+        """Creates 3 blobs for each split"""
+        self.split_A, self.labels = utils.make_multivariate_data_set(amount=100)
+        self.split_B, labels2 = utils.make_multivariate_data_set(amount = 100, adjust=5)
+
+        #Use both labels
+        self.labels_doubled = np.concatenate((self.labels, labels2))
+
+        #Create the mds
+        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = 2)
+
+        self.split = "None"
+
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         #Read in file and seperate feautres and labels
@@ -249,6 +270,11 @@ class test_manifold_algorithms():
 
     def create_Scurve(self):
         """Create Scurve Data"""
+        if self.verbose > 1:
+                print(f"Creating swiss rolls and S curve data")
+
+        self.split = "None"
+
         #Create all the data
         self.split_A, self.split_B, self.labels, labels2  = utils.make_swiss_s(n_samples = 200, noise = 0, random_state = self.random_state, n_categories = 3)
 
