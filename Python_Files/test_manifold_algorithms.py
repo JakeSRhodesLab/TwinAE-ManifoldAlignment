@@ -60,6 +60,7 @@ from sklearn.manifold import MDS
 import os
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 #Simply, for my sanity
 import warnings
@@ -670,6 +671,97 @@ class test_manifold_algorithms():
 
         #Run successful
         return True
+
+    """Visualization"""
+    def plot_embeddings(self, **kwargs):
+        """Shows the embeddings of each graph in a plot"""
+
+        #Set the Knn
+        knn = self.knn_range[3] #This seems to generally be a good KNN percent -- its about 7% knn
+
+        #Choose the most anchors given
+        anchor_percent = self.percent_of_anchors[-1]
+
+        #Create Spuds embedding
+        filtered_kwargs = {}
+        if "operation" in kwargs:
+            filtered_kwargs["operation"] = kwargs["operation"]
+        if "kind" in kwargs:
+            filtered_kwargs["kind"] = kwargs["kind"]
+
+        spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, **filtered_kwargs)
+        SPUD_emb = self.mds.fit_transform(spud_class.block)
+
+        #Create DIG embedding
+        if "link" in kwargs:
+            link =  kwargs["link"]
+        else:
+            link = "None"
+        
+        DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
+        DIG_emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+        #Create NAMA embedding
+        nama = NAMA(ot_reg = 0.001)
+        nama.fit(self.anchors[:int(len(self.anchors)*anchor_percent)], self.split_A, self.split_B)
+        NAMA_emb = self.mds.fit_transform(nama.block)
+
+        #Prep Shared Data points
+        sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
+        sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
+        labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
+        labels_extended = np.concatenate((np.concatenate((self.labels, labelsh1)), np.concatenate((self.labels, labelsh1)))) #This is the extended labels (meaning the labels, and then the shared labels) multiplied by two
+
+        #Create DTA embedding
+        DTA_class = DTA(knn = knn, entR=0.001, verbose = 0)
+        DTA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+        DTA_emb = self.mds.fit_transform(1 - self.normalize_0_to_1(DTA_class.W))
+
+        #Create SSMA Embedding | uses the same labels as DTA
+        SSMA_class = ssma(knn = knn, verbose = 0, r = 2) #R can also be = to this: (self.split_A.shape[1] + self.split_B.shape[1])
+        SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+        SSMA_emb = self.mds.fit_transform(1 - SSMA_class.W)
+
+        """Now Plot the Embeddings"""
+        #Create the figure and set titles
+        fig, axes = plt.subplots(2, 3, figsize = (16, 10))
+        axes[0,0].set_title("NAMA")
+        axes[1,0].set_title("SPUD")
+        axes[0,1].set_title("DIG")
+        axes[0, 2].set_title("SSMA")
+        axes[1,1].set_title("DTA")
+
+        #Create keywords for DIG, SPUD, NAMA
+        keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
+                    "hue" : pd.Categorical(self.labels_doubled),
+                    "style" : ['Graph1' if i < len(DIG_emb[:]) / 2 else 'Graph2' for i in range(len(DIG_emb[:]))]
+        
+        }
+
+        #Now the plotting
+        sns.scatterplot(x = NAMA_emb[:, 0], y = NAMA_emb[:, 1], ax = axes[0,0], **keywords)
+        sns.scatterplot(x = SPUD_emb[:, 0], y = SPUD_emb[:, 1], ax = axes[1,0], **keywords)
+        sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
+
+        #Create keywords for DTA and SSMA
+        keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
+                    "hue" : pd.Categorical(labels_extended),
+                    "style" : ['Graph1' if i < len(DTA_emb[:]) / 2 else 'Graph2' for i in range(len(DTA_emb[:]))]
+        
+        }
+
+        #Now the plotting
+        sns.scatterplot(x = DTA_emb[:, 0], y = DTA_emb[:, 1], ax = axes[0,2], **keywords)
+        sns.scatterplot(x = SSMA_emb[:, 0], y = SSMA_emb[:, 1], ax = axes[1,1], **keywords)
+
+        plt.plot()
+
+
+
+
+
+
+
 
 #OUTSIDE OF THE CLASS
 """ HELPER FUNCTIONS"""
