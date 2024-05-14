@@ -42,7 +42,8 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-1. distort 
+1. distort on Hilton
+2. even on tukey
 
 """
 
