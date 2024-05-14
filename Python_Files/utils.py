@@ -132,3 +132,21 @@ def make_swiss_s(n_samples = 100, noise = 0, random_state = None, n_categories =
 
     #X_swiss and X_s are the features. t_swiss and t_s are the labels
     return x_swiss, x_s, pd.Series(t_swiss), pd.Series(t_s)
+
+def make_multivariate_data_set(Mean = [0,0], cov = [[0.5,0], [0,0.5]], amount = 500, adjust = 0):
+    """Returns the a data set of three multivariate data blobs and the assiociated labels
+    adjust is where we want to put the mover data set"""
+    #Create the multivariate datasets function
+    Mean = np.array(Mean) 
+
+    # Draw 10 samples from the distribution
+    dens_samples1 = np.random.multivariate_normal(Mean, cov, amount) #This is shaped (500, 2) where each point has X and Y
+    dens_samples2 = np.random.multivariate_normal(Mean + 5, cov, amount) #Add five to the mean
+    dens_samples3 = np.random.multivariate_normal(Mean + adjust, cov, amount) #Have this overlap with the first dataset
+
+    #Now, we want to merge all of these dots into a single data set. Not too bad :)
+    mv_data = np.array([dens_samples1, dens_samples2, dens_samples3])
+    mv_data = mv_data.reshape(amount*3, 2)
+    mv_labels = np.concatenate([np.repeat(0, amount), np.repeat(1, amount), np.repeat(2, amount)]) #We use numbers because thats what DTA needs
+
+    return mv_data, mv_labels
