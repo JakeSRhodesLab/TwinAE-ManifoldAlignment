@@ -37,6 +37,9 @@ To Set up Git:
   git config --global user.email "rustadadam@gmail.com"
   git config --global user.name "rustadadam"
 
+Tmux Cheatsheat:
+https://gist.github.com/andreyvit/2921703
+
 """
 
 #Import libraries
