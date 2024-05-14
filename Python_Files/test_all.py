@@ -25,7 +25,7 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 
 # CHECK WHICH METHODS TESTED
 """Testing All functions"""
-tma.run_all_tests(csv_files = "all", test_random = 10, #General function arguments
+tma.run_all_tests(csv_files = csv_files, test_random = 10, #General function arguments
                         split = "random", verbose = 2, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3], #Init Key arguments
                         run_DIG = False, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
                         run_DTA = False,
