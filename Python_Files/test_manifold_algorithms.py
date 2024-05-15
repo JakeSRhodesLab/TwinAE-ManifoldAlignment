@@ -2,7 +2,9 @@
 
 """
 Questions:
-1. Ask and see how tmux works
+1. Ask Professor Rhodes to share with me one of his presentations
+2. Ask why TMUX is so slow
+
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
@@ -12,9 +14,7 @@ Changes Log:
 2. Added the "distort" split method
 3. Added "Percent of KNN" to make it easy to graph
 4. Added embedding veiwing :)
-5. 
-
-
+5. Added Blobs data set as a valid csv option
 
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -23,11 +23,12 @@ Future Ideas:
 
 
 TASKS:
-0. Run tests wtih different SPUD methods -- FAILED; trying again
-1. Implement old datasets (S-curve and things)
+0. Run tests wtih different SPUD methods -- Done
+1. Implement old datasets (S-curve and things) - DONE
 2. Create a High Level presentation -> Copy from the slides to make a presentation
 3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
-4. Create a function that visualizes all the embeddings -- For Presentation
+4. Create a function that visualizes all the embeddings -- For Presentation DONE
+5. Apply ranking CSV file visual
 6. Go through TODOS
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
@@ -678,14 +679,16 @@ class test_manifold_algorithms():
         return True
 
     """Visualization"""
-    def plot_embeddings(self, **kwargs):
+    def plot_embeddings(self, knn = "auto", anchor_percent = "auto", **kwargs):
         """Shows the embeddings of each graph in a plot"""
 
         #Set the Knn
-        knn = self.knn_range[3] #This seems to generally be a good KNN percent -- its about 7% knn
+        if knn == "auto":
+            knn = self.knn_range[2] #This seems to generally be a good KNN percent -- its about 5% knn
 
         #Choose the most anchors given
-        anchor_percent = self.percent_of_anchors[-1]
+        if anchor_percent == "auto":
+            anchor_percent = self.percent_of_anchors[-1]
 
         #Print the Metrics
         if self.verbose > 0:
