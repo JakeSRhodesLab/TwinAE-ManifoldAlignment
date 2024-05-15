@@ -15,6 +15,7 @@ Changes Log:
 3. Added "Percent of KNN" to make it easy to graph
 4. Added embedding veiwing :)
 5. Added Blobs data set as a valid csv option
+6. Added the Turn split method
 
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -30,10 +31,11 @@ TASKS:
 4. Create a function that visualizes all the embeddings -- For Presentation DONE
 5. Apply ranking CSV file visual
 6. Go through TODOS
+7. Apply rotation tests
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
-Resource Monitor Websitee: http://newstatrm.byu.edu/
+Resource Monitor Websitee: http://statrm.byu.edu/
 
 To Set up Git:
   git config --global user.email "rustadadam@gmail.com"
@@ -177,6 +179,15 @@ class test_manifold_algorithms():
             # Use the shuffled indices to split the features array into two parts
             split_a = features[:, column_indices[:split_index]]
             split_b = features[:, column_indices[split_index:]]
+
+        elif self.split == "turn":
+            rng = np.random.default_rng(self.random_state)
+            n, d = np.shape(features)
+            random_matrix = rng.random((d, d))
+            q, _ = np.linalg.qr(random_matrix)
+
+            split_a = features
+            split_b = features @ q
         
         elif self.split == "distort":
             if self.verbose > 0:
@@ -865,6 +876,8 @@ def _upload_file(file):
         data_dict["split"] = 'skewed'
     elif file[0] == 'd':
         data_dict["split"] = "distort"
+    elif file[0] == 't':
+        data_dict["split"] = "turn"
     else: #File split was even
         data_dict["split"] = "even"
 
