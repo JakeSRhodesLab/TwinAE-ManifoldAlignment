@@ -166,15 +166,14 @@ def subset_df(df, **kwargs):
     return df
 
         
-def plot_in_fig(columns, rows, **kwargs):
+def plot_in_fig(columns, rows, df = "None", **kwargs):
     """df should be the dataframe
     
     Columns should be a list of dictionaries that represent the key word arguments for plotting.
     rows should be a list of dictionaries that represent the how you want to subset the DF by
     """
-    
-    df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
-
+    if type(df) == type("None"):
+        df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
     fig, axes = plt.subplots(len(rows), len(columns), figsize = (len(columns)*6, len(rows)*6))
 
