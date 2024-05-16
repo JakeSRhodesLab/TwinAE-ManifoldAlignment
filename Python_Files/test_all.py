@@ -17,21 +17,21 @@ import test_manifold_algorithms as tma
 csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
              "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
              "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             "S-curve", "blobs", 
-             "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv", 
-             'Medicaldataset.csv', "water_potability.csv",
-             'treeData.csv', 'winequality-red.csv', 'car.csv'
+             "S-curve", "blobs"
+             #"crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv", 
+             #'Medicaldataset.csv', "water_potability.csv",
+             #'treeData.csv', 'winequality-red.csv', 'car.csv'
              ]
 
 
 # CHECK WHICH METHODS TESTED
 """Testing All functions"""
 tma.run_all_tests(csv_files = csv_files, test_random = 10, #General function arguments
-                        split = "turn", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3], #Init Key arguments
+                        split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3], #Init Key arguments
                         run_DIG = False, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
                         run_DTA = False,
-                        run_NAMA = True,
-                        run_SSMA = False,
-                        run_SPUD = False, operations = ("average", "abs"), kind = ("distance", "pure", "similarity")) #SPUD key arguments
+                        run_NAMA = False,
+                        run_SSMA = True,
+                        run_SPUD = True, operations = ("average", "abs"), kind = ("distance", "pure", "similarity")) #SPUD key arguments
 
 #/yunity/arusty/Graph-Manifold-Alignment/Python_Files/test_all.py
