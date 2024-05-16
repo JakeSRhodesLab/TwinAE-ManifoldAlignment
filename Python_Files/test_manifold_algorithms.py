@@ -51,6 +51,8 @@ Tmux Zombies
 5. tDIG on Collings (Still running - 1 day)
 6. tDTAs (SSMA too) on Hilton (Still running - 1 day)
 7. tNAMA on Tukey (Still running - 1 day)
+8. dDTA_NAMA on Rencher
+9. dS on Rencher
 
 """
 
