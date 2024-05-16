@@ -26,12 +26,12 @@ Future Ideas:
 TASKS:
 0. Run tests wtih different SPUD methods -- Done
 1. Implement old datasets (S-curve and things) - DONE
-2. Create a High Level presentation -> Copy from the slides to make a presentation
+2. Create a High Level presentation -> Copy from the slides to make a presentation DONE
 3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
 4. Create a function that visualizes all the embeddings -- For Presentation DONE
-5. Apply ranking CSV file visual
+5. Apply ranking CSV file visual DONE
 6. Go through TODOS
-7. Apply rotation tests
+7. Apply rotation tests DONE
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey

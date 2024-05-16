@@ -377,22 +377,6 @@ def get_data(n_batches=2, n_pts_per_cluster=5000):
 
     return xb1, xb2, labels1, labels2
 
-def correspondence_loss(b1, b2):
-    """
-    The correspondence loss.
-
-    :param b1: a tensor representing the object in the graph of the current minibatch from domain one
-    :param b2: a tensor representing the object in the graph of the current minibatch from domain two
-    :returns a scalar tensor of the correspondence loss
-    """
-    domain1cols = [0]
-    domain2cols = [0]
-    loss = tf.constant(0.)
-    for c1, c2 in zip(domain1cols, domain2cols):
-        loss += tf.reduce_mean((b1[:, c1] - b2[:, c2])**2)
-
-    return loss
-
 # Load the data
 xb1, xb2, labels1, labels2 = get_data()
 

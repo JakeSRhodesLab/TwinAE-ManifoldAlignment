@@ -109,7 +109,7 @@ class MAGAN(object):
         dim_b2,
         correspondence_loss,
         activation= "leaky_relu",
-        learning_rate=.001,
+        learning_rate=.007, #Used to be 0.0001
         restore_folder='',
         limit_gpu_fraction=1.,
         no_gpu=False,
@@ -189,8 +189,8 @@ class MAGAN(object):
         self.Gb1 = self.G21(self.xb2)
         self.Gb1 = nameop(self.Gb1, 'Gb1')
 
-        self.xb2_reconstructed = self.G12(self.Gb1, reuse=True)
-        self.xb1_reconstructed = self.G21(self.Gb2, reuse=True)
+        self.xb2_reconstructed = self.G12(self.Gb1)
+        self.xb1_reconstructed = self.G21(self.Gb2)
         self.xb1_reconstructed = nameop(self.xb1_reconstructed, 'xb1_reconstructed')
         self.xb2_reconstructed = nameop(self.xb2_reconstructed, 'xb2_reconstructed')
 
@@ -198,10 +198,10 @@ class MAGAN(object):
         self.D2 = Discriminator(name='D2')
 
         self.D1_probs_z = self.D1(self.xb1)
-        self.D1_probs_G = self.D1(self.Gb1, reuse=True)
+        self.D1_probs_G = self.D1(self.Gb1)
 
         self.D2_probs_z = self.D2(self.xb2)
-        self.D2_probs_G = self.D2(self.Gb2, reuse=True)
+        self.D2_probs_G = self.D2(self.Gb2)
 
         self._build_loss()
 
@@ -302,52 +302,53 @@ class MAGAN(object):
 
         return lstring
 
-class Generator(object):
+class Generator(tf.keras.Model):
     """MAGAN's generator."""
 
-    def __init__(self,
-        output_dim,
-        name='',
-        activation= tf.nn.relu):
-
-        """"Initialize the generator."""
+    def __init__(self, output_dim, name='', activation=tf.nn.relu):
+        """Initialize the generator."""
+        super(Generator, self).__init__(name=name)
         self.output_dim = output_dim
         self.activation = activation
-        self.name = name
 
-    def __call__(self, x, reuse=False):
+        # Define the layers
+        self.dense1 = tf.keras.layers.Dense(200, activation=self.activation, name=f'{name}_h1')
+        self.dense2 = tf.keras.layers.Dense(100, activation=self.activation, name=f'{name}_h2')
+        self.dense3 = tf.keras.layers.Dense(50, activation=self.activation, name=f'{name}_h3')
+        self.out_layer = tf.keras.layers.Dense(self.output_dim, activation=None, name=f'{name}_out')
+
+    def call(self, inputs):
         """Perform the feedforward for the generator."""
-        with variable_scope(self.name, reuse = reuse):
-            h1 = tf.keras.layers.Dense(200, activation=self.activation,  name='h1')(x)
-            h2 = tf.keras.layers.Dense(100, activation=self.activation, name='h2')(h1)
-            h3 = tf.keras.layers.Dense(50, activation=self.activation, name='h3')(h2)
-
-            out = tf.keras.layers.Dense(self.output_dim, activation=None, name='out')(h3)
-
+        h1 = self.dense1(inputs)
+        h2 = self.dense2(h1)
+        h3 = self.dense3(h2)
+        out = self.out_layer(h3)
         return out
+    
+class Discriminator(tf.keras.Model):
+    """Discriminator model."""
 
-class Discriminator(object):
-    """MAGAN's discriminator."""
-
-    def __init__(self,
-        name='',
-        activation= tf.nn.relu):
-
+    def __init__(self, name='', activation=tf.nn.relu):
         """Initialize the discriminator."""
+        super(Discriminator, self).__init__(name=name)
         self.activation = activation
-        self.name = name
 
-    def __call__(self, x, reuse=False):
+        # Define the layers
+        self.dense1 = tf.keras.layers.Dense(800, activation=self.activation, name=f'{name}_h1')
+        self.dense2 = tf.keras.layers.Dense(400, activation=self.activation, name=f'{name}_h2')
+        self.dense3 = tf.keras.layers.Dense(200, activation=self.activation, name=f'{name}_h3')
+        self.dense4 = tf.keras.layers.Dense(100, activation=self.activation, name=f'{name}_h4')
+        self.dense5 = tf.keras.layers.Dense(50, activation=self.activation, name=f'{name}_h5')
+        self.out_layer = tf.keras.layers.Dense(1, activation=None, name=f'{name}_out')
+
+    def call(self, inputs):
         """Perform the feedforward for the discriminator."""
-        with variable_scope(self.name, reuse = reuse):
-            h1 = tf.keras.layers.Dense(800, activation=self.activation, name='h1')(x)
-            h2 = tf.keras.layers.Dense(400, activation=self.activation, name='h2')(h1)
-            h3 = tf.keras.layers.Dense(200, activation=self.activation, name='h3')(h2)
-            h4 = tf.keras.layers.Dense(100, activation=self.activation, name='h4')(h3)
-            h5 = tf.keras.layers.Dense(50, activation=self.activation, name='h5')(h4)
-
-            out = tf.keras.layers.Dense(1, activation=None, name='out')(h5)
-
+        h1 = self.dense1(inputs)
+        h2 = self.dense2(h1)
+        h3 = self.dense3(h2)
+        h4 = self.dense4(h3)
+        h5 = self.dense5(h4)
+        out = self.out_layer(h5)
         return out
 
 
@@ -366,7 +367,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000):
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1, labels2):
+def run_MAGAN(xb1, xb2, labels1):
     """xb1 should be split_a
     sb2 should be split_b
     labels1 should just be the labels"""
@@ -383,7 +384,7 @@ def run_MAGAN(xb1, xb2, labels1, labels2):
     magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss)
 
     # Train
-    for i in range(1, 100000):
+    for i in range(1, 5000): #Used to be 100000
         xb1_, labels1_ = loadb1.next_batch(batch_size)
         xb2_, labels2_ = loadb2.next_batch(batch_size)
 
