@@ -45,13 +45,12 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-1. distort on Hilton
-2. even on tukey
-3. tSPUD on Carter
-4. even_1 on Carter
-5. tDIG on Collings
-6. tDTAs (SSMA too) on Hilton
-7. tNAMA on Tukey
+1. distort on Hilton (Still running - 2 day)
+2. even on tukey (Still running - 2 days)
+3. tSPUD on Carter (Still running - 1 day)
+5. tDIG on Collings (Still running - 1 day)
+6. tDTAs (SSMA too) on Hilton (Still running - 1 day)
+7. tNAMA on Tukey (Still running - 1 day)
 
 """
 
@@ -1227,7 +1226,3 @@ def change_old_files_to_new():
     
     print("<><><><><><><><><><><><><><><><><><><><><><><>     Updates completed     <><><><><><><><><><><><><><><><><><><><><><><>")
     return True
-
-
-
-#Later -> Add a main function to call the function. Now, we can just call it

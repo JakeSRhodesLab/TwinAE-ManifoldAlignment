@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.datasets import make_swiss_roll, make_s_curve
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 
 
 def row_normalize(x):
@@ -150,3 +151,103 @@ def make_multivariate_data_set(Mean = [0,0], cov = [[0.5,0], [0,0.5]], amount = 
     mv_labels = np.concatenate([np.repeat(0, amount), np.repeat(1, amount), np.repeat(2, amount)]) #We use numbers because thats what DTA needs
 
     return mv_data, mv_labels
+
+
+def subset_df(df, **kwargs):
+    """Each way we want to be subset should be as so 'csv_file' = "glass". It can take any column and any key.
+
+    subset should be a DataFrame
+    
+    Returns subseted Dataframe"""
+
+    for key in kwargs:
+        df = df[df[key] == kwargs[key]]
+    
+    return df
+
+        
+def plot_in_fig(columns, rows, **kwargs):
+    """df should be the dataframe
+    
+    Columns should be a list of dictionaries that represent the key word arguments for plotting.
+    rows should be a list of dictionaries that represent the how you want to subset the DF by
+    """
+    
+    df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+
+
+    fig, axes = plt.subplots(len(rows), len(columns), figsize = (len(columns)*6, len(rows)*6))
+
+    #Plot everything in the graphs
+    row_count = 0 
+
+    for dictionary in rows:
+        df_new = subset_df(df, **dictionary)
+        column_count = 0
+        for column in columns:
+            df_new.plot(ax = axes[row_count, column_count], **column, **kwargs)
+
+            #Add one to the next axis
+            column_count += 1
+
+        #Set the label
+        axes[row_count, 0].set_ylabel(f"{dictionary}")
+
+        #Add one to the next row
+        row_count += 1
+
+        
+    #This gets rid of the annoying text
+    plt.show()
+
+def get_DataFrame_stats():
+    """Prints several statements about the size and splits of the Data"""
+    #Load DataFrame
+    df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+
+    print("<><<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>      DataFrame Statistics        <><<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+    print(f"Total Number of instances in DataFrame: {len(df)}\n\n")
+
+    #Print total number of samples
+    print(" Method        Lengths")
+    print("--------      ----------")
+    print(f" SSMA:          {len(subset_df(df, method = 'SSMA'))}")
+    print(f" DTA:          {len(subset_df(df, method = 'DTA'))}")
+    print(f" Nama:          {len(subset_df(df, method = 'NAMA'))}")
+    print(f" SPUD:          {len(subset_df(df, method = 'SPUD'))}")
+    print(f" DIG:          {len(subset_df(df, method = 'DIG'))}\n\n")
+
+
+    #Print the total number of sample per split
+    print('----------------------       Splits      ----------------------')
+
+    for split in ["random", "even", "skewed", "distort", "turn"]:
+        print(f"Total data of {split}: {len(subset_df(df, split = split))}\n")
+        print(f" {split}        Lengths")
+        print("--------      ----------")
+        print(f" SSMA:          {len(subset_df(df, method = 'SSMA', split = split))}")
+        print(f" DTA:          {len(subset_df(df, method = 'DTA', split = split))}")
+        print(f" Nama:          {len(subset_df(df, method = 'NAMA', split = split))}")
+        print(f" SPUD:          {len(subset_df(df, method = 'SPUD', split = split))}")
+        print(f" DIG:          {len(subset_df(df, method = 'DIG', split = split))}\n\n")
+
+
+    #Print the total number of sample per split
+    print('----------------------       CSV Files      ----------------------')
+
+    for csv_file in ["zoo", "hepatitis", "iris", "audiology", "parkinsons", "seeds", 
+             "segmentation", "glass", "heart_disease", "heart_failure", "flare1", 
+             "ecoli_5", "ionosphere", "Cancer_Data", "hill_valley", "balance_scale",
+             "S-curve", "blobs", 
+             "crx", "breast_cancer", "titanic", "diabetes", "tic-tac-toe", 
+             'Medicaldataset', "water_potability",
+             'treeData', 'winequality-red', 'car'
+             ]:
+        print(f"Total data of {csv_file}: {len(subset_df(df, csv_file = csv_file))}\n")
+        print(f" {csv_file}        Lengths")
+        print("--------      ----------")
+        print(f" SSMA:          {len(subset_df(df, method = 'SSMA', csv_file = csv_file))}")
+        print(f" DTA:          {len(subset_df(df, method = 'DTA', csv_file = csv_file))}")
+        print(f" Nama:          {len(subset_df(df, method = 'NAMA', csv_file = csv_file))}")
+        print(f" SPUD:          {len(subset_df(df, method = 'SPUD', csv_file = csv_file))}")
+        print(f" DIG:          {len(subset_df(df, method = 'DIG', csv_file = csv_file))}\n\n")
