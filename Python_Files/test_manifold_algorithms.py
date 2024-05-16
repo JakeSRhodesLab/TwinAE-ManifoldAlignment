@@ -47,6 +47,11 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 1. distort on Hilton
 2. even on tukey
+3. tSPUD on Carter
+4. even_1 on Carter
+5. tDIG on Collings
+6. tDTAs (SSMA too) on Hilton
+7. tNAMA on Tukey
 
 """
 
