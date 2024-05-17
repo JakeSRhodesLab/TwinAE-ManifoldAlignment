@@ -109,7 +109,7 @@ class MAGAN(object):
         dim_b2,
         correspondence_loss,
         activation= "leaky_relu",
-        learning_rate=.007, #Used to be 0.0001
+        learning_rate=.01, #Used to be 0.0001
         restore_folder='',
         limit_gpu_fraction=1.,
         no_gpu=False,
@@ -354,7 +354,7 @@ class Discriminator(tf.keras.Model):
 
 """Tests Below"""
 
-def get_data(n_batches=2, n_pts_per_cluster=5000):
+def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two features
     """Return the artificial data."""
     make = lambda x,y,s: np.concatenate([np.random.normal(x,s, (n_pts_per_cluster, 1)), np.random.normal(y,s, (n_pts_per_cluster, 1))], axis=1)
     # batch 1
@@ -367,11 +367,13 @@ def get_data(n_batches=2, n_pts_per_cluster=5000):
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1):
+def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expectin xb1 to be a 2 dimensional domain only? 
     """xb1 should be split_a
     sb2 should be split_b
     labels1 should just be the labels"""
-    labels2 = labels1
+
+    if type(labels2) == type("None"):
+        labels2 = labels1
     
     print("Batch 1 shape: {} Batch 2 shape: {}".format(xb1.shape, xb2.shape))
 
@@ -408,10 +410,10 @@ def run_MAGAN(xb1, xb2, labels1):
             fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
             axes[0, 0].set_title('Original')
             axes[0, 1].set_title('Generated')
-            axes[0, 0].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[0, 0].scatter(0,0, s=100, c='w'); axes[0, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[0, 1].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[0, 1].scatter(0,0, s=100, c='w'); axes[0, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[1, 0].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[1, 0].scatter(0,0, s=100, c='w'); axes[1, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
-            axes[1, 1].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[1, 1].scatter(0,0, s=100, c='w'); axes[1, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5]);
+            axes[0, 0].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[0, 0].scatter(0,0, s=100, c='w'); axes[0, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5])
+            axes[0, 1].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[0, 1].scatter(0,0, s=100, c='w'); axes[0, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5])
+            axes[1, 0].scatter(0, 0, s=45, c='r', label='Batch 2'); axes[1, 0].scatter(0,0, s=100, c='w'); axes[1, 0].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5])
+            axes[1, 1].scatter(0, 0, s=45, c='b', label='Batch 1'); axes[1, 1].scatter(0,0, s=100, c='w'); axes[1, 1].legend(handletextpad=.1, borderpad=.5, loc='center left', bbox_to_anchor=[.02, .5])
 
             for lab, marker in zip([0, 1, 2], ['x', 'D', '.']):
                 axes[0, 0].scatter(xb1[labels1_ == lab, 0], xb1[labels1_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
@@ -422,3 +424,29 @@ def run_MAGAN(xb1, xb2, labels1):
             fig.canvas.draw()
             plt.pause(1)
 
+    #Thoughts to understand MAGAN
+    """
+    xb1 and xb2 are the original data. Gb1 and Gb2 are the generated Data. They are shaped like the data, but all the other methods so 
+    far we have been using distance matricies. 
+
+    So we can return Gb1 and Gb2, and then apply our trustee pdist + squareform combo on each of them to get domains. 
+
+    That would leave us something like 
+    np.block([[ block_xb1, block_Gb1],
+              [ block_Gb2, block_xb2]])
+
+    In the which we could apply our MDS too, for the CE score. 
+
+    It would also return two FOSCTTM scores: 1 for the block_Gb1 and 1 for the block_Gb2. 
+
+    Is that what was intended from this? 
+    
+    """
+
+    return magan , xb1, Gb1 
+
+"""import test_manifold_algorithms as tma
+test = tma.test_manifold_algorithms(csv_file="iris.csv", split = "turn", percent_of_anchors = [0.05], random_state=42, verbose = 2)
+
+
+magan_model = run_MAGAN(test.split_A, test.split_B, labels1 = test.labels)"""
