@@ -2,8 +2,7 @@
 
 """
 Questions:
-1. Ask Professor Rhodes to share with me one of his presentations
-2. Ask why TMUX is so slow
+1. Review the efficacy of MAGAN -> It seems no better than guessing
 
 
 General Notes:

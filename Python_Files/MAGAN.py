@@ -3,6 +3,7 @@
 import tensorflow as tf
 from tensorflow.compat.v1 import variable_scope, placeholder, add_to_collection, global_variables, global_variables_initializer, get_collection, train#, layers
 import os
+from scipy.spatial.distance import pdist, squareform
 import numpy as np
 
 print(f"MAGAN is running on TensorFlow {tf.__version__}")
@@ -353,6 +354,16 @@ class Discriminator(tf.keras.Model):
 
 
 """Tests Below"""
+def get_pure_distance(domain_A, domain_B):
+    #Just using a normal distance matrix without Igraph
+    x_dists = squareform(pdist(domain_A))
+    y_dists = squareform(pdist(domain_B))
+
+    #normalize it
+    x_dists = x_dists / np.max(x_dists, axis = None)
+    y_dists = y_dists / np.max(y_dists, axis = None)
+
+    return x_dists, y_dists
 
 def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two features
     """Return the artificial data."""
@@ -380,13 +391,13 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
     # Prepare the loaders
     loadb1 = Loader(xb1, labels=labels1, shuffle=True)
     loadb2 = Loader(xb2, labels=labels2, shuffle=True)
-    batch_size = 100
+    batch_size = np.gcd(len(xb1), 100) #This is changed --- In an attempt to keep the resulting size equivalent to what it began with
 
     # Build the tf graph
     magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss)
 
     # Train
-    for i in range(1, 5000): #Used to be 100000
+    for i in range(1, 2500): #Used to be 100000
         xb1_, labels1_ = loadb1.next_batch(batch_size)
         xb2_, labels2_ = loadb2.next_batch(batch_size)
 
@@ -394,8 +405,8 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
 
         # Evaluate the loss and plot
         if i % 500 == 0:
-            xb1_, labels1_ = loadb1.next_batch(10 * batch_size)
-            xb2_, labels2_ = loadb2.next_batch(10 * batch_size)
+            xb1_, labels1_ = loadb1.next_batch(len(xb1))
+            xb2_, labels2_ = loadb2.next_batch(len(xb1))
 
             lstring = magan.get_loss(xb1_, xb2_)
             print("{} {}".format(magan.get_loss_names(), lstring))
@@ -443,7 +454,7 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
     
     """
 
-    return magan , xb1, Gb1 
+    return xb1, xb2, Gb1, Gb2 
 
 """import test_manifold_algorithms as tma
 test = tma.test_manifold_algorithms(csv_file="iris.csv", split = "turn", percent_of_anchors = [0.05], random_state=42, verbose = 2)
