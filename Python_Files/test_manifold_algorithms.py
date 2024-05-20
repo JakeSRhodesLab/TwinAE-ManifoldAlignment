@@ -2,7 +2,7 @@
 
 """
 Questions:
-1. Review the efficacy of MAGAN -> It seems no better than guessing
+1. Review the efficacy of MAGAN -> It seems no better than guessing. Is it reasonable to do the "squareform" - "pdist" with it?
 
 
 General Notes:
@@ -44,12 +44,13 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-1. distort on Hilton (Still running - 3 day)
-2. even on tukey (Still running - 3 days)
-3. tSPUD on Carter (Still running - 2 day)
-5. tDIG on Collings (Still running - 2 day)
-6. tDTAs (SSMA too) on Hilton (Still running - 2 day)
-7. tNAMA on Tukey (Still running - 2 day)
+1. distort on Hilton (Still running - 5 day)
+2. even on tukey (Still running - 5 days)
+3. tSPUD on Carter (Still running - 4 day)
+5. tDIG on Collings (Still running - 4 day)
+6. tDTAs (SSMA too) on Hilton (Still running - 4 day)
+7. tNAMA on Tukey (Still running - 4 day)
+8. sSPUD on Rencher (Still runnning - 0 days)
 
 
 """
