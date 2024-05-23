@@ -44,13 +44,9 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-1. distort on Hilton (Still running - 5 day)
-2. even on tukey (Still running - 5 days)
-3. tSPUD on Carter (Still running - 4 day)
-5. tDIG on Collings (Still running - 4 day)
-6. tDTAs (SSMA too) on Hilton (Still running - 4 day)
-7. tNAMA on Tukey (Still running - 4 day)
-8. sSPUD on Rencher (Still runnning - 0 days)
+1. distort on Hilton (Still running - 10 days)
+2. even on tukey (Still running - 8 days)
+8. sSPUD on Rencher (Still runnning - 3 days)
 
 
 """
