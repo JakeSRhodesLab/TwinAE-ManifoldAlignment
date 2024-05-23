@@ -47,6 +47,7 @@ Tmux Zombies
 1. distort on Hilton (Still running - 10 days)
 2. even on tukey (Still running - 8 days)
 8. sSPUD on Rencher (Still runnning - 3 days)
+9. blobs on Carter -- its actually just running if 50% are known anchors
 
 
 """
