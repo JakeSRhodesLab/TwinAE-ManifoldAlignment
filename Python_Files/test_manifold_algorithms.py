@@ -2,11 +2,12 @@
 
 """
 Questions:
-1. Review the efficacy of MAGAN -> It seems no better than guessing. Is it reasonable to do the "squareform" - "pdist" with it?
+1. What do I do with two FOSCTTMS? Currently I chose to average them
 - > Work with the prof from the conference?
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
+2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
 
 Changes Log:
 1. Added S-curve as a valid csv file option
@@ -70,6 +71,7 @@ import os
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import seaborn as sns
+import MAGAN
 
 #Simply, for my sanity
 import warnings
@@ -690,6 +692,56 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
+    def run_MAGAN_tests(self):
+        """Needs no additional parameters"""
+
+        #Create file name
+        filename = self.create_filename("MAGAN")
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the results in an array
+        MAGAN_scores = np.zeros((2))
+
+        print("\n-------------------------------------   MAGAN TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
+
+        #Run Magan and tests
+        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B)
+
+        #Reshape the domains and then create the block
+        domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
+        domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
+        MAGAN_block = np.block([[domain_a, domain_ba],
+                                [domain_ba, domain_b]])
+        
+        #Get FOSCTTM SCORES
+        try:
+            MAGAN_FOSCTTM = np.mean((self.FOSCTTM(domain_ab), self.FOSCTTM(domain_ba))) #NOTE: Do we choose the best one? Currently chose to average them instead
+            print(f"FOSCTTM: {MAGAN_FOSCTTM}")
+        except Exception as e:
+            print(f"FOSCTTM exception occured: {e}")
+            MAGAN_FOSCTTM = np.NaN
+        MAGAN_scores[0] = MAGAN_FOSCTTM
+        
+        #Get embedding for CE
+        try:
+            emb = self.mds.fit_transform(MAGAN_block)
+            MAGAN_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+            print(f"Cross Embedding: {MAGAN_CE}")
+        except Exception as e:
+            print(f"Cross Embedding exception occured: {e}")
+            MAGAN_CE = np.NaN
+        MAGAN_scores[1] = MAGAN_CE
+
+        #Save the numpy array
+        np.save(filename, MAGAN_scores)
+
+        #Run successful
+        return True
+
     """Visualization"""
     def plot_embeddings(self, knn = "auto", anchor_percent = "auto", **kwargs):
         """Shows the embeddings of each graph in a plot"""
@@ -747,6 +799,15 @@ class test_manifold_algorithms():
         SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
         SSMA_emb = self.mds.fit_transform(1 - SSMA_class.W)
 
+        #Create MAGAN Embedding
+        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B)
+        domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
+        domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
+        magan_block = np.block([[domain_a, domain_ba],
+                                [domain_ba, domain_b]])
+        MAGAN_emb = self.mds.fit_transform(magan_block)
+
+
         """Now Plot the Embeddings"""
         #Create the figure and set titles
         fig, axes = plt.subplots(2, 3, figsize = (16, 10))
@@ -755,6 +816,7 @@ class test_manifold_algorithms():
         axes[0,1].set_title("DIG")
         axes[0, 2].set_title("SSMA")
         axes[1,1].set_title("DTA")
+        axes[1,2].set_title("MAGAN")
 
         #Create keywords for DIG, SPUD, NAMA
         keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
@@ -767,6 +829,8 @@ class test_manifold_algorithms():
         sns.scatterplot(x = NAMA_emb[:, 0], y = NAMA_emb[:, 1], ax = axes[0,0], **keywords)
         sns.scatterplot(x = SPUD_emb[:, 0], y = SPUD_emb[:, 1], ax = axes[1,0], **keywords)
         sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
+        sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[1,2], **keywords)
+
 
         #Create keywords for DTA and SSMA
         keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
@@ -1020,7 +1084,7 @@ def _upload_file(file):
     return df
 
 """IMPORTANT FUNCTIONS"""
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False,  **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1098,6 +1162,11 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
         Parallel(n_jobs=-7)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+
+    if run_MAGAN:
+        #Loop through each file (Using Parralel Processing) for SSMA
+        Parallel(n_jobs=-3)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+
 
     return manifold_instances
 

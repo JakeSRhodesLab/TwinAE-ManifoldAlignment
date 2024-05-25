@@ -378,19 +378,15 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): 
+def run_MAGAN(xb1, xb2): 
     """xb1 should be split_a
-    sb2 should be split_b
-    labels1 should just be the labels"""
+    xb2 should be split_b """
 
-    if type(labels2) == type("None"):
-        labels2 = labels1
-    
-    print("Batch 1 shape: {} Batch 2 shape: {}".format(xb1.shape, xb2.shape))
+    #print("Batch 1 shape: {} Batch 2 shape: {}".format(xb1.shape, xb2.shape))
 
     # Prepare the loaders
-    loadb1 = Loader(xb1, labels=labels1, shuffle=True)
-    loadb2 = Loader(xb2, labels=labels2, shuffle=True)
+    loadb1 = Loader(xb1, shuffle=True)
+    loadb2 = Loader(xb2, shuffle=True)
     batch_size = np.gcd(len(xb1), 100) #This is changed --- In an attempt to keep the resulting size equivalent to what it began with
 
     #Reset the tensorflow tensors
@@ -401,14 +397,14 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"):
 
     # Train
     for i in range(1, 2500): #Used to be 100000
-        xb1_, labels1_ = loadb1.next_batch(batch_size)
-        xb2_, labels2_ = loadb2.next_batch(batch_size)
+        xb1_ = loadb1.next_batch(batch_size)
+        xb2_ = loadb2.next_batch(batch_size)
 
         magan.train_model(xb1_, xb2_)
 
-        # Evaluate the loss and plot
+        """# Evaluate the loss and plot
         if i % 500 == 0:
-            """xb1_, labels1_ = loadb1.next_batch(len(xb1))
+            xb1_, labels1_ = loadb1.next_batch(len(xb1))
             xb2_, labels2_ = loadb2.next_batch(len(xb1))
 
             lstring = magan.get_loss(xb1_, xb2_)
@@ -459,10 +455,6 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"):
     """
 
     #calculate generatorm,      
-    lstring = magan.get_loss(xb1, xb2)
-    print("{} {}".format(magan.get_loss_names(), lstring))
-
-
     xb1 = magan.get_layer(xb1, xb2, 'xb1')
     xb2 = magan.get_layer(xb1, xb2, 'xb2')
     Gb1 = magan.get_layer(xb1, xb2, 'Gb1')
