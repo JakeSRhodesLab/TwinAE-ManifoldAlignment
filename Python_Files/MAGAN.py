@@ -110,7 +110,7 @@ class MAGAN(object):
         dim_b2,
         correspondence_loss,
         activation= "leaky_relu",
-        learning_rate=.01, #Used to be 0.0001
+        learning_rate=0.0001, #Used to be 0.0001
         restore_folder='',
         limit_gpu_fraction=1.,
         no_gpu=False,
@@ -378,7 +378,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expectin xb1 to be a 2 dimensional domain only? 
+def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): 
     """xb1 should be split_a
     sb2 should be split_b
     labels1 should just be the labels"""
@@ -393,8 +393,11 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
     loadb2 = Loader(xb2, labels=labels2, shuffle=True)
     batch_size = np.gcd(len(xb1), 100) #This is changed --- In an attempt to keep the resulting size equivalent to what it began with
 
+    #Reset the tensorflow tensors
+    tf.compat.v1.reset_default_graph() #NOTE: This is code I added to ensure that this can run multiple times
+
     # Build the tf graph
-    magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss)
+    magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss, learning_rate=0.01)
 
     # Train
     for i in range(1, 2500): #Used to be 100000
@@ -405,7 +408,7 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
 
         # Evaluate the loss and plot
         if i % 500 == 0:
-            xb1_, labels1_ = loadb1.next_batch(len(xb1))
+            """xb1_, labels1_ = loadb1.next_batch(len(xb1))
             xb2_, labels2_ = loadb2.next_batch(len(xb1))
 
             lstring = magan.get_loss(xb1_, xb2_)
@@ -416,6 +419,7 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
             xb2 = magan.get_layer(xb1_, xb2_, 'xb2')
             Gb1 = magan.get_layer(xb1_, xb2_, 'Gb1')
             Gb2 = magan.get_layer(xb1_, xb2_, 'Gb2')
+        
 
             import matplotlib.pyplot as plt
             fig, axes = plt.subplots(2, 2, sharex=True, sharey=True)
@@ -433,7 +437,7 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
                 axes[1, 0].scatter(xb2[labels2_ == lab, 0], xb2[labels2_ == lab, 1], s=45, alpha=.5, c='r', marker=marker)
                 axes[1, 1].scatter(Gb1[labels2_ == lab, 0], Gb1[labels2_ == lab, 1], s=45, alpha=.5, c='b', marker=marker)
             fig.canvas.draw()
-            plt.pause(1)
+            plt.pause(1)"""
 
     #Thoughts to understand MAGAN
     """
@@ -454,10 +458,15 @@ def run_MAGAN(xb1, xb2, labels1, labels2 = "None"): #NOTE: Maybe Magan is expect
     
     """
 
+    #calculate generatorm,      
+    lstring = magan.get_loss(xb1, xb2)
+    print("{} {}".format(magan.get_loss_names(), lstring))
+
+
+    xb1 = magan.get_layer(xb1, xb2, 'xb1')
+    xb2 = magan.get_layer(xb1, xb2, 'xb2')
+    Gb1 = magan.get_layer(xb1, xb2, 'Gb1')
+    Gb2 = magan.get_layer(xb1, xb2, 'Gb2')
+
+
     return xb1, xb2, Gb1, Gb2 
-
-"""import test_manifold_algorithms as tma
-test = tma.test_manifold_algorithms(csv_file="iris.csv", split = "turn", percent_of_anchors = [0.05], random_state=42, verbose = 2)
-
-
-magan_model = run_MAGAN(test.split_A, test.split_B, labels1 = test.labels)"""

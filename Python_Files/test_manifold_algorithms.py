@@ -3,7 +3,7 @@
 """
 Questions:
 1. Review the efficacy of MAGAN -> It seems no better than guessing. Is it reasonable to do the "squareform" - "pdist" with it?
-
+- > Work with the prof from the conference?
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
@@ -19,6 +19,7 @@ Changes Log:
 Future Ideas:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
+3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real
 
 
 
@@ -44,8 +45,6 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-1. distort on Hilton (Still running - 10 days)
-2. even on tukey (Still running - 8 days)
 8. sSPUD on Rencher (Still runnning - 4 days)
 9. blobs on Carter -- its actually just running if 50% are known anchors
 
