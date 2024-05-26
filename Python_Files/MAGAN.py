@@ -6,7 +6,7 @@ import os
 from scipy.spatial.distance import pdist, squareform
 import numpy as np
 
-print(f"MAGAN is running on TensorFlow {tf.__version__}")
+#print(f"MAGAN is running on TensorFlow {tf.__version__}")
 
 #To run with the older functions, we must include this:
 tf.compat.v1.disable_eager_execution()

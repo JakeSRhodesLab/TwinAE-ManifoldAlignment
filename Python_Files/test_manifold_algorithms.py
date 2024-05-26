@@ -47,7 +47,9 @@ https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
 8. sSPUD on Rencher (Still runnning - 4 days)
-9. blobs on Carter -- its actually just running if 50% are known anchors
+10. MagBig on Tukey -- All the biggest data files
+11. blobs on Carter -- its actually running small MAGAN files
+12. evens on Hilton -- All of the bigest data files 
 
 
 """
@@ -1037,6 +1039,14 @@ def _upload_file(file):
 
             #Create a new Data frame instance with all the asociated values
             df = df._append(data_dict, ignore_index=True)
+    
+    elif data_dict["method"] == "MAGAN":
+        #Now use are data array to grab the FOSCTTM and CE scores
+        data_dict["FOSCTTM"] = data[0]
+        data_dict["Cross_Embedding_KNN"] = data[1]
+
+        #Create a new Data frame instance with all the asociated values
+        df = df._append(data_dict, ignore_index=True)
 
 
     #METHOD DTA
