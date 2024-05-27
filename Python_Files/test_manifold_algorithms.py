@@ -48,8 +48,8 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 8. sSPUD on Rencher (Still runnning - 4 days)
 10. MagBig on Tukey -- All the biggest data files
-11. blobs on Carter -- its actually running small MAGAN files
 12. evens on Hilton -- All of the bigest data files 
+13. all on carter -- RUNNING ALL COMBINATIONS
 
 
 """
