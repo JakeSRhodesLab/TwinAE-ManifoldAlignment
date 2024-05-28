@@ -1,4 +1,7 @@
-#Diffusion Integration with Graphs
+#Diffusion Integration with 
+
+"""Ideas for upgrades
+1. Auto recognition for point correspondence -> Potential errors (it could potentially be harmful if there isn't a 1 to 1 correspondence). Additional question: how helpful is it to have additional anchors?"""
 
 #Install the needed libraries
 from scipy.spatial.distance import pdist, squareform
@@ -210,7 +213,7 @@ class DIG: #Diffusion Integration with Graphs
         domainBA = self.row_normalize_matrix(domainBA)
         domainAB = self.row_normalize_matrix(domainAB)
         
-        #Squareform it :)
+        #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
         diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
     
 
