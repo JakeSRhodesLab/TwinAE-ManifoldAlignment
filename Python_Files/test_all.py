@@ -27,7 +27,7 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 <><><><><><><><><><><><><><><><><><><><><>    Timing all functions  <><><><><><><<><><><><>><<><><><><><>><><<>><<><><><><><><>
 """
 
-tma.time_all_files(["seeds.csv", "blobs", "S-curve"])
+tma.time_all_files("all")
 
 
 """

@@ -10,14 +10,7 @@ General Notes:
 2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
 
 Changes Log:
-1. Added S-curve as a valid csv file option
-2. Added the "distort" split method
-3. Added "Percent of KNN" to make it easy to graph
-4. Added embedding veiwing :)
-5. Added Blobs data set as a valid csv option
 6. Added the Turn split method
-7. Fixed MAGAN. 
-8. TUNED MAGAN to be very accurate with short training time. (It seems to preform bettter than the other datasets)
 9. Added Timing Functionality
 
 FUTURE IDEAS:
@@ -29,6 +22,9 @@ FUTURE IDEAS:
 
 TASKS:
 0. Time each method :)
+1. Figure out MAGAN's Correspondences
+2. Determine KNN model values for each split -> Nothing Fancy
+3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -46,6 +42,7 @@ Tmux Zombies
 10. MagBig on Tukey -- All the biggest data files
 12. evens on Hilton -- All of the bigest data files 
 13. all on carter -- RUNNING ALL COMBINATIONS
+14. time on collings -- Running all timing tests
 
 
 """
@@ -984,6 +981,8 @@ def _upload_file(file):
                 #We failsafe this in a try because there might not be a finally loop
                 try:
                     data_dict["Predicted_Feature_MAE"] = data[j, k, 2]
+                except:
+                    data_dict["Predicted_Feature_MAE"] = np.NaN
                 finally:
                     #Create a new Data frame instance with all the asociated values
                     df = df._append(data_dict, ignore_index=True)
@@ -1104,7 +1103,7 @@ def _run_time_trials(csv_file = "iris.csv"):
             return True
 
     #Preform the timing functions
-    test = test_manifold_algorithms(csv_file=csv_file, split = "random", percent_of_anchors = [0.1], random_state=123456, verbose = 0)
+    test = test_manifold_algorithms(csv_file=csv_file, split = "random", percent_of_anchors = [0.1], random_state=9876, verbose = 0)
 
     # Time the execution of the function -- 10 KNN + 3 page rank methods
     execution_time = {}
@@ -1130,6 +1129,10 @@ def _run_time_trials(csv_file = "iris.csv"):
 
     #Append to old data
     if os.path.exists(DIR):
+        #We reget the old data so we always have the freshest version of the DF (meaning, if it was added to while the program ran)
+        old_data = pd.read_csv(DIR, index_col= None)
+
+        #Combine the two dataframes together
         df_executions = pd.concat([old_data, df_executions[str(csv_file)]], axis=1)
 
     #Save to file
@@ -1159,8 +1162,6 @@ def time_all_files(csv_files = "all"):
     Parallel(n_jobs=-3)(delayed(_run_time_trials)(csv_file) for csv_file in csv_files)
 
     return True
-
-
 
 def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False,  **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
@@ -1258,7 +1259,7 @@ def upload_to_DataFrame():
             files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
 
     #Use Parralel processing to upload lines to dataframe
-    processed_files = Parallel(n_jobs=-3)(delayed(_upload_file)(file) for file in files)
+    processed_files = Parallel(n_jobs=-5)(delayed(_upload_file)(file) for file in files)
 
     # Convert the list of dictionaries to a pandas DataFrame
     df = pd.concat(processed_files, ignore_index=True)
