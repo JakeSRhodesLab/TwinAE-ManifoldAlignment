@@ -40,6 +40,27 @@ def correspondence_loss(b1, b2):
 
     return loss
 
+def adapted_correspondence_loss(b1, b2, known_anchors):
+    """
+    The correspondence loss.
+
+    :param b1: a tensor representing the object in the graph of the current minibatch from domain one
+    :param b2: a tensor representing the object in the graph of the current minibatch from domain two
+    :param known_anchors: a list of tuples where each tuple contains two indices representing the indices in b1 and b2
+    :returns: a scalar tensor of the correspondence loss
+    """
+
+    loss = tf.constant(0.0)
+    for anchor in known_anchors:
+        # Ensure indices are integers
+        idx1 = int(anchor[0])
+        idx2 = int(anchor[1])
+
+        # Compute the loss for the current anchor and add to the total loss
+        loss += tf.reduce_mean((b1[idx1] - b2[idx2]) ** 2)
+
+    return loss
+
 class Loader(object):
     """A Loader class for feeding numpy matrices into tensorflow models."""
 
@@ -114,7 +135,11 @@ class MAGAN(object):
         restore_folder='',
         limit_gpu_fraction=1.,
         no_gpu=False,
-        nfilt=64):
+        nfilt=64,
+        known_anchors = [], #ADDED 
+        dim_1 = None, #ADDED
+        dim_2 = None #ADDED
+        ):
         
         """Initialize the model."""
         self.dim_b1 = dim_b1
@@ -123,13 +148,14 @@ class MAGAN(object):
         self.activation = activation
         self.learning_rate = learning_rate
         self.iteration = 0
+        self.known_anchors = known_anchors #Added by me to use for the correspondence loss
 
         if restore_folder:
             self._restore(restore_folder)
             return
 
-        self.xb1 = placeholder(tf.float32, shape=[None, self.dim_b1], name='xb1')
-        self.xb2 = placeholder(tf.float32, shape=[None, self.dim_b2], name='xb2')
+        self.xb1 = placeholder(tf.float32, shape=[dim_1, self.dim_b1], name='xb1')
+        self.xb2 = placeholder(tf.float32, shape=[dim_2, self.dim_b2], name='xb2')
 
         self.lr = placeholder(tf.float32, shape=[], name='lr')
         self.is_training = placeholder(tf.bool, shape=[], name='is_training')
@@ -238,8 +264,8 @@ class MAGAN(object):
         losses.append(tf.reduce_mean((self.xb1 - self.xb1_reconstructed)**2))
         losses.append(tf.reduce_mean((self.xb2 - self.xb2_reconstructed)**2))
         # correspondences losses
-        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb1, self.Gb2)))
-        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb2, self.Gb1)))
+        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb1, self.Gb2, self.known_anchors))) #The known anchors were Added by me to use for the correspondence loss
+        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb2, self.Gb1, self.known_anchors))) #The known anchors were Added by me to use for the correspondence loss
 
         self.loss_G = tf.reduce_mean(losses)
 
@@ -378,7 +404,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2): 
+def run_MAGAN(xb1, xb2, anchors): 
     """xb1 should be split_a
     xb2 should be split_b """
 
@@ -387,13 +413,13 @@ def run_MAGAN(xb1, xb2):
     # Prepare the loaders
     loadb1 = Loader(xb1, shuffle=True)
     loadb2 = Loader(xb2, shuffle=True)
-    batch_size = np.gcd(len(xb1), 100) #This is changed --- In an attempt to keep the resulting size equivalent to what it began with
+    batch_size = len(xb1) #np.gcd(len(xb1), 100) #This is changed --- In an attempt to keep the resulting size equivalent to what it began with
 
     #Reset the tensorflow tensors
     tf.compat.v1.reset_default_graph() #NOTE: This is code I added to ensure that this can run multiple times
 
     # Build the tf graph
-    magan = MAGAN(dim_b1=xb1.shape[1], dim_b2=xb2.shape[1], correspondence_loss=correspondence_loss, learning_rate=0.01)
+    magan = MAGAN(dim_b1=xb1.shape[1], dim_1 = xb1.shape[0], dim_2=xb2.shape[0], dim_b2=xb2.shape[1], correspondence_loss=adapted_correspondence_loss, learning_rate=0.01, known_anchors=anchors)
 
     # Train
     for i in range(1, 2500): #Used to be 100000

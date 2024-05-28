@@ -705,7 +705,7 @@ class test_manifold_algorithms():
         print("\n-------------------------------------   MAGAN TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
 
         #Run Magan and tests
-        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B)
+        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B, self.anchors)
 
         #Reshape the domains and then create the block
         domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
