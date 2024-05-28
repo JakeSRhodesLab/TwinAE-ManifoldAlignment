@@ -18,6 +18,7 @@ Changes Log:
 6. Added the Turn split method
 7. Fixed MAGAN. 
 8. TUNED MAGAN to be very accurate with short training time. (It seems to preform bettter than the other datasets)
+9. Added Timing Functionality
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
