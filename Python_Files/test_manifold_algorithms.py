@@ -2,7 +2,7 @@
 
 """
 Questions:
-1. What do I do with two FOSCTTMS? Currently I chose to average them
+1. What do I do with two FOSCTTMS? Currently I chose to average them... (These are always returning extremely low values -- it may not be right)
 - > Work with the prof from the conference?
 
 General Notes:
@@ -16,8 +16,10 @@ Changes Log:
 4. Added embedding veiwing :)
 5. Added Blobs data set as a valid csv option
 6. Added the Turn split method
+7. Fixed MAGAN. 
+8. TUNED MAGAN to be very accurate with short training time. (It seems to preform bettter than the other datasets)
 
-Future Ideas:
+FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real
@@ -25,14 +27,7 @@ Future Ideas:
 
 
 TASKS:
-0. Run tests wtih different SPUD methods -- Done
-1. Implement old datasets (S-curve and things) - DONE
-2. Create a High Level presentation -> Copy from the slides to make a presentation DONE
-3. Last try efforts for MAGAN TF 2. If can't, refactor code to be compatible to python 2, and run original MAGAN code and have tests be seperate
-4. Create a function that visualizes all the embeddings -- For Presentation DONE
-5. Apply ranking CSV file visual DONE
-6. Go through TODOS
-7. Apply rotation tests DONE
+0. Time each method :)
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
