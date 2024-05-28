@@ -69,6 +69,7 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import seaborn as sns
 import MAGAN
+import timeit
 
 #Simply, for my sanity
 import warnings
@@ -84,7 +85,7 @@ MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
 #Create function to do everything
 class test_manifold_algorithms():
-    def __init__(self, csv_file, split = "skewed", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
+    def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
         """csv_file should be the name of the csv file. If set to 'S-curve' or "blobs", it will create a toy data set. 
         
         split can be 'skewed' (for the features to be split by more important and less important),
@@ -1088,7 +1089,78 @@ def _upload_file(file):
 
     return df
 
+def _run_time_trials(csv_file = "iris.csv"):
+    #Create file path
+    DIR = "/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Time_DataFrame.csv"
+
+    #Test to see if data already exists
+    if os.path.exists(DIR):
+        old_data = pd.read_csv(DIR, index_col= None)
+
+        #Check to see if we already have timing for the csv file
+        if csv_file in old_data.columns:
+            print("Test has already been calculated")
+            return True
+
+    #Preform the timing functions
+    test = test_manifold_algorithms(csv_file=csv_file, split = "random", percent_of_anchors = [0.1], random_state=123456, verbose = 0)
+
+    # Time the execution of the function -- 10 KNN + 3 page rank methods
+    execution_time = {}
+    execution_time["DIG"] =  timeit.timeit(test.run_DIG_tests, number=1)/30 #To account for the 3 Page Rank Methods
+
+    #DTA
+    execution_time["DTA"] = timeit.timeit(test.run_DTA_tests, number=1)/10 #To account for the 10 knn
+
+    #SSMA
+    execution_time["SSMA"] = timeit.timeit(test.run_SSMA_tests, number=1) / 10 #To account for the 10 knn
+
+    #MAGAN
+    execution_time["MAGAN"] = timeit.timeit(test.run_MAGAN_tests, number=1)
+
+    #SPUD
+    execution_time["SPUD"] = timeit.timeit(test.run_SPUD_tests, number = 1)/60 #To account for 10 knn, 2 operations and 3 algorithms to test
+
+    #NAMA
+    execution_time["NAMA"] = timeit.timeit(test.run_NAMA_tests,  number = 1)
+
+    #Convert to DF
+    df_executions = pd.DataFrame(list(execution_time.items()), columns = ["Methods", str(csv_file)])
+
+    #Append to old data
+    if os.path.exists(DIR):
+        df_executions = pd.concat([old_data, df_executions[str(csv_file)]], axis=1)
+
+    #Save to file
+    df_executions.to_csv(DIR,  index= False)
+
+    #Print out the results
+    print("------------------------------------------------------------------------------    Time Comparisions     ------------------------------------------------------------------------------")
+    print(df_executions.sort_values(by = str(csv_file)))
+
+    #Function completed
+    return True
+
 """IMPORTANT FUNCTIONS"""
+def time_all_files(csv_files = "all"):
+    """Creates a dataframe that stores the time complexity for each method against 1 iteration. Also includes the calculation time
+    to calculate FOSCTTM and CE"""
+
+    #Use all of our files
+    if csv_files == "all":
+        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
+                    "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
+                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
+                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
+                    "winequality-red.csv", "zoo.csv", 
+                    "S-curve", "blobs"] #Toy data sets -- It will automatically create them
+
+    Parallel(n_jobs=-3)(delayed(_run_time_trials)(csv_file) for csv_file in csv_files)
+
+    return True
+
+
+
 def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False,  **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
@@ -1104,7 +1176,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
                     "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
                     "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
                     "winequality-red.csv", "zoo.csv", 
-                    "S-curve"] #Toy data sets -- It will automatically create them
+                    "S-curve", "blobs"] #Toy data sets -- It will automatically create them
         
     """Convert csv_files to class instances"""
     #Create the dictionary

@@ -23,19 +23,26 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
              'treeData.csv', 'winequality-red.csv', 'car.csv'
              ]
 
+"""
+<><><><><><><><><><><><><><><><><><><><><>    Timing all functions  <><><><><><><<><><><><>><<><><><><><>><><<>><<><><><><><><>
+"""
 
-# CHECK WHICH METHODS TESTED
-"""Testing All functions"""
-#Run through all splits
+tma.time_all_files(["seeds.csv", "blobs", "S-curve"])
+
+
+"""
+<><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
+"""
+
+"""
 for split_type in ["turn", "skewed", "even", "distort", "random"]:
 
     tma.run_all_tests(csv_files = csv_files, test_random = 10, #General function arguments
                             split = split_type, verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3], #Init Key arguments
-                            run_DIG = True, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
-                            run_DTA = True,
-                            run_NAMA = True,
-                            run_SSMA = True,
-                            run_MAGAN= True,
-                            run_SPUD = True, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
-
-#/yunity/arusty/Graph-Manifold-Alignment/Python_Files/test_all.py
+                            run_DIG = False, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
+                            run_DTA = False,
+                            run_NAMA = False,
+                            run_SSMA = False,
+                            run_MAGAN= False,
+                            run_SPUD = False, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
+"""
