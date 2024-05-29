@@ -16,30 +16,6 @@ def nameop(op, name):
     op = tf.identity(op, name=name)
     return op
 
-#I added this too!
-def normalize_0_to_1(array):
-    """
-    Scale each dimension of the array from 0 to 1.
-
-    :param array: numpy array to be normalized
-    :return: normalized numpy array with values between 0 and 1
-    """
-    # Convert input to numpy array if it isn't already
-    array = np.asarray(array)
-
-    # Calculate the min and max for each column (feature)
-    min_vals = np.min(array, axis=0)
-    max_vals = np.max(array, axis=0)
-
-    # Avoid division by zero
-    ranges = max_vals - min_vals
-    ranges[ranges == 0] = 1  # To prevent division by zero, set zero ranges to 1
-
-    # Normalize each column
-    normalized_array = (array - min_vals) / ranges
-
-    return normalized_array
-
 def tbn(name):
     """Get a tensor of the given name from the graph."""
     return tf.compat.v1.get_default_graph().get_tensor_by_name(name)
@@ -73,9 +49,6 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
     :param known_anchors: a list of tuples where each tuple contains two indices representing the indices in b1 and b2
     :returns: a scalar tensor of the correspondence loss
     """
-    #Normalize
-    b1 = normalize_0_to_1(b1)
-    b2 = normalize_0_to_1(b2)
 
     loss = tf.constant(0.0)
     for anchor in known_anchors:
@@ -84,7 +57,7 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
         idx2 = int(anchor[1])
 
         # Compute the loss for the current anchor and add to the total loss
-        loss += tf.reduce_mean((np.mean(b1[idx1]) - np.mean(b2[idx2])) ** 2)
+        loss += tf.reduce_mean((tf.reduce_mean(b1[idx1]) - tf.reduce_mean(b2[idx2])) ** 2)
 
     return loss
 
@@ -176,19 +149,21 @@ class MAGAN(object):
         self.learning_rate = learning_rate
         self.iteration = 0
         self.known_anchors = known_anchors #Added by me to use for the correspondence loss
+        self.dim_1 = dim_1
+        self.dim_2 = dim_2
 
         if restore_folder:
             self._restore(restore_folder)
             return
 
-        self.xb1 = placeholder(tf.float32, shape=[dim_1, self.dim_b1], name='xb1')
-        self.xb2 = placeholder(tf.float32, shape=[dim_2, self.dim_b2], name='xb2')
+        self.xb1 = placeholder(tf.float32, shape=[self.dim_1, self.dim_b1], name='xb1')
+        self.xb2 = placeholder(tf.float32, shape=[self.dim_2, self.dim_b2], name='xb2')
 
         self.lr = placeholder(tf.float32, shape=[], name='lr')
         self.is_training = placeholder(tf.bool, shape=[], name='is_training')
 
-        self._build()
         self.init_session(limit_gpu_fraction=limit_gpu_fraction, no_gpu=no_gpu)
+        self._build()
         self.graph_init(self.sess)
 
     def init_session(self, limit_gpu_fraction=.4, no_gpu=False):
@@ -300,9 +275,10 @@ class MAGAN(object):
         # reconstruction losses
         losses.append(tf.reduce_mean((self.xb1 - self.xb1_reconstructed)**2))
         losses.append(tf.reduce_mean((self.xb2 - self.xb2_reconstructed)**2))
+
         # correspondences losses
-        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb1, self.Gb2, self.known_anchors))) #The known anchors were Added by me to use for the correspondence loss
-        losses.append(1 * tf.reduce_mean(self.correspondence_loss(self.xb2, self.Gb1, self.known_anchors))) #The known anchors were Added by me to use for the correspondence loss
+        losses.append(self.correspondence_loss(self.xb1, self.Gb2, self.known_anchors))  # Updated
+        losses.append(self.correspondence_loss(self.xb2, self.Gb1, self.known_anchors))  # Updated
 
         self.loss_G = tf.reduce_mean(losses)
 
