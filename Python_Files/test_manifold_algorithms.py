@@ -10,8 +10,8 @@ General Notes:
 2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
 
 Changes Log:
-6. Added the Turn split method
-9. Added Timing Functionality
+1. Added New MAGAN Correspondonce method
+2.
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -22,7 +22,7 @@ FUTURE IDEAS:
 
 TASKS:
 0. Time each method :)
-1. Figure out MAGAN's Correspondences
+1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function
 2. Determine KNN model values for each split -> Nothing Fancy
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
 
@@ -796,7 +796,7 @@ class test_manifold_algorithms():
         SSMA_emb = self.mds.fit_transform(1 - SSMA_class.W)
 
         #Create MAGAN Embedding
-        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B)
+        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B, self.anchors)
         domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
         domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
         magan_block = np.block([[domain_a, domain_ba],

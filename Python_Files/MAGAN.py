@@ -1,7 +1,7 @@
 """The code runs, but it doesn't get the same results"""
 
 import tensorflow as tf
-from tensorflow.compat.v1 import variable_scope, placeholder, add_to_collection, global_variables, global_variables_initializer, get_collection, train#, layers
+from tensorflow.compat.v1 import placeholder, add_to_collection, global_variables, global_variables_initializer, get_collection, train#, layers
 import os
 from scipy.spatial.distance import pdist, squareform
 import numpy as np
@@ -15,6 +15,30 @@ def nameop(op, name):
     """Give the current op this name, so it can be retrieved in another session."""
     op = tf.identity(op, name=name)
     return op
+
+#I added this too!
+def normalize_0_to_1(array):
+    """
+    Scale each dimension of the array from 0 to 1.
+
+    :param array: numpy array to be normalized
+    :return: normalized numpy array with values between 0 and 1
+    """
+    # Convert input to numpy array if it isn't already
+    array = np.asarray(array)
+
+    # Calculate the min and max for each column (feature)
+    min_vals = np.min(array, axis=0)
+    max_vals = np.max(array, axis=0)
+
+    # Avoid division by zero
+    ranges = max_vals - min_vals
+    ranges[ranges == 0] = 1  # To prevent division by zero, set zero ranges to 1
+
+    # Normalize each column
+    normalized_array = (array - min_vals) / ranges
+
+    return normalized_array
 
 def tbn(name):
     """Get a tensor of the given name from the graph."""
@@ -49,6 +73,9 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
     :param known_anchors: a list of tuples where each tuple contains two indices representing the indices in b1 and b2
     :returns: a scalar tensor of the correspondence loss
     """
+    #Normalize
+    b1 = normalize_0_to_1(b1)
+    b2 = normalize_0_to_1(b2)
 
     loss = tf.constant(0.0)
     for anchor in known_anchors:
@@ -57,7 +84,7 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
         idx2 = int(anchor[1])
 
         # Compute the loss for the current anchor and add to the total loss
-        loss += tf.reduce_mean((b1[idx1] - b2[idx2]) ** 2)
+        loss += tf.reduce_mean((np.mean(b1[idx1]) - np.mean(b2[idx2])) ** 2)
 
     return loss
 
@@ -175,6 +202,16 @@ class MAGAN(object):
             self.sess = tf.compat.v1.Session(config=config)
         else:
             self.sess = tf.compat.v1.Session()
+
+    #I added this!
+    def SquareDist(self, domain_A):
+        #Just using a normal distance matrix without Igraph
+        x_dists = squareform(pdist(domain_A))
+
+        #normalize it
+        x_dists = x_dists / np.max(x_dists, axis = None)
+
+        return x_dists
 
     def graph_init(self, sess=None):
         """Initialize graph variables."""
