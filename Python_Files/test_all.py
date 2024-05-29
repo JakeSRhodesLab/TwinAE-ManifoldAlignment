@@ -27,14 +27,14 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 <><><><><><><><><><><><><><><><><><><><><>    Timing all functions  <><><><><><><<><><><><>><<><><><><><>><><<>><<><><><><><><>
 """
 
-tma.time_all_files("all")
+#tma.time_all_files("all")
 
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
 """
 
-"""
+
 for split_type in ["turn", "skewed", "even", "distort", "random"]:
 
     tma.run_all_tests(csv_files = csv_files, test_random = 10, #General function arguments
@@ -44,5 +44,5 @@ for split_type in ["turn", "skewed", "even", "distort", "random"]:
                             run_NAMA = False,
                             run_SSMA = False,
                             run_MAGAN= False,
+                            run_KNN_Tests=True,
                             run_SPUD = False, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
-"""

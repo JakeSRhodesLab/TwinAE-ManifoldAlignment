@@ -11,7 +11,7 @@ General Notes:
 
 Changes Log:
 1. Added New MAGAN Correspondonce method
-2.
+2. Added Time Logs
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -21,9 +21,9 @@ FUTURE IDEAS:
 
 
 TASKS:
-0. Time each method :)
-1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function
-2. Determine KNN model values for each split -> Nothing Fancy
+0. Time each method :) DONE
+1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> In Process
+2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
@@ -38,11 +38,11 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-8. sSPUD on Rencher (Still runnning - 4 days)
-10. MagBig on Tukey -- All the biggest data files
 12. evens on Hilton -- All of the bigest data files 
 13. all on carter -- RUNNING ALL COMBINATIONS
 14. time on collings -- Running all timing tests
+15 MagBig on Tukey -- Running everything MAGAN -> with overwriting permission
+16. base on rencher -- Running everything for Base tests
 
 
 """
@@ -738,6 +738,57 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
+    def run_KNN_tests(self):
+        """Needs no additional paramenters.
+        
+        Gets the baseline classification without doing any alignment for each data set"""
+
+        #Create file name
+        filename = self.create_filename("Base_Line_Scores")
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
+        #Create an array to store the important data in 
+        scores = np.zeros((len(self.knn_range), 2)) #Now both of these are classification scores -- one for Split A and one for Split B
+
+        print("\n--------------------------------------   Base Line Tests " + self.base_directory[53:-1] + "   --------------------------------------\n")
+        #Repeat through each knn value
+        for i, knn in enumerate(self.knn_range):
+            print(f"KNN {knn}")
+
+            #Initilize model
+            model = KNeighborsClassifier(n_neighbors = knn)
+            
+            #Split data and train for split A
+            try:
+                X_train, X_test, y_train, y_test = train_test_split(self.split_A, self.labels, test_size=0.3, random_state=self.random_state)
+                model.fit(X_train, y_train)
+                scores[i, 0] = model.score(X_test, y_test)
+                print(f"    Classification Score A {scores[i, 0]}")
+            except:
+                scores[i, 0] = np.NaN
+                print(f"    Classification Score A Failed")
+
+            #Split data and train for split B
+            try:
+                X_train, X_test, y_train, y_test = train_test_split(self.split_B, self.labels, test_size=0.3, random_state=self.random_state)
+                model.fit(X_train, y_train)
+                scores[i, 1] = model.score(X_test, y_test)
+                print(f"    Classification Score B {scores[i, 1]}")
+            except:
+                scores[1, 1] = np.NaN
+                print(f"    Classification Score B Failed")
+
+        #Save the numpy array
+        np.save(filename, scores)
+
+        #Run successful
+        return True
+
+
     """Visualization"""
     def plot_embeddings(self, knn = "auto", anchor_percent = "auto", **kwargs):
         """Shows the embeddings of each graph in a plot"""
@@ -1163,7 +1214,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False,  **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1245,6 +1296,11 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
         Parallel(n_jobs=-3)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+
+    #Now run Knn tests
+    if run_KNN_Tests:
+        #Loop through each file (Using Parralel Processing) for SSMA
+        Parallel(n_jobs=-3)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
 
 
     return manifold_instances
