@@ -16,7 +16,7 @@ from vne import find_optimal_t
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None"):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", verbose = 0):
         """DataA is the first domain (or data set). DataB is the second domain (or data set). 
         
         Known Anchors should be in an array shape (n, 2), where n is the number of
@@ -30,6 +30,9 @@ class DIG: #Diffusion Integration with Graphs
         Link determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
         want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' mean we want to apply the page
         ranking algorithm across the entire block matrix."""
+
+        #For Need to know stuff 
+        self.verbose = verbose
 
         #Scale data
         self.dataA = self.normalize_0_to_1(dataA)
@@ -135,6 +138,71 @@ class DIG: #Diffusion Integration with Graphs
 
         return block
     
+    def _find_possible_anchors(self, anchor_limit = None, threshold = "auto", hold_out_anchors = []):
+        """A helper function that finds and returns a list of possible anchors after alignment.
+        
+        Parameters:
+        ::anchor_limit:: should be an integer. If set, it will cap out the max amount of anchors found.
+        ::threshold:: should be set to a float between 0 and 1. If auto, the algorithm will determine it.
+        The threshold determines how similar a point has to be to another to be considered an anchor
+        ::hold_out_anchors:: Only matters if Threshold is set to auto. These anchors are used as a test to validate the Threshold.
+        They should be in the same format as the Known Anchors.
+        
+        returns possible anchors plus known anchors in a single list"""
+
+        #Calculate the threshold
+        if threshold == "auto":
+
+            #Check that no Hold_out_anchors are actually in the known anchors
+            set1 = set(self.known_anchors) # Convert list1 to a set for fast lookups
+            hold_out_anchors[:] = [tup for tup in hold_out_anchors if tup not in set1] #Remove indicies that are already known anchors
+
+            #Check to make sure we have Hold out anchors
+            if len(hold_out_anchors) < 1:
+                print("ERROR: No calculation preformed. Please provide hold_out_anchors and ensure they aren't known anchors already.")
+                return self
+
+            #Adjust the Hold_out_anchors to map in the merged graphs
+            hold_out_anchors = np.vstack([hold_out_anchors.T[0], hold_out_anchors.T[1] + self.len_A]).T
+
+            #Determine the average distance of the hold out anchors
+            average_threshold = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
+            _95_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) * 2
+
+            threshold = average_threshold + _95_percent_interval
+
+        # Create a boolean mask where the distance is less than the threshold
+        mask = self.sim_diffusion_matrix[:self.len_A, self.len_A:] < threshold
+
+        # Use np.where to get the indices of the points that satisfy the condition
+        possible_anchors = np.where(mask)
+
+        #Apply the anchor Limit
+        if type(anchor_limit) == int:
+            # Extract the similarity values that are less than 0.1
+            dist_values = self.sim_diffusion_matrix[:self.len_A, self.len_A:][mask]
+
+            # Combine indices and values into a list of tuples
+            indexed_values = list(zip(possible_anchors[0], possible_anchors[1], dist_values))
+
+            # Sort the list of tuples by the similarity values (third element in the tuples)
+            indexed_values = sorted(indexed_values, key=lambda x: x[2])
+
+            # Print the indices and values of the first anchor Limit smallest similarities
+            if self.verbose > 0:
+                for i, (row, col, value) in enumerate(indexed_values[:15]):
+                    print(f"{i+1}: Index ({row}, {col}) - Similarity: {value}")
+            
+            # Select the first anchor_limit smallest values (or all if there are less than anchor_limit)
+            possible_anchors = np.array(indexed_values)[:anchor_limit, 0:2].astype(int)
+
+        #Add the anchors to the known anchors
+        possible_anchors = set(self.known_anchors + list(possible_anchors)) #Convert to set to remove duplicates
+
+        return list(possible_anchors)
+
+
+
     """THE PRIMARY FUNCTIONS"""
     def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
         """Creates a new graph from A and B using the known_anchors
@@ -253,6 +321,20 @@ class DIG: #Diffusion Integration with Graphs
 
         return completeData
     
+    def recreate_with_new_anchors(self, epochs = 3, **find_possible_anchors_kwargs):
+        """Finds potential anchors after alignment, and then recalculates the entire alignment with the new anchor points for each epoch. 
+        
+        Parameters:
+        :anchor_limit: should be an integer. If fixed, it will determine the max anchors the algorithm will find.
+        :epochs: the number of iterations the cycle will go through. 
+        """
+
+        #Reset the known anchors
+        self.known_anchors = self._find_possible_anchors(**find_possible_anchors_kwargs)
+
+
+        #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. 
+        pass
     """VISUALIZE AND TEST FUNCTIONS"""
     def plot_graphs(self):
         fig, axes = plt.subplots(2, 3, figsize = (13, 9))
