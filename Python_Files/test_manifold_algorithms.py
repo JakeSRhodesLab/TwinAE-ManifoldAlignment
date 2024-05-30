@@ -43,7 +43,7 @@ Tmux Zombies
 13. all on carter -- RUNNING ALL COMBINATIONS
 14. time on collings -- Running all timing tests
 15 MagBig on Tukey -- Running everything MAGAN -> with overwriting permission
-16. base on rencher -- Running everything for Base tests
+16. base on Rencher -> Running everything Base -> Across all seeds
 
 
 """
@@ -1236,7 +1236,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
-    test_random should be a positive integer greater than 1, and is the amount of random tests we want to do. TODO: Make it so each random split only occurs once
+    test_random should be a positive integer greater than 1, and is the amount of random tests we want to do. It can also be a list of seeds. TODO: Make it so each random split only occurs once
     
     Returns a dictionary of test_manifold_algorithms class instances."""
 
@@ -1267,8 +1267,15 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
         #Create Pseudo-Random numbers to test the randomness accorind to the test_random parameter
         random.seed(42) #This is to ensure we get the same random numbers each time
-        for i in range(0, test_random):
-            random_seed = random.randint(1, 10000)
+
+        if type(test_random) == list:
+            seeds = test_random
+        else:
+            seeds = []
+            for i in range(0, test_random):
+                seeds.append(random.randint(1, 10000))
+
+        for random_seed in seeds:
 
             #Create the class and then store it in our dictionary
             manifold_instance = test_manifold_algorithms(csv_file, random_state=random_seed, **filtered_kwargs)
