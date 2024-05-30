@@ -12,6 +12,7 @@ General Notes:
 Changes Log:
 1. Added New MAGAN Correspondonce method
 2. Added Time Logs
+3. Added Split_A and Split_B classification Baselines to compare our models too
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -952,6 +953,10 @@ def _upload_file(file):
                                 "Page_Rank", "Predicted_Feature_MAE",
                                 "Operation", "SPUDS_Algorithm", 
                                 "FOSCTTM", "Cross_Embedding_KNN"])
+    
+    #Create Base Line Data Frame
+    base_df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", "Percent_of_KNN", #Shared headers
+                                    "A_Classification_Score", "B_Classification_Score"])
 
     #Load in the numpy array
     try:
@@ -1095,6 +1100,18 @@ def _upload_file(file):
         #Create a new Data frame instance with all the asociated values
         df = df._append(data_dict, ignore_index=True)
 
+    elif data_dict["method"] == "Base_Line_Scores":
+        #Loop through each Knn
+        for k in range(0, 10):
+            knn = (k*knn_increment) + 2
+            data_dict["KNN"] = knn
+
+            #Now use are data array to grab the FOSCTTM and CE scores
+            data_dict["A_Classification_Score"] = data[k, 0]
+            data_dict["B_Classification_Score"] = data[k, 1]
+
+        #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
+        base_df = base_df._append(data_dict, ignore_index=True)
 
     #METHOD DTA
     elif data_dict["method"] == "DTA":
@@ -1138,7 +1155,8 @@ def _upload_file(file):
                 #Create a new Data frame instance with all the asociated values
                 df = df._append(data_dict, ignore_index=True)
 
-    return df
+
+    return (df, base_df)
 
 def _run_time_trials(csv_file = "iris.csv"):
     #Create file path
@@ -1318,9 +1336,18 @@ def upload_to_DataFrame():
     processed_files = Parallel(n_jobs=-5)(delayed(_upload_file)(file) for file in files)
 
     # Convert the list of dictionaries to a pandas DataFrame
-    df = pd.concat(processed_files, ignore_index=True)
+    dataframes = [file[0] for file in processed_files]
+    base_dataframes = [file[1] for file in processed_files]
+    df = pd.concat(dataframes, ignore_index=True)
+    base_df = pd.concat(base_dataframes, ignore_index = True)
 
-    return df
+    #Prep base_df for merging
+    base_df = base_df.drop(columns=["method", "Percent_of_KNN"])
+
+    #Merge the DataFrames together
+    merged_df = pd.merge(df, base_df, on=["csv_file", "seed", "split", "KNN"], how="left")
+
+    return merged_df.drop_duplicates()
 
 def change_old_files_to_new():
     """Goes through all files and changes them to be consistent with the new file formatting"""
