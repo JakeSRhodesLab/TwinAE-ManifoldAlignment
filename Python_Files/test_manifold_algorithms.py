@@ -14,6 +14,9 @@ Changes Log:
 2. Added Time Logs
 3. Added Split_A and Split_B classification Baselines to compare our models too
  - > This is super helpful when looking at the rankings. It tells us how much better each model does compared to the others
+4. Added predict anchors function to DIG -> (Super genius I think)
+5. Added User verification to the clear all files method. Also added file selection logic. Proceeded to delete all erronious MAGAN Files
+
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
