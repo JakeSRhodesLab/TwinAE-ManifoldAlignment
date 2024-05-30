@@ -13,6 +13,7 @@ Changes Log:
 1. Added New MAGAN Correspondonce method
 2. Added Time Logs
 3. Added Split_A and Split_B classification Baselines to compare our models too
+ - > This is super helpful when looking at the rankings. It tells us how much better each model does compared to the others
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
@@ -24,7 +25,7 @@ FUTURE IDEAS:
 TASKS:
 0. Time each method :) DONE
 1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> In Process
-2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings
+2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings DONE >>>> -> In Process
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
@@ -42,7 +43,7 @@ Tmux Zombies
 12. evens on Hilton -- All of the bigest data files 
 13. all on carter -- RUNNING ALL COMBINATIONS
 14. time on collings -- Running all timing tests
-15 MagBig on Tukey -- Running everything MAGAN -> with overwriting permission
+15 MagBig on Tukey -- Running everything MAGAN -> with overwriting permission <<<<<<<< IT died. Memory overload 
 16. base on Rencher -> Running everything Base -> Across all seeds
 
 
@@ -696,9 +697,11 @@ class test_manifold_algorithms():
         filename = self.create_filename("MAGAN")
 
         #If file aready exists, then we are done :)
+        """
         if os.path.exists(filename):
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
+        """
 
         #Store the results in an array
         MAGAN_scores = np.zeros((2))
@@ -920,7 +923,7 @@ def find_words_order(text, words):
     # Return only the words, sorted by their appearance
     return [word for _, word in positions]
 
-def clear_directory():
+def clear_directory(text_curater = "all"):
     """CAREFUL. THIS WIPES THE MANIFOLD DATA DIRECTORY CLEAN"""
 
     #Use all of our files
@@ -938,12 +941,29 @@ def clear_directory():
     for directory in directories:
         if os.path.isdir(directory): #Check to make sure directory exists
             files += [os.path.join(directory, file) for file in os.listdir(directory)]
-    
-    #Finally delete all files
-    for file in files:
-        os.remove(file)
 
-    return True
+    if text_curater != "all":
+        curated_files = []
+        curated_files += [file for file in files if text_curater in file]
+    else:
+        curated_files = files
+
+    #Add user confirmation
+    print(f"Preparing to delete {len(curated_files)} files")
+    print(f"First 10 file names to be deleted\n-------------------------------------------------\n{curated_files[:10]}")
+    proceed = input("Proceed? [y, n]")
+
+    if proceed == "y":
+        #Finally delete all files
+        for file in curated_files:
+            os.remove(file)
+
+        print("Files Deleted.")
+        return True
+    else: 
+        print("<><> Cancelling Process <><>")
+        return False
+
 
 def _upload_file(file):
 

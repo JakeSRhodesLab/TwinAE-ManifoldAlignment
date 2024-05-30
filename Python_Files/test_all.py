@@ -40,12 +40,12 @@ df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_Data
 
 for split_type in ["turn", "skewed", "even", "distort", "random"]:
 
-    tma.run_all_tests(csv_files = csv_files, test_random = list(df["seed"].unique()), #General function arguments
-                            split = split_type, verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
+    tma.run_all_tests(csv_files = csv_files, test_random = 10, #General function arguments
+                            split = split_type, verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3], #Init Key arguments
                             run_DIG = False, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
                             run_DTA = False,
                             run_NAMA = False,
                             run_SSMA = False,
-                            run_MAGAN= False,
-                            run_KNN_Tests=True,
+                            run_MAGAN= True,
+                            run_KNN_Tests=False,
                             run_SPUD = False, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
