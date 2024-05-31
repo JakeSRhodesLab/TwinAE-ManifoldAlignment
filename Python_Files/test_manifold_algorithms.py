@@ -43,11 +43,12 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-12. evens on Hilton -- All of the bigest data files 
-13. all on carter -- RUNNING ALL COMBINATIONS
-14. time on collings -- Running all timing tests
-15 MagBig on Tukey -- Running everything MAGAN -> with overwriting permission <<<<<<<< IT died. Memory overload 
-16. base on Rencher -> Running everything Base -> Across all seeds
+12. evens on Hilton -- All of the bigest data files (8 days in)
+13. all on carter -- RUNNING ALL COMBINATIONS --> (a week in)
+14. time on collings -- Running all timing tests (3 days in)
+15 MagBig on Tukey -- Running Big MAGAN  (1 day in)
+17. base on Rencher -> Running small big (1 day in)
+18. magHuge on Hilton -> Runngin the MAssive Magan files (1 day in)
 
 
 """
@@ -1343,7 +1344,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-3)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_KNN_Tests:
