@@ -34,6 +34,8 @@ class DIG: #Diffusion Integration with Graphs
 
         #For Need to know stuff 
         self.verbose = verbose
+        self.t = t
+        self.link = link
 
         #Scale data
         self.dataA = self.normalize_0_to_1(dataA)
@@ -56,7 +58,7 @@ class DIG: #Diffusion Integration with Graphs
         self.similarity_matrix = self.get_pure_matricies(self.graphAB)
 
         #Get Diffusion Matrix
-        self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, t, link = link)
+        self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
 
         #Try doing diffusion the empy block way
         """self.empty_block = self.get_zeros_and_ones_block()
@@ -139,7 +141,7 @@ class DIG: #Diffusion Integration with Graphs
 
         return block
     
-    def _find_possible_anchors(self, anchor_limit = None, hold_out_anchors = []): 
+    def _find_possible_anchors(self, anchor_limit = 2, hold_out_anchors = []): 
         """A helper function that finds and returns a list of possible anchors after alignment.
             
         Parameters:
@@ -360,20 +362,36 @@ class DIG: #Diffusion Integration with Graphs
 
         return completeData
     
-    def recreate_with_new_anchors(self, epochs = 3, **find_possible_anchors_kwargs):
+    def optimize_by_pred_anchors(self, epochs = 3, **find_possible_anchors_kwargs):
         """Finds potential anchors after alignment, and then recalculates the entire alignment with the new anchor points for each epoch. 
         
         Parameters:
         :anchor_limit: should be an integer. If fixed, it will determine the max anchors the algorithm will find.
         :epochs: the number of iterations the cycle will go through. 
         """
+        
+        #Rebuild Class for each epoch
+        for epoch in range(0, epochs):
 
-        #Reset the known anchors
-        self.known_anchors = self._find_possible_anchors(**find_possible_anchors_kwargs)
+            #Find predicted anchors
+            predicted_anchors = self._find_possible_anchors(**find_possible_anchors_kwargs)
 
+            #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. 
+            if epoch == epochs - 1 and "hold_out_anchors" in find_possible_anchors_kwargs.keys():
+                predicted_anchors = np.concatenate((find_possible_anchors_kwargs["hold_out_anchors"], predicted_anchors), axis = 0)
 
-        #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. 
-        pass
+            #Add in the known anchors and reset the known_anchors
+            self.known_anchors = np.concatenate((self.known_anchors, predicted_anchors), axis = 0)
+
+            #Reconnect the graphs based on the new anchors
+            self.graphAB = self.merge_graphs()
+            
+            #Get Similarity matrix and distance matricies
+            self.similarity_matrix = self.get_pure_matricies(self.graphAB)
+
+            #Get Diffusion Matrix
+            self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
+
     """VISUALIZE AND TEST FUNCTIONS"""
     def plot_graphs(self):
         fig, axes = plt.subplots(2, 3, figsize = (13, 9))

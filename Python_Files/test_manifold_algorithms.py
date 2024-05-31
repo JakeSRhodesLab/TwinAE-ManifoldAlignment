@@ -46,8 +46,6 @@ Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (8 days in)
 13. all on carter -- RUNNING ALL COMBINATIONS --> (a week in)
 14. time on collings -- Running all timing tests (3 days in)
-15 MagBig on Tukey -- Running Big MAGAN  (1 day in)
-17. base on Rencher -> Running small big (1 day in)
 18. magHuge on Hilton -> Runngin the MAssive Magan files (1 day in)
 
 
