@@ -1344,7 +1344,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-10)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=3)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_KNN_Tests:

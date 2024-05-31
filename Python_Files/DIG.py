@@ -14,6 +14,7 @@ import seaborn as sns
 from phate import PHATE
 from vne import find_optimal_t
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from scipy.optimize import linear_sum_assignment
 
 class DIG: #Diffusion Integration with Graphs
     def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", verbose = 0):
@@ -138,20 +139,22 @@ class DIG: #Diffusion Integration with Graphs
 
         return block
     
-    def _find_possible_anchors(self, anchor_limit = None, threshold = "auto", hold_out_anchors = []): #TODO: Make it so each point can only have one correspondence
+    def _find_possible_anchors(self, anchor_limit = None, hold_out_anchors = []): 
         """A helper function that finds and returns a list of possible anchors after alignment.
-        
+            
         Parameters:
-        :anchor_limit: should be an integer. If set, it will cap out the max amount of anchors found.
-        :threshold: should be a float. If auto, the algorithm will determine it.
-        The threshold determines how similar a point has to be to another to be considered an anchor
-        :hold_out_anchors: Only matters if Threshold is set to auto. These anchors are used as a test to validate the Threshold.
-        They should be in the same format as the Known Anchors.
-        
+            :anchor_limit: should be an integer. If set, it will cap out the max amount of anchors found.
+            :hold_out_anchors: These anchors are used as a test to predict what distance the anchors are 
+                expected to have from one another. If none are give, it is assumed that anchors will be 
+                have values closest to zero. 
+            
         returns possible anchors plus known anchors in a single list"""
 
-        #Calculate the threshold
-        if threshold == "auto":
+        #Set our array. This lets us modify it if we need to
+        array = self.sim_diffusion_matrix[:self.len_A, self.len_A:]
+        
+        #Calculate the predicted anchor value
+        if len(hold_out_anchors) > 0:
 
             #Change Type so that we can convert to set 
             known_anchors_as_tuples = (tuple(arr) for arr in self.known_anchors)
@@ -169,7 +172,7 @@ class DIG: #Diffusion Integration with Graphs
                 return []
             elif len(hold_out_anchors) < 2:
                 #Since there is only one element, we set the threshold to be equal to its max plus a tiny bit
-                threshold = self.sim_diffusion_matrix[hold_out_anchors[0][0], hold_out_anchors[0][1] + self.len_A]
+                pred_anc_value = self.sim_diffusion_matrix[hold_out_anchors[0][0], hold_out_anchors[0][1] + self.len_A]
 
             else:
                 #Adjust the Hold_out_anchors to map in the merged graphs
@@ -177,61 +180,67 @@ class DIG: #Diffusion Integration with Graphs
                 hold_out_anchors = np.vstack([hold_out_anchors.T[0], hold_out_anchors.T[1] + self.len_A]).T
 
                 #Determine the average distance of the hold out anchors
-                average_threshold = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
-                _65_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]])
+                pred_anc_value = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
+                _65_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #If values are outside this range, maybe we through them out?
 
-                threshold = average_threshold + _65_percent_interval
+            #Adjust the array 
+            array = abs(array - pred_anc_value)
 
-        # Create a boolean mask where the distance is less than the threshold
-        mask = self.sim_diffusion_matrix[:self.len_A, self.len_A:] < threshold
+        """ This section actually finds and then curates potential anchors """
+        
+        #Set the current known anchors to be np.NaN so they aren't calculated, but keep their index
+        array[self.known_anchors[:, 0], :] = np.NaN
+        array[:, self.known_anchors[:, 1]] = np.NaN
 
-        # Use np.where to get the indices of the points that satisfy the condition
-        possible_anchors = np.where(mask)
+        #Flatten array
+        flat_array = array.flatten()
 
-        #Transpose it
-        possible_anchors = np.array(possible_anchors).T
+        #Get the sorted indices
+        sorted_indices = np.argsort(flat_array)
+        
+        # Convert the sorted indices to coordinates
+        coordinates = [np.unravel_index(index, array.shape) for index in sorted_indices]
+        
+        # Create a cost matrix using the top (num_pairs * num_pairs) smallest elements
+        selected_coords = coordinates[:anchor_limit * anchor_limit]
+        num_elements = len(selected_coords)
+        
+        # Construct the reduced cost matrix
+        cost_matrix = np.full((num_elements, num_elements), np.inf)
+        
+        for i, (row_i, col_i) in enumerate(selected_coords):
+            for j, (row_j, col_j) in enumerate(selected_coords):
+                if row_i != row_j and col_i != col_j:
+                    cost_matrix[i, j] = array[row_j, col_j]
+        
+        # Use the Hungarian algorithm to find the optimal assignment
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        
+        # Create a list to store results
+        min_pairs = []
 
-        #For each domain, remove the known anchors
-        possible_anchors = np.array([pair for pair in possible_anchors if pair[0] not in self.known_anchors[:, 0] and pair[1] not in self.known_anchors[:, 1]])
-    
-        #Since the data is injective, remove all duplicate values, choosing the smallest
-        unique_possible_anchors = np.unique(possible_anchors[:, 0])
-        possible_anchors = np.argmin(self.sim_diffusion_matrix[:self.len_A, self.len_A:][unique_possible_anchors], axis = 0)
-        possbile_anchors = self.sim_diffusion_matrix[:self.len_A, self.len_A:][unique_possible_anchors, possible_anchors]
+        #Keep track of used rows, and used_cols
+        used_rows = set()
+        used_cols = set()
+        
+        #Repeat through the values
+        for i in range(len(row_ind)):
+            row, col = selected_coords[row_ind[i]]
 
-        #Transpose it
-        possible_anchors = np.array(possible_anchors).T
+            #Check to make sure we haven't used the row or column yet (this is becaue is anchor is assumed to have a 1 to 1 correspondence)
+            if row not in used_rows and col not in used_cols:
 
-        #Check to see if any anchors have been found
-        if len(possible_anchors) < 1:
-            print("ERROR: No Possible anchors found. Try increasing the threshold")
-            return []
+                #Add the data
+                min_pairs.append((row, col))
+                used_rows.add(row)
+                used_cols.add(col)
 
-        #Apply the anchor Limit
-        if type(anchor_limit) == int:
-            # Extract the similarity values that are less than 0.1
-            dist_values = self.sim_diffusion_matrix[:self.len_A, self.len_A:][mask]
+                #Break once we hit our limit
+                if len(min_pairs) >= anchor_limit:
+                    break
 
-            # Combine indices and values into a list of tuples
-            indexed_values = list(zip(possible_anchors[:, 0], possible_anchors[:, 1], dist_values))
-
-            # Sort the list of tuples by the similarity values (third element in the tuples)
-            indexed_values = sorted(indexed_values, key=lambda x: x[2])
-
-            # Print the indices and values of the first anchor Limit smallest similarities
-            if self.verbose > 0:
-                for i, (row, col, value) in enumerate(indexed_values[:anchor_limit]):
-                    print(f"{i+1}: Index ({row}, {col}) - Similarity: {value}")
-            
-            # Select the first anchor_limit smallest values (or all if there are less than anchor_limit)
-            possible_anchors = np.array(indexed_values)[:anchor_limit, 0:2].astype(int)
-
-        #Add the anchors to the known anchors
-        possible_anchors = np.concatenate((self.known_anchors, possible_anchors), axis = 0)
-
-        return possible_anchors
-
-
+        #Return the possible anchors
+        return min_pairs
 
     """THE PRIMARY FUNCTIONS"""
     def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
