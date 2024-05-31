@@ -138,14 +138,14 @@ class DIG: #Diffusion Integration with Graphs
 
         return block
     
-    def _find_possible_anchors(self, anchor_limit = None, threshold = "auto", hold_out_anchors = []):
+    def _find_possible_anchors(self, anchor_limit = None, threshold = "auto", hold_out_anchors = []): #TODO: Make it so each point can only have one correspondence
         """A helper function that finds and returns a list of possible anchors after alignment.
         
         Parameters:
-        ::anchor_limit:: should be an integer. If set, it will cap out the max amount of anchors found.
-        ::threshold:: should be set to a float between 0 and 1. If auto, the algorithm will determine it.
+        :anchor_limit: should be an integer. If set, it will cap out the max amount of anchors found.
+        :threshold: should be a float. If auto, the algorithm will determine it.
         The threshold determines how similar a point has to be to another to be considered an anchor
-        ::hold_out_anchors:: Only matters if Threshold is set to auto. These anchors are used as a test to validate the Threshold.
+        :hold_out_anchors: Only matters if Threshold is set to auto. These anchors are used as a test to validate the Threshold.
         They should be in the same format as the Known Anchors.
         
         returns possible anchors plus known anchors in a single list"""
@@ -153,23 +153,34 @@ class DIG: #Diffusion Integration with Graphs
         #Calculate the threshold
         if threshold == "auto":
 
-            #Check that no Hold_out_anchors are actually in the known anchors
-            set1 = set(self.known_anchors) # Convert list1 to a set for fast lookups
-            hold_out_anchors[:] = [tup for tup in hold_out_anchors if tup not in set1] #Remove indicies that are already known anchors
+            #Change Type so that we can convert to set 
+            known_anchors_as_tuples = (tuple(arr) for arr in self.known_anchors)
+            hold_out_anchors = [tuple(arr) for arr in hold_out_anchors]
+
+            # Convert the list of tuples to a set for fast look ups
+            set1 = set(known_anchors_as_tuples)
+
+            #Remove indicies that are already known anchors
+            hold_out_anchors[:] = [tup for tup in hold_out_anchors if tup not in set1]
 
             #Check to make sure we have Hold out anchors
             if len(hold_out_anchors) < 1:
                 print("ERROR: No calculation preformed. Please provide hold_out_anchors and ensure they aren't known anchors already.")
-                return self
+                return []
+            elif len(hold_out_anchors) < 2:
+                #Since there is only one element, we set the threshold to be equal to its max plus a tiny bit
+                threshold = self.sim_diffusion_matrix[hold_out_anchors[0][0], hold_out_anchors[0][1] + self.len_A]
 
-            #Adjust the Hold_out_anchors to map in the merged graphs
-            hold_out_anchors = np.vstack([hold_out_anchors.T[0], hold_out_anchors.T[1] + self.len_A]).T
+            else:
+                #Adjust the Hold_out_anchors to map in the merged graphs
+                hold_out_anchors = np.array(hold_out_anchors)
+                hold_out_anchors = np.vstack([hold_out_anchors.T[0], hold_out_anchors.T[1] + self.len_A]).T
 
-            #Determine the average distance of the hold out anchors
-            average_threshold = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
-            _95_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) * 2
+                #Determine the average distance of the hold out anchors
+                average_threshold = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
+                _65_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]])
 
-            threshold = average_threshold + _95_percent_interval
+                threshold = average_threshold + _65_percent_interval
 
         # Create a boolean mask where the distance is less than the threshold
         mask = self.sim_diffusion_matrix[:self.len_A, self.len_A:] < threshold
@@ -177,29 +188,48 @@ class DIG: #Diffusion Integration with Graphs
         # Use np.where to get the indices of the points that satisfy the condition
         possible_anchors = np.where(mask)
 
+        #Transpose it
+        possible_anchors = np.array(possible_anchors).T
+
+        #For each domain, remove the known anchors
+        possible_anchors = np.array([pair for pair in possible_anchors if pair[0] not in self.known_anchors[:, 0] and pair[1] not in self.known_anchors[:, 1]])
+    
+        #Since the data is injective, remove all duplicate values, choosing the smallest
+        unique_possible_anchors = np.unique(possible_anchors[:, 0])
+        possible_anchors = np.argmin(self.sim_diffusion_matrix[:self.len_A, self.len_A:][unique_possible_anchors], axis = 0)
+        possbile_anchors = self.sim_diffusion_matrix[:self.len_A, self.len_A:][unique_possible_anchors, possible_anchors]
+
+        #Transpose it
+        possible_anchors = np.array(possible_anchors).T
+
+        #Check to see if any anchors have been found
+        if len(possible_anchors) < 1:
+            print("ERROR: No Possible anchors found. Try increasing the threshold")
+            return []
+
         #Apply the anchor Limit
         if type(anchor_limit) == int:
             # Extract the similarity values that are less than 0.1
             dist_values = self.sim_diffusion_matrix[:self.len_A, self.len_A:][mask]
 
             # Combine indices and values into a list of tuples
-            indexed_values = list(zip(possible_anchors[0], possible_anchors[1], dist_values))
+            indexed_values = list(zip(possible_anchors[:, 0], possible_anchors[:, 1], dist_values))
 
             # Sort the list of tuples by the similarity values (third element in the tuples)
             indexed_values = sorted(indexed_values, key=lambda x: x[2])
 
             # Print the indices and values of the first anchor Limit smallest similarities
             if self.verbose > 0:
-                for i, (row, col, value) in enumerate(indexed_values[:15]):
+                for i, (row, col, value) in enumerate(indexed_values[:anchor_limit]):
                     print(f"{i+1}: Index ({row}, {col}) - Similarity: {value}")
             
             # Select the first anchor_limit smallest values (or all if there are less than anchor_limit)
             possible_anchors = np.array(indexed_values)[:anchor_limit, 0:2].astype(int)
 
         #Add the anchors to the known anchors
-        possible_anchors = set(self.known_anchors + list(possible_anchors)) #Convert to set to remove duplicates
+        possible_anchors = np.concatenate((self.known_anchors, possible_anchors), axis = 0)
 
-        return list(possible_anchors)
+        return possible_anchors
 
 
 
@@ -341,9 +371,11 @@ class DIG: #Diffusion Integration with Graphs
         axes[0, 0].imshow(self.kernalsA)
         axes[0,0].set_title("Graph A Similarities")
 
+        """ This is if we wanted the Empty Block
         #Graph B
         axes[1, 0].imshow(self.empty_block)
         axes[1,0].set_title("Empty Block")
+        """
 
         #Similarity matrix
         axes[0,1].imshow(self.similarity_matrix)
@@ -357,9 +389,11 @@ class DIG: #Diffusion Integration with Graphs
         axes[0,2].imshow(self.sim_diffusion_matrix)
         axes[0,2].set_title("Similarities Diffusion Matrix")
 
+        """This is if we wanted the Empty Block
         #Distance diffusion matrix
         axes[1,1].imshow(self.empty_diffused)
         axes[1,1].set_title("Empty diffused")
+        """
 
         plt.show()
 
