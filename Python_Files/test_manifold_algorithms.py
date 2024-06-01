@@ -30,6 +30,8 @@ TASKS:
 1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> In Process
 2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings DONE >>>> -> In Process
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
+4. Make methodology for Laplacian Graphs
+5. Add anchor percent tests to MAGAN !
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -56,6 +58,7 @@ from DIG import DIG
 from SPUD import SPUD
 from ssma import ssma
 from nama import NAMA
+from jlma import JLMA
 from DTA_andres import DTA
 import numpy as np
 import pandas as pd
@@ -692,18 +695,16 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-    def run_MAGAN_tests(self):
+    def run_MAGAN_tests(self): #TODO: Fix test so we can test the anchor percents .... instead of using 100 percent known correspondence
         """Needs no additional parameters"""
 
         #Create file name
         filename = self.create_filename("MAGAN")
 
         #If file aready exists, then we are done :)
-        """
         if os.path.exists(filename):
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
-        """
 
         #Store the results in an array
         MAGAN_scores = np.zeros((2))
@@ -740,6 +741,70 @@ class test_manifold_algorithms():
 
         #Save the numpy array
         np.save(filename, MAGAN_scores)
+
+        #Run successful
+        return True
+
+    def run_JLMA_tests(self):
+        """Needs no additional parameters"""
+
+        #Create file name
+        filename = self.create_filename("JLMA")
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
+        #Store the results in an array
+        scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+
+        print("\n--------------------------------------   JLMA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
+
+        #Repeat through each knn value
+        for i, knn in enumerate(self.knn_range):
+            print(f"KNN {knn}")
+
+            #Initialize the class with the correct KNN, and d is the same way we calculate dimensions for MDS
+            JLMA_class = JLMA(k = knn, d = max(min(len(self.split_B[1]), len(self.split_A[1])), 2))
+
+            #Loop through each anchor. 
+            for j, anchor_percent in enumerate(self.percent_of_anchors):
+                print(f"    Percent of Anchors {anchor_percent}")
+
+                #In case the class initialization fails
+                try:
+                    #Fit it
+                    JLMA_class.fit(self.split_A, self.split_B, self.anchors[:int(len(self.anchors)*anchor_percent)])
+
+                except Exception as e:
+                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECUASE {e}   <><><><><><>")
+                    scores[i, j, 0] = np.NaN
+                    scores[i, j, 1] = np.NaN
+                    continue
+
+                """
+                #FOSCTTM scores #TODO FIX THESE
+                try:
+                    FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(DTA_class.W12)) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    print(f"        FOSCTTM {FOSCTTM}")
+                except Exception as e:
+                    print(f"        FOSCTTM exception occured: {e}")
+                    FOSCTTM = np.NaN
+                scores[i, j, 0] = FOSCTTM
+                """
+
+                #Cross Embedding Scores
+                try:
+                    CE = self.cross_embedding_knn(JLMA_class.Y, (self.labels, self.labels), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                    print(f"        Cross Embedding: {CE}")
+                except Exception as e:
+                    print(f"        Cross Embedding exception occured: {e}")
+                    CE = np.NaN
+                scores[i, j, 1] = CE
+
+        #Save the numpy array
+        #np.save(filename, scores)
 
         #Run successful
         return True
