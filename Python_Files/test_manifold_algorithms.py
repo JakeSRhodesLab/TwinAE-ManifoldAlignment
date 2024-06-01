@@ -43,10 +43,10 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-12. evens on Hilton -- All of the bigest data files (8 days in)
-13. all on carter -- RUNNING ALL COMBINATIONS --> (a week in)
-14. time on collings -- Running all timing tests (3 days in)
-18. magHuge on Hilton -> Runngin the MAssive Magan files (1 day in)
+12. evens on Hilton -- All of the bigest data files (9 days in)
+13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in)
+14. time on collings -- Running all timing tests (4 days in)
+18. magHuge on Hilton -> Runngin the MAssive Magan files (2 day in)
 
 
 """
