@@ -2,8 +2,7 @@
 
 """
 Questions:
-1. What do I do with two FOSCTTMS? Currently I chose to average them... (These are always returning extremely low values -- it may not be right)
-- > Work with the prof from the conference?
+1. THE JLMA Algoritm doesn't work if the data is uneven
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
@@ -16,6 +15,8 @@ Changes Log:
  - > This is super helpful when looking at the rankings. It tells us how much better each model does compared to the others
 4. Added predict anchors function to DIG -> (Super genius I think)
 5. Added User verification to the clear all files method. Also added file selection logic. Proceeded to delete all erronious MAGAN Files
+6. Added JLMA FOSCTTM. 
+7. ADDED JLMA run tests functions
 
 
 FUTURE IDEAS:
@@ -783,20 +784,23 @@ class test_manifold_algorithms():
                     scores[i, j, 1] = np.NaN
                     continue
 
-                """
-                #FOSCTTM scores #TODO FIX THESE
+                #FOSCTTM scores
                 try:
-                    FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(DTA_class.W12)) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    #Prep the block
+                    block = JLMA_class.SquareDist(JLMA_class.Y)
+                    len_A = len(self.split_A)
+
+                    #Calculate FOSCTTM by averaging the two domains
+                    FOSCTTM = np.mean([self.FOSCTTM(block[len_A:, :len_A]), self.FOSCTTM(block[:len_A, len_A:])])
                     print(f"        FOSCTTM {FOSCTTM}")
                 except Exception as e:
                     print(f"        FOSCTTM exception occured: {e}")
                     FOSCTTM = np.NaN
                 scores[i, j, 0] = FOSCTTM
-                """
 
                 #Cross Embedding Scores
                 try:
-                    CE = self.cross_embedding_knn(JLMA_class.Y, (self.labels, self.labels), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                    CE = self.cross_embedding_knn(JLMA_class.Y, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                     print(f"        Cross Embedding: {CE}")
                 except Exception as e:
                     print(f"        Cross Embedding exception occured: {e}")
@@ -804,7 +808,7 @@ class test_manifold_algorithms():
                 scores[i, j, 1] = CE
 
         #Save the numpy array
-        #np.save(filename, scores)
+        np.save(filename, scores)
 
         #Run successful
         return True

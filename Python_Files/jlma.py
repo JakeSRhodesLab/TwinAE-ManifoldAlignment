@@ -1,5 +1,8 @@
 import numpy as np
 import graphtools as gt  # Assuming 'graphtools' is a valid package
+from scipy.spatial.distance import pdist, squareform
+from sklearn.decomposition import PCA
+
 
 class JLMA:
     def __init__(self, k=5, decay=40, mu=1, d=2, normalized_laplacian=True):
@@ -55,6 +58,20 @@ class JLMA:
         n1, m1 = X1.shape
         n2, m2 = X2.shape
 
+        #____________________       CODE BELOW ADDED BY ADAM     _______________________
+        """Because many of our tests involve splits with varying feature amounts, it becomes
+        necessary for our algorithm to handle this. This algorithm seems natively bad at handling
+        this, and so I decided just to reshape the data though PCA to fix the issue at the begginning"""
+
+        #Check to see if the shape of the domains match
+        if m1 != m2:
+
+            pca = PCA(n_components=np.min([m1, m2]))
+            X1 = pca.fit_transform(X1)
+            X2 = pca.fit_transform(X2)
+
+         #____________________       CODE ABOVE ADDED BY ADAM     _______________________
+
         M = np.zeros((n1 + n2, n1 + n2))
         M[:n1, :n1] = np.eye(n1)
         M[n1:, n1:] = np.eye(n2)
@@ -83,3 +100,28 @@ class JLMA:
         self.Y1 = Y1
         self.Y2 = Y2
         self.eigvecs = eigvecs
+
+    #Adam added this functions -> it helps create the FOSCTTM Metric
+    def SquareDist(self, domain_A):
+        #Just using a normal distance matrix without Igraph
+        x_dists = squareform(pdist(domain_A))
+
+        #normalize it
+        x_dists = x_dists / np.max(x_dists, axis = None)
+
+        return x_dists
+
+
+
+
+'''For Debugging - Delete Later
+
+from utils import make_swiss_s
+x_swiss, x_s, categories_swiss, categories_s = make_swiss_s(n_samples = 1000)
+x_swiss = x_swiss[:, :2]
+
+anchor_inds = np.random.choice(range(len(x_swiss)), 100, replace=False)
+anchors = [(i, i) for i in anchor_inds]
+
+jlma = JLMA(d = 3, k = 30)
+jlma.fit(x_swiss, x_s, anchors)'''
