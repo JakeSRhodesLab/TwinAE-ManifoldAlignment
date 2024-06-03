@@ -66,7 +66,7 @@ class JLMA:
         #Check to see if the shape of the domains match
         if m1 != m2:
 
-            pca = PCA(n_components=np.min([m1, m2]))
+            pca = PCA(n_components=min(m1, m2))
             X1 = pca.fit_transform(X1)
             X2 = pca.fit_transform(X2)
 

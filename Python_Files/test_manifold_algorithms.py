@@ -768,7 +768,7 @@ class test_manifold_algorithms():
             print(f"KNN {knn}")
 
             #Initialize the class with the correct KNN, and d is the same way we calculate dimensions for MDS
-            JLMA_class = JLMA(k = knn, d = max(min(len(self.split_B[1]), len(self.split_A[1])), 2))
+            JLMA_class = JLMA(k = knn, d = min(len(self.split_B[1]), len(self.split_A[1])))
 
             #Loop through each anchor. 
             for j, anchor_percent in enumerate(self.percent_of_anchors):
@@ -959,8 +959,9 @@ class test_manifold_algorithms():
 
         #Prepare Baseline Data
         from sklearn.decomposition import PCA
-        pca = PCA(n_components=2)
+        pca = PCA(n_components=min(len(self.split_A[1]), 2))
         A_emb = pca.fit_transform(self.split_A)
+        pca = PCA(n_components=min(len(self.split_B[1]), 2))
         B_emb = pca.fit_transform(self.split_B)
 
         #Create keywords for DIG, SPUD, NAMA
@@ -976,8 +977,17 @@ class test_manifold_algorithms():
         sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
         sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[1,2], **keywords)
         sns.scatterplot(x = JLMA_emb[:, 0], y = JLMA_emb[:, 1], ax = axes[2,0], **keywords)
-        sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
-        sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
+
+        #Make sure we have enough dimensions 
+        if min(len(self.split_A[1]), 2) < 2:
+            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 0], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
+        else:
+            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
+
+        if min(len(self.split_B[1]), 2) < 2:
+            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 0], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
+        else:
+            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
 
 
 
