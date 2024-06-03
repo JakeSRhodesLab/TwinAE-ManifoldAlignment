@@ -1244,7 +1244,27 @@ def _upload_file(file):
         base_df = base_df._append(data_dict, ignore_index=True)
 
     #METHOD DTA and JLMA
-    elif data_dict["method"] == "DTA" or data_dict["method"] == "JLMA":
+    elif data_dict["method"] == "DTA":
+        #Loop through each Knn
+        for i in range(0, 10):
+            knn = (i*knn_increment) + 2
+            data_dict["KNN"] = knn
+
+            #These percents are rough, and not exact. This is so we can have similar estimates to compare
+            data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
+
+            #Loop through each Anchor percentage
+            for j in range(len(AP_values)):
+                data_dict["Percent_of_Anchors"] = AP_values[j]
+
+                #Now use are data array to grab the FOSCTTM and CE scores
+                data_dict["FOSCTTM"] = data[i, j, 0]
+                data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
+
+                #Create a new Data frame instance with all the asociated values
+                df = df._append(data_dict, ignore_index=True)
+                
+    elif data_dict["method"] == "JLMA":
         #Loop through each Knn
         for i in range(0, 10):
             knn = (i*knn_increment) + 2
