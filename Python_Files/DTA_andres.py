@@ -409,7 +409,7 @@ class DTA():
         # self.data_c = data_c
         # self.ind_cost = (self.Distances*self.T).sum(axis = 1)
         self.cost = np.sum(self.Distances12[:self.N1, :self.N2] * self.T[:self.N1, :self.N2])/self.m
-        return self.T
+        return self.W #USED TO BE self.T
     
     
  

@@ -278,4 +278,4 @@ class ssma():
 
         T = np.zeros((self.N1, self.N2))
         T[range(self.N1), a2] = 1
-        return T
+        return self.W #USED TO BE T

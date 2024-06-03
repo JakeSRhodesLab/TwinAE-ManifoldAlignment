@@ -168,6 +168,8 @@ class NAMA():
 
         self.get_block(self.cross_domain_dists)
 
+        return self.block
+
         
 
 

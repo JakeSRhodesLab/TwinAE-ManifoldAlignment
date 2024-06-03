@@ -101,6 +101,8 @@ class JLMA:
         self.Y2 = Y2
         self.eigvecs = eigvecs
 
+        return Y #ADAM added this line
+
     #Adam added this functions -> it helps create the FOSCTTM Metric
     def SquareDist(self, domain_A):
         #Just using a normal distance matrix without Igraph
