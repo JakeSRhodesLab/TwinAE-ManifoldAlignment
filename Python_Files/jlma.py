@@ -6,7 +6,7 @@ class JLMA:
         self.k = k
         self.decay = decay
         self.mu = mu
-        self.d = d
+        self.d = d #I'm Assuming this is dimensions
         self.normalized_laplacian = normalized_laplacian
 
     def construct_affinities(self, X):
