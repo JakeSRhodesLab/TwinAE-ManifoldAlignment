@@ -47,9 +47,10 @@ https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (9 days in)
-13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in)
+13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
 14. time on collings -- Running all timing tests (4 days in)
 18. magHuge on Hilton -> Runngin the MAssive Magan files (2 day in)
+19. JLMA on carter --
 
 
 """
@@ -863,7 +864,6 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-
     """Visualization"""
     def plot_embeddings(self, knn = "auto", anchor_percent = "auto", **kwargs):
         """Shows the embeddings of each graph in a plot"""
@@ -881,64 +881,87 @@ class test_manifold_algorithms():
             print(f"Percent of anchors used: {anchor_percent}")
             print(f"The amount of Nearest Neighbors: {knn}")
 
-        #Create Spuds embedding
-        filtered_kwargs = {}
+        #Filter kwargs for SPUD
+        SPUD_kwargs = {"dataA": self.split_A, "dataB" : self.split_B, "known_anchors": self.anchors[:int(len(self.anchors) * anchor_percent)], "knn": knn}
         if "operation" in kwargs:
-            filtered_kwargs["operation"] = kwargs["operation"]
+            SPUD_kwargs["operation"] = kwargs["operation"]
         if "kind" in kwargs:
-            filtered_kwargs["kind"] = kwargs["kind"]
+            SPUD_kwargs["kind"] = kwargs["kind"]
 
-        spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, **filtered_kwargs)
-        SPUD_emb = self.mds.fit_transform(spud_class.block)
-
-        #Create DIG embedding
+        #DIG Key Words
+        DIG_kwargs = {"dataA": self.split_A, "dataB" : self.split_B, "known_anchors": self.anchors[:int(len(self.anchors) * anchor_percent)], "knn": knn, "t": -1}
         if "link" in kwargs:
-            link =  kwargs["link"]
+            DIG_kwargs["link"] =  kwargs["link"]
         else:
-            link = "None"
-        
-        DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
-        DIG_emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+            DIG_kwargs["link"] = "None"
 
-        #Create NAMA embedding
+        #Prep Nama
         nama = NAMA(ot_reg = 0.001)
-        nama.fit(self.anchors[:int(len(self.anchors)*anchor_percent)], self.split_A, self.split_B)
-        NAMA_emb = self.mds.fit_transform(nama.block)
+
+        #Prep JLMA
+        JLMA_class = JLMA(k = knn, d = max(min(len(self.split_B[1]), len(self.split_A[1])), 2))
+
 
         #Prep Shared Data points
         sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
         sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
         labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
         labels_extended = np.concatenate((np.concatenate((self.labels, labelsh1)), np.concatenate((self.labels, labelsh1)))) #This is the extended labels (meaning the labels, and then the shared labels) multiplied by two
+        DTA_SSMA_kwargs = {"domain1": self.split_A, "domain2": self.split_B, "sharedD1" : sharedD1, "sharedD2" : sharedD2}
 
-        #Create DTA embedding
+        #Prep DTA
         DTA_class = DTA(knn = knn, entR=0.001, verbose = 0)
-        DTA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
-        DTA_emb = self.mds.fit_transform(1 - self.normalize_0_to_1(DTA_class.W))
 
-        #Create SSMA Embedding | uses the same labels as DTA
+        #Prep SSMA
         SSMA_class = ssma(knn = knn, verbose = 0, r = 2) #R can also be = to this: (self.split_A.shape[1] + self.split_B.shape[1])
-        SSMA_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
-        SSMA_emb = self.mds.fit_transform(1 - SSMA_class.W)
 
-        #Create MAGAN Embedding
-        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B, self.anchors)
+        #Create a task list to parrelel function all of the embeddings
+        tasks = [
+            (SPUD, SPUD_kwargs),
+            (DIG, DIG_kwargs),
+            (MAGAN.run_MAGAN, {"xb1": self.split_A, "xb2": self.split_B, "anchors": self.anchors[:int(len(self.anchors)*anchor_percent)]}),
+            (NAMA.fit, {"self": nama, "known_anchors": self.anchors[:int(len(self.anchors)*anchor_percent)], "x": self.split_A, "y": self.split_B}),
+            (DTA_class.fit, DTA_SSMA_kwargs),
+            (SSMA_class.fit, DTA_SSMA_kwargs),
+            (JLMA_class.fit, {"X1":self.split_A, "X2": self.split_B, "correspondences": self.anchors[:int(len(self.anchors)*anchor_percent)]})
+        ]
+
+        # Use Parallel to run tasks concurrently
+        classes = Parallel(n_jobs=-3)(delayed(func)(**args) for func, args in tasks)
+
+        #Post-prep MAGAN
+        domain_a, domain_b, domain_ab, domain_ba = classes[2]
         domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
         domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
         magan_block = np.block([[domain_a, domain_ba],
                                 [domain_ba, domain_b]])
-        MAGAN_emb = self.mds.fit_transform(magan_block)
+
+        #Post prep JMLA
+        JLMA_block = JLMA_class.SquareDist(classes[6])
+
+        #parralelise to create the embeddings
+        arg_list = [classes[0].block, classes[1].sim_diffusion_matrix, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block]
+        SPUD_emb, DIG_emb, MAGAN_emb, NAMA_emb, DTA_emb, SSMA_emb, JLMA_emb = Parallel(n_jobs = -3)(delayed(self.mds.fit_transform)(arg) for arg in arg_list)
 
 
         """Now Plot the Embeddings"""
         #Create the figure and set titles
-        fig, axes = plt.subplots(2, 3, figsize = (16, 10))
+        fig, axes = plt.subplots(3, 3, figsize = (16, 15))
         axes[0,0].set_title("NAMA")
         axes[1,0].set_title("SPUD")
         axes[0,1].set_title("DIG")
         axes[0, 2].set_title("SSMA")
         axes[1,1].set_title("DTA")
         axes[1,2].set_title("MAGAN")
+        axes[2,0].set_title("JLMA")
+        axes[2,1].set_title("Split A Baseline")
+        axes[2,2].set_title("Split B Baseline")
+
+        #Prepare Baseline Data
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=2)
+        A_emb = pca.fit_transform(self.split_A)
+        B_emb = pca.fit_transform(self.split_B)
 
         #Create keywords for DIG, SPUD, NAMA
         keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
@@ -952,6 +975,12 @@ class test_manifold_algorithms():
         sns.scatterplot(x = SPUD_emb[:, 0], y = SPUD_emb[:, 1], ax = axes[1,0], **keywords)
         sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
         sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[1,2], **keywords)
+        sns.scatterplot(x = JLMA_emb[:, 0], y = JLMA_emb[:, 1], ax = axes[2,0], **keywords)
+        sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
+        sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
+
+
+
 
 
         #Create keywords for DTA and SSMA
@@ -1204,8 +1233,8 @@ def _upload_file(file):
         #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
         base_df = base_df._append(data_dict, ignore_index=True)
 
-    #METHOD DTA
-    elif data_dict["method"] == "DTA":
+    #METHOD DTA and JLMA
+    elif data_dict["method"] == "DTA" or data_dict["method"] == "JLMA":
         #Loop through each Knn
         for i in range(0, 10):
             knn = (i*knn_increment) + 2
@@ -1224,7 +1253,7 @@ def _upload_file(file):
 
                 #Create a new Data frame instance with all the asociated values
                 df = df._append(data_dict, ignore_index=True)
-
+    
     #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
     else: 
         #Loop through each Knn
@@ -1271,6 +1300,9 @@ def _run_time_trials(csv_file = "iris.csv"):
 
     #DTA
     execution_time["DTA"] = timeit.timeit(test.run_DTA_tests, number=1)/10 #To account for the 10 knn
+
+    #JLMA
+    execution_time["JMLA"] = timeit.timeit(test.run_JMLA_tests, number=1)/10 #To account for the 10 knn
 
     #SSMA
     execution_time["SSMA"] = timeit.timeit(test.run_SSMA_tests, number=1) / 10 #To account for the 10 knn
@@ -1323,7 +1355,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1408,6 +1440,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
         Parallel(n_jobs=-7)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+
+    if run_JLMA:
+        #Loop through each file (Using Parralel Processing) for SSMA
+        Parallel(n_jobs=-7)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
