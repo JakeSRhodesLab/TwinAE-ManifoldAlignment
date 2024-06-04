@@ -210,6 +210,7 @@ def get_DataFrame_stats():
     #Print total number of samples
     print(" Method        Lengths")
     print("--------      ----------")
+    print(f" JLMA:          {len(subset_df(df, method = 'JLMA'))}")
     print(f" MAGAN:          {len(subset_df(df, method = 'MAGAN'))}")
     print(f" SSMA:          {len(subset_df(df, method = 'SSMA'))}")
     print(f" DTA:          {len(subset_df(df, method = 'DTA'))}")
@@ -227,6 +228,7 @@ def get_DataFrame_stats():
         print("--------      ----------")
         print(f" MAGAN:          {len(subset_df(df, method = 'MAGAN', split = split))}")
         print(f" SSMA:          {len(subset_df(df, method = 'SSMA', split = split))}")
+        print(f" JLMA:          {len(subset_df(df, method = 'JLMA', split = split))}")
         print(f" DTA:          {len(subset_df(df, method = 'DTA', split = split))}")
         print(f" Nama:          {len(subset_df(df, method = 'NAMA', split = split))}")
         print(f" SPUD:          {len(subset_df(df, method = 'SPUD', split = split))}")
@@ -247,6 +249,7 @@ def get_DataFrame_stats():
         print(f"Total data of {csv_file}: {len(subset_df(df, csv_file = csv_file))}\n")
         print(f" {csv_file}        Lengths")
         print("--------      ----------")
+        print(f" JLMA:          {len(subset_df(df, method = 'JLMA', csv_file = csv_file))}")
         print(f" MAGAN:          {len(subset_df(df, method = 'MAGAN', csv_file = csv_file))}")
         print(f" SSMA:          {len(subset_df(df, method = 'SSMA', csv_file = csv_file))}")
         print(f" DTA:          {len(subset_df(df, method = 'DTA', csv_file = csv_file))}")

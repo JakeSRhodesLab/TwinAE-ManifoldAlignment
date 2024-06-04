@@ -19,6 +19,7 @@ Changes Log:
 6. Added JLMA FOSCTTM. 
 7. ADDED JLMA run tests functions
 8. Added increased Error Logic to update files
+9. Added Magan Anchor counts
 
 
 FUTURE IDEAS:
@@ -30,11 +31,11 @@ FUTURE IDEAS:
 
 TASKS:
 0. Time each method :) DONE
-1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> In Process
-2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings DONE >>>> -> In Process
+1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> DONE
+2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings DONE
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
-4. Make methodology for Laplacian Graphs
-5. Add anchor percent tests to MAGAN !
+4. Make methodology for Laplacian Graphs DONE
+5. Add anchor percent tests to MAGAN ! DONE
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -50,8 +51,8 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (11 days in)
 13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
-18. magHuge on Hilton -> Runngin the MAssive Magan files (4 day in)
-
+20. MAGAN on Carter
+21. MagBig on Collings
 
 """
 
@@ -700,7 +701,7 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-    def run_MAGAN_tests(self): #TODO: Fix test so we can test the anchor percents .... instead of using 100 percent known correspondence
+    def run_MAGAN_tests(self):
         """Needs no additional parameters"""
 
         #Create file name
@@ -1503,7 +1504,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=3)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-15)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_KNN_Tests:
