@@ -1095,7 +1095,7 @@ def _upload_file(file):
                                 "FOSCTTM", "Cross_Embedding_KNN"])
     
     #Create Base Line Data Frame
-    base_df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", "Percent_of_KNN", #Shared headers
+    base_df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", #Shared headers
                                     "A_Classification_Score", "B_Classification_Score"])
 
     #Load in the numpy array
@@ -1533,7 +1533,7 @@ def upload_to_DataFrame():
     base_df = pd.concat(base_dataframes, ignore_index = True)
 
     #Prep base_df for merging
-    base_df = base_df.drop(columns=["method", "seed", "Percent_of_KNN"])
+    base_df = base_df.drop(columns=["method", "seed"])
 
     #Merge the DataFrames together
     merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how="left")
