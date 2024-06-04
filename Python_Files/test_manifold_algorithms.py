@@ -18,6 +18,7 @@ Changes Log:
 5. Added User verification to the clear all files method. Also added file selection logic. Proceeded to delete all erronious MAGAN Files
 6. Added JLMA FOSCTTM. 
 7. ADDED JLMA run tests functions
+8. Added increased Error Logic to update files
 
 
 FUTURE IDEAS:
@@ -47,11 +48,9 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-12. evens on Hilton -- All of the bigest data files (9 days in)
+12. evens on Hilton -- All of the bigest data files (11 days in)
 13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
-14. time on collings -- Running all timing tests (4 days in)
-18. magHuge on Hilton -> Runngin the MAssive Magan files (2 day in)
-19. JLMA on carter --
+18. magHuge on Hilton -> Runngin the MAssive Magan files (4 day in)
 
 
 """
@@ -713,37 +712,41 @@ class test_manifold_algorithms():
             return True
 
         #Store the results in an array
-        MAGAN_scores = np.zeros((2))
+        MAGAN_scores = np.zeros((len(self.percent_of_anchors), 2))
 
         print("\n-------------------------------------   MAGAN TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
 
-        #Run Magan and tests
-        domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B, self.anchors)
+        #Loop through each anchor. 
+        for j, anchor_percent in enumerate(self.percent_of_anchors):
+            print(f"    Percent of Anchors {anchor_percent}")
 
-        #Reshape the domains and then create the block
-        domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
-        domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
-        MAGAN_block = np.block([[domain_a, domain_ba],
-                                [domain_ba, domain_b]])
-        
-        #Get FOSCTTM SCORES
-        try:
-            MAGAN_FOSCTTM = np.mean((self.FOSCTTM(domain_ab), self.FOSCTTM(domain_ba))) #NOTE: Do we choose the best one? Currently chose to average them instead
-            print(f"FOSCTTM: {MAGAN_FOSCTTM}")
-        except Exception as e:
-            print(f"FOSCTTM exception occured: {e}")
-            MAGAN_FOSCTTM = np.NaN
-        MAGAN_scores[0] = MAGAN_FOSCTTM
-        
-        #Get embedding for CE
-        try:
-            emb = self.mds.fit_transform(MAGAN_block)
-            MAGAN_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-            print(f"Cross Embedding: {MAGAN_CE}")
-        except Exception as e:
-            print(f"Cross Embedding exception occured: {e}")
-            MAGAN_CE = np.NaN
-        MAGAN_scores[1] = MAGAN_CE
+            #Run Magan and tests
+            domain_a, domain_b, domain_ab, domain_ba = MAGAN.run_MAGAN(self.split_A, self.split_B, self.anchors[:int(len(self.anchors)*anchor_percent)])
+
+            #Reshape the domains and then create the block
+            domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
+            domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
+            MAGAN_block = np.block([[domain_a, domain_ba],
+                                    [domain_ba, domain_b]])
+            
+            #Get FOSCTTM SCORES
+            try:
+                MAGAN_FOSCTTM = np.mean((self.FOSCTTM(domain_ab), self.FOSCTTM(domain_ba))) #NOTE: Do we choose the best one? Currently chose to average them instead
+                print(f"FOSCTTM: {MAGAN_FOSCTTM}")
+            except Exception as e:
+                print(f"FOSCTTM exception occured: {e}")
+                MAGAN_FOSCTTM = np.NaN
+            MAGAN_scores[j, 0] = MAGAN_FOSCTTM
+            
+            #Get embedding for CE
+            try:
+                emb = self.mds.fit_transform(MAGAN_block)
+                MAGAN_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                print(f"Cross Embedding: {MAGAN_CE}")
+            except Exception as e:
+                print(f"Cross Embedding exception occured: {e}")
+                MAGAN_CE = np.NaN
+            MAGAN_scores[j, 1] = MAGAN_CE
 
         #Save the numpy array
         np.save(filename, MAGAN_scores)
@@ -1233,13 +1236,18 @@ def _upload_file(file):
                 #Create a new Data frame instance with all the asociated values
                 df = df._append(data_dict, ignore_index=True)
         
+        #METHOD MAGAN
         elif data_dict["method"] == "MAGAN":
-            #Now use are data array to grab the FOSCTTM and CE scores
-            data_dict["FOSCTTM"] = data[0]
-            data_dict["Cross_Embedding_KNN"] = data[1]
+            #Loop through each Anchor percentage
+            for j in range(len(AP_values)):
+                data_dict["Percent_of_Anchors"] = AP_values[j]
 
-            #Create a new Data frame instance with all the asociated values
-            df = df._append(data_dict, ignore_index=True)
+                #Now use are data array to grab the FOSCTTM and CE scores
+                data_dict["FOSCTTM"] = data[j, 0]
+                data_dict["Cross_Embedding_KNN"] = data[j, 1]
+
+                #Create a new Data frame instance with all the asociated values
+                df = df._append(data_dict, ignore_index=True)
 
         elif data_dict["method"] == "Base_Line_Scores":
             #Loop through each Knn
