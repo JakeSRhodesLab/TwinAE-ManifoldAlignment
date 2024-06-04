@@ -3,6 +3,7 @@
 """
 Questions:
 1. THE JLMA Algoritm doesn't work if the data is uneven
+2. Would Professor like to know how to work the algorithms to get the right graphs for the paper?
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
@@ -81,6 +82,9 @@ import timeit
 #Simply, for my sanity
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+# Suppress TensorFlow logging (level 2: warning, level 3: error)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 #Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
 if os.getcwd()[-12:] == "Python_Files":
@@ -1076,6 +1080,8 @@ def clear_directory(text_curater = "all"):
 
 
 def _upload_file(file):
+    #Simply for error finding
+    original_file = MANIFOLD_DATA_DIR + file
 
     #Create DataFrame
     df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
@@ -1093,7 +1099,9 @@ def _upload_file(file):
         data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
     except Exception as e:
         print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing without uploading file\n-------------------------------------------------------------------------------------------------------")
-        pass
+        
+        #It will be empty, but helps future code
+        return (df, base_df)
 
     #Create a dictionary to use to add rows to our DataFame
     data_dict = {}
@@ -1137,176 +1145,186 @@ def _upload_file(file):
     AP_index = file.find('_AP(')
     AP_values = file[AP_index + 4:].split('-')
     
-    #Split based on method
-    if data_dict["method"] == "DIG":
+    #Overarching error catching system
+    try:
 
-        #Add the right Page Rank Argument
-        if "None" in file:
-            data_dict["Page_Rank"] = "None"
-        elif "off-diagonal" in file:
-            data_dict["Page_Rank"] = "off-diagonal"
-        else: #Then it is full
-            data_dict["Page_Rank"] = "full"
+        #Split based on method
+        if data_dict["method"] == "DIG":
 
-        #Loop through each Knn
-        for j in range(0, 10):
-            knn = (j*knn_increment) + 2
-            data_dict["KNN"] = knn
+            #Add the right Page Rank Argument
+            if "None" in file:
+                data_dict["Page_Rank"] = "None"
+            elif "off-diagonal" in file:
+                data_dict["Page_Rank"] = "off-diagonal"
+            else: #Then it is full
+                data_dict["Page_Rank"] = "full"
 
-            #These percents are rough, and not exact. This is so we can have similar estimates to compare
-            data_dict["Percent_of_KNN"] = (j * 0.02) + 0.01
+            #Loop through each Knn
+            for j in range(0, 10):
+                knn = (j*knn_increment) + 2
+                data_dict["KNN"] = knn
 
-            #Loop through each Anchor percentage
-            for k in range(len(AP_values)):
-                data_dict["Percent_of_Anchors"] = AP_values[k]
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (j * 0.02) + 0.01
 
-                #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["FOSCTTM"] = data[j, k, 0]
-                data_dict["Cross_Embedding_KNN"] = data[j, k, 1]
+                #Loop through each Anchor percentage
+                for k in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[k]
 
-                #We failsafe this in a try because there might not be a finally loop
-                try:
-                    data_dict["Predicted_Feature_MAE"] = data[j, k, 2]
-                except:
-                    data_dict["Predicted_Feature_MAE"] = np.NaN
-                finally:
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[j, k, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[j, k, 1]
+
+                    #We failsafe this in a try because there might not be a finally loop
+                    try:
+                        data_dict["Predicted_Feature_MAE"] = data[j, k, 2]
+                    except:
+                        data_dict["Predicted_Feature_MAE"] = np.NaN
+                    finally:
+                        #Create a new Data frame instance with all the asociated values
+                        df = df._append(data_dict, ignore_index=True)
+                    
+        #Method SPUD
+        elif data_dict["method"] == "SPUD":
+
+            #Assign the operation
+            if "average" in file:
+                data_dict["Operation"] = "average"
+            else: 
+                data_dict["Operation"] = "abs" #There might be a more intuitive name for this 
+
+            #Assign its Kind
+            if "distance" in file:
+                data_dict["SPUDS_Algorithm"] = "distance"
+            elif "pure" in file:
+                data_dict["SPUDS_Algorithm"] = "pure"
+            else:
+                data_dict["SPUDS_Algorithm"] = "similarity"
+            
+            #Loop through each Knn
+            for k in range(0, 10):
+                knn = (k*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (k * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for l in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[l]
+
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[k, l, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[k, l, 1]
+
                     #Create a new Data frame instance with all the asociated values
                     df = df._append(data_dict, ignore_index=True)
-                
-    #Method SPUD
-    elif data_dict["method"] == "SPUD":
 
-        #Assign the operation
-        if "average" in file:
-            data_dict["Operation"] = "average"
-        else: 
-            data_dict["Operation"] = "abs" #There might be a more intuitive name for this 
-
-        #Assign its Kind
-        if "distance" in file:
-            data_dict["SPUDS_Algorithm"] = "distance"
-        elif "pure" in file:
-            data_dict["SPUDS_Algorithm"] = "pure"
-        else:
-            data_dict["SPUDS_Algorithm"] = "similarity"
-        
-        #Loop through each Knn
-        for k in range(0, 10):
-            knn = (k*knn_increment) + 2
-            data_dict["KNN"] = knn
-
-            #These percents are rough, and not exact. This is so we can have similar estimates to compare
-            data_dict["Percent_of_KNN"] = (k * 0.02) + 0.01
-
+        #METHOD NAMA
+        elif data_dict["method"] == "NAMA":
             #Loop through each Anchor percentage
-            for l in range(len(AP_values)):
-                data_dict["Percent_of_Anchors"] = AP_values[l]
+            for j in range(len(AP_values)):
+                data_dict["Percent_of_Anchors"] = AP_values[j]
 
                 #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["FOSCTTM"] = data[k, l, 0]
-                data_dict["Cross_Embedding_KNN"] = data[k, l, 1]
+                data_dict["FOSCTTM"] = data[j, 0]
+                data_dict["Cross_Embedding_KNN"] = data[j, 1]
 
                 #Create a new Data frame instance with all the asociated values
                 df = df._append(data_dict, ignore_index=True)
-
-    #METHOD NAMA
-    elif data_dict["method"] == "NAMA":
-        #Loop through each Anchor percentage
-        for j in range(len(AP_values)):
-            data_dict["Percent_of_Anchors"] = AP_values[j]
-
+        
+        elif data_dict["method"] == "MAGAN":
             #Now use are data array to grab the FOSCTTM and CE scores
-            data_dict["FOSCTTM"] = data[j, 0]
-            data_dict["Cross_Embedding_KNN"] = data[j, 1]
+            data_dict["FOSCTTM"] = data[0]
+            data_dict["Cross_Embedding_KNN"] = data[1]
 
             #Create a new Data frame instance with all the asociated values
             df = df._append(data_dict, ignore_index=True)
+
+        elif data_dict["method"] == "Base_Line_Scores":
+            #Loop through each Knn
+            for k in range(0, 10):
+                knn = (k*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #Now use are data array to grab the FOSCTTM and CE scores
+                data_dict["A_Classification_Score"] = data[k, 0]
+                data_dict["B_Classification_Score"] = data[k, 1]
+
+            #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
+            base_df = base_df._append(data_dict, ignore_index=True)
+
+        #METHOD DTA and JLMA
+        elif data_dict["method"] == "DTA":
+            #Loop through each Knn
+            for i in range(0, 10):
+                knn = (i*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for j in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[j]
+
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[i, j, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
+
+                    #Create a new Data frame instance with all the asociated values
+                    df = df._append(data_dict, ignore_index=True)
+                    
+        elif data_dict["method"] == "JLMA":
+            #Loop through each Knn
+            for i in range(0, 10):
+                knn = (i*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for j in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[j]
+
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[i, j, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
+
+                    #Create a new Data frame instance with all the asociated values
+                    df = df._append(data_dict, ignore_index=True)
+        
+        #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
+        else: 
+            #Loop through each Knn
+            for i in range(0, 10):
+                knn = (i*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for j in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[j]
+
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[i, j, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
+
+                    #Create a new Data frame instance with all the asociated values
+                    df = df._append(data_dict, ignore_index=True)
+
+
+        return (df, base_df)
     
-    elif data_dict["method"] == "MAGAN":
-        #Now use are data array to grab the FOSCTTM and CE scores
-        data_dict["FOSCTTM"] = data[0]
-        data_dict["Cross_Embedding_KNN"] = data[1]
-
-        #Create a new Data frame instance with all the asociated values
-        df = df._append(data_dict, ignore_index=True)
-
-    elif data_dict["method"] == "Base_Line_Scores":
-        #Loop through each Knn
-        for k in range(0, 10):
-            knn = (k*knn_increment) + 2
-            data_dict["KNN"] = knn
-
-            #Now use are data array to grab the FOSCTTM and CE scores
-            data_dict["A_Classification_Score"] = data[k, 0]
-            data_dict["B_Classification_Score"] = data[k, 1]
-
-        #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
-        base_df = base_df._append(data_dict, ignore_index=True)
-
-    #METHOD DTA and JLMA
-    elif data_dict["method"] == "DTA":
-        #Loop through each Knn
-        for i in range(0, 10):
-            knn = (i*knn_increment) + 2
-            data_dict["KNN"] = knn
-
-            #These percents are rough, and not exact. This is so we can have similar estimates to compare
-            data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
-
-            #Loop through each Anchor percentage
-            for j in range(len(AP_values)):
-                data_dict["Percent_of_Anchors"] = AP_values[j]
-
-                #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["FOSCTTM"] = data[i, j, 0]
-                data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
-
-                #Create a new Data frame instance with all the asociated values
-                df = df._append(data_dict, ignore_index=True)
-                
-    elif data_dict["method"] == "JLMA":
-        #Loop through each Knn
-        for i in range(0, 10):
-            knn = (i*knn_increment) + 2
-            data_dict["KNN"] = knn
-
-            #These percents are rough, and not exact. This is so we can have similar estimates to compare
-            data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
-
-            #Loop through each Anchor percentage
-            for j in range(len(AP_values)):
-                data_dict["Percent_of_Anchors"] = AP_values[j]
-
-                #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["FOSCTTM"] = data[i, j, 0]
-                data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
-
-                #Create a new Data frame instance with all the asociated values
-                df = df._append(data_dict, ignore_index=True)
-    
-    #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
-    else: 
-        #Loop through each Knn
-        for i in range(0, 10):
-            knn = (i*knn_increment) + 2
-            data_dict["KNN"] = knn
-
-            #These percents are rough, and not exact. This is so we can have similar estimates to compare
-            data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
-
-            #Loop through each Anchor percentage
-            for j in range(len(AP_values)):
-                data_dict["Percent_of_Anchors"] = AP_values[j]
-
-                #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["FOSCTTM"] = data[i, j, 0]
-                data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
-
-                #Create a new Data frame instance with all the asociated values
-                df = df._append(data_dict, ignore_index=True)
-
-
-    return (df, base_df)
+    #If there was an error anywhere in processing the data
+    except Exception as e:
+        print(f"Error occured with {original_file}, and it will not be fully uploaded. It was {e}")
+        
+        #It will be empty
+        return (df, base_df)
 
 def _run_time_trials(csv_file = "iris.csv"):
     #Create file path
@@ -1473,7 +1491,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
 
     if run_JLMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-7)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-15)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
@@ -1506,10 +1524,10 @@ def upload_to_DataFrame():
     base_df = pd.concat(base_dataframes, ignore_index = True)
 
     #Prep base_df for merging
-    base_df = base_df.drop(columns=["method", "Percent_of_KNN"])
+    base_df = base_df.drop(columns=["method", "seed", "Percent_of_KNN"])
 
     #Merge the DataFrames together
-    merged_df = pd.merge(df, base_df, on=["csv_file", "seed", "split", "KNN"], how="left")
+    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how="left")
 
     return merged_df.drop_duplicates()
 
