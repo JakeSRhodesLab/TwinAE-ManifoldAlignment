@@ -57,7 +57,9 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
         idx2 = int(anchor[1])
 
         # Compute the loss for the current anchor and add to the total loss
-        loss += tf.reduce_mean((tf.reduce_mean(b1[idx1]) - tf.reduce_mean(b2[idx2])) ** 2)
+        #loss += tf.reduce_mean((tf.reduce_mean(b1[idx1]) - tf.reduce_mean(b2[idx2])) ** 2)
+
+        loss += tf.reduce_mean((b1[idx1] - b2[idx2]) ** 2)
 
     return loss
 
