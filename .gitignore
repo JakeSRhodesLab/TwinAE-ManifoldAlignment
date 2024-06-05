@@ -160,3 +160,6 @@ cython_debug/
 #.idea/
 
 .DS_Store
+
+#Ignore the Data DataFrame file -- its too big anyways
+ManifoldData/Data_DataFrame.csv
