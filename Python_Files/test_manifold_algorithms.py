@@ -53,6 +53,7 @@ Tmux Zombies
 13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
 20. MAGAN on Carter
 21. MagBig on Collings
+22. Base on Rencher
 
 """
 
