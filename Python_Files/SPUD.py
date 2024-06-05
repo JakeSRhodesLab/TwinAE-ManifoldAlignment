@@ -53,9 +53,9 @@ class SPUD:
         self.pure_similar_A, self.pure_similar_B = self.get_pure_similarities(dataA, dataB)
 
         #Making our known Anchors
-        known_anchors = np.array(known_anchors)
-        self.known_anchors_A = known_anchors.T[0]
-        self.known_anchors_B = known_anchors.T[1]
+        self.known_anchors = np.array(known_anchors)
+        self.known_anchors_A = self.known_anchors.T[0]
+        self.known_anchors_B = self.known_anchors.T[1]
 
         #Create node paths and edge paths
         self.node_paths_A = self.make_node_paths(self.graphA, self.known_anchors_A)

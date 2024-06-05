@@ -2,24 +2,15 @@
 
 """
 Questions:
-1. THE JLMA Algoritm doesn't work if the data is uneven
 2. Would Professor like to know how to work the algorithms to get the right graphs for the paper?
+3. Too large of files - Git Error
 
 General Notes:
 1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
 2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
 
 Changes Log:
-1. Added New MAGAN Correspondonce method
-2. Added Time Logs
-3. Added Split_A and Split_B classification Baselines to compare our models too
- - > This is super helpful when looking at the rankings. It tells us how much better each model does compared to the others
 4. Added predict anchors function to DIG -> (Super genius I think)
-5. Added User verification to the clear all files method. Also added file selection logic. Proceeded to delete all erronious MAGAN Files
-6. Added JLMA FOSCTTM. 
-7. ADDED JLMA run tests functions
-8. Added increased Error Logic to update files
-9. Added Magan Anchor counts
 
 
 FUTURE IDEAS:
@@ -30,12 +21,13 @@ FUTURE IDEAS:
 
 
 TASKS:
-0. Time each method :) DONE
-1. Figure out MAGAN's Correspondences - Recalculate MAGAN -- Overwrite feature? ... Maybe Parrelize the plot embedding function --> DONE
-2. Determine KNN model values for each split -> Nothing Fancy (Like a base case -- No methodology) >>>> Add Baseline File Readings DONE
-3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real --- Use "hold-out" anchors
-4. Make methodology for Laplacian Graphs DONE
-5. Add anchor percent tests to MAGAN ! DONE
+1. Add Procrustees method
+2. Test without anchor limitiations
+3. Add "Pruning"
+4. Keep the distance (instead of setting it as an anchor)
+5. CE -> does it make sense to average the two directions
+6. DIG -> FOSCTTM might be different based on off-diagonals used
+7. Fix MAGAN blobs and Scurve tests
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -53,7 +45,7 @@ Tmux Zombies
 13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
 20. MAGAN on Carter
 21. MagBig on Collings
-22. Base on Rencher
+23.
 
 """
 
@@ -161,6 +153,13 @@ class test_manifold_algorithms():
         knn.fit(embedding[:n1, :], y1)
 
         return knn.score(embedding[n1:, :], y2)
+    
+        """ Train on other domain, predict on other domain ---- TODO
+        knn.fit(embedding[n1:, :], y2)
+
+        return knn.score(embedding[:n1, :], y1)
+        """
+
     
     def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
         n1, n2 = np.shape(Wxy)
@@ -801,7 +800,7 @@ class test_manifold_algorithms():
                     len_A = len(self.split_A)
 
                     #Calculate FOSCTTM by averaging the two domains
-                    FOSCTTM = np.mean([self.FOSCTTM(block[len_A:, :len_A]), self.FOSCTTM(block[:len_A, len_A:])])
+                    FOSCTTM = self.FOSCTTM(block[:len_A, len_A:])
                     print(f"        FOSCTTM {FOSCTTM}")
                 except Exception as e:
                     print(f"        FOSCTTM exception occured: {e}")
@@ -1079,6 +1078,7 @@ def clear_directory(text_curater = "all"):
 
         print("Files Deleted.")
         return True
+    
     else: 
         print("<><> Cancelling Process <><>")
         return False
