@@ -141,109 +141,6 @@ class DIG: #Diffusion Integration with Graphs
 
         return block
     
-    def _find_possible_anchors(self, anchor_limit = 2, hold_out_anchors = []): 
-        """A helper function that finds and returns a list of possible anchors after alignment.
-            
-        Parameters:
-            :anchor_limit: should be an integer. If set, it will cap out the max amount of anchors found.
-            :hold_out_anchors: These anchors are used as a test to predict what distance the anchors are 
-                expected to have from one another. If none are give, it is assumed that anchors will be 
-                have values closest to zero. 
-            
-        returns possible anchors plus known anchors in a single list"""
-
-        #Set our array. This lets us modify it if we need to
-        array = self.sim_diffusion_matrix[:self.len_A, self.len_A:]
-        
-        #Calculate the predicted anchor value
-        if len(hold_out_anchors) > 0:
-
-            #Change Type so that we can convert to set 
-            known_anchors_as_tuples = (tuple(arr) for arr in self.known_anchors)
-            hold_out_anchors = [tuple(arr) for arr in hold_out_anchors]
-
-            # Convert the list of tuples to a set for fast look ups
-            set1 = set(known_anchors_as_tuples)
-
-            #Remove indicies that are already known anchors
-            hold_out_anchors[:] = [tup for tup in hold_out_anchors if tup not in set1]
-
-            #Check to make sure we have Hold out anchors
-            if len(hold_out_anchors) < 1:
-                print("ERROR: No calculation preformed. Please provide hold_out_anchors and ensure they aren't known anchors already.")
-                return []
-            elif len(hold_out_anchors) < 2:
-                #Since there is only one element, we set the threshold to be equal to its max plus a tiny bit
-                pred_anc_value = self.sim_diffusion_matrix[hold_out_anchors[0][0], hold_out_anchors[0][1] + self.len_A]
-
-            else:
-                #Adjust the Hold_out_anchors to map in the merged graphs
-                hold_out_anchors = np.array(hold_out_anchors)
-                hold_out_anchors = np.vstack([hold_out_anchors.T[0], hold_out_anchors.T[1] + self.len_A]).T
-
-                #Determine the average distance of the hold out anchors
-                pred_anc_value = np.mean(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #NOTE: we might have to adjust this value. 
-                _65_percent_interval = np.std(self.sim_diffusion_matrix[hold_out_anchors[0], hold_out_anchors[1]]) #If values are outside this range, maybe we through them out?
-
-            #Adjust the array 
-            array = abs(array - pred_anc_value)
-
-        """ This section actually finds and then curates potential anchors """
-        
-        #Set the current known anchors to be np.NaN so they aren't calculated, but keep their index
-        array[self.known_anchors[:, 0], :] = np.NaN
-        array[:, self.known_anchors[:, 1]] = np.NaN
-
-        #Flatten array
-        flat_array = array.flatten()
-
-        #Get the sorted indices
-        sorted_indices = np.argsort(flat_array)
-        
-        # Convert the sorted indices to coordinates
-        coordinates = [np.unravel_index(index, array.shape) for index in sorted_indices]
-        
-        # Create a cost matrix using the top (num_pairs * num_pairs) smallest elements
-        selected_coords = coordinates[:anchor_limit * anchor_limit]
-        num_elements = len(selected_coords)
-        
-        # Construct the reduced cost matrix
-        cost_matrix = np.full((num_elements, num_elements), np.inf)
-        
-        for i, (row_i, col_i) in enumerate(selected_coords):
-            for j, (row_j, col_j) in enumerate(selected_coords):
-                if row_i != row_j and col_i != col_j:
-                    cost_matrix[i, j] = array[row_j, col_j]
-        
-        # Use the Hungarian algorithm to find the optimal assignment
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-        
-        # Create a list to store results
-        min_pairs = []
-
-        #Keep track of used rows, and used_cols
-        used_rows = set()
-        used_cols = set()
-        
-        #Repeat through the values
-        for i in range(len(row_ind)):
-            row, col = selected_coords[row_ind[i]]
-
-            #Check to make sure we haven't used the row or column yet (this is becaue is anchor is assumed to have a 1 to 1 correspondence)
-            if row not in used_rows and col not in used_cols:
-
-                #Add the data
-                min_pairs.append((row, col))
-                used_rows.add(row)
-                used_cols.add(col)
-
-                #Break once we hit our limit
-                if len(min_pairs) >= anchor_limit:
-                    break
-
-        #Return the possible anchors
-        return min_pairs
-
     """THE PRIMARY FUNCTIONS"""
     def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
         """Creates a new graph from A and B using the known_anchors
@@ -325,6 +222,8 @@ class DIG: #Diffusion Integration with Graphs
         #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
         diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
     
+        #Normalize the matrix
+        diffused = self.normalize_0_to_1(diffused)
 
         return diffused, domainBA, domainAB
 

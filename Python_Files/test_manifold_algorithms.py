@@ -10,7 +10,8 @@ General Notes:
 2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
 
 Changes Log:
-4. Added predict anchors function to DIG -> (Super genius I think)
+1. Fixed MAGAN files ---> Secondly, the new MAGAN approach doesn't work with varying amount of features for each domain
+2. Adjusted DIG algorithm
 
 
 FUTURE IDEAS:
@@ -25,9 +26,11 @@ TASKS:
 2. Test without anchor limitiations
 3. Add "Pruning"
 4. Keep the distance (instead of setting it as an anchor)
-5. CE -> does it make sense to average the two directions
-6. DIG -> FOSCTTM might be different based on off-diagonals used
-7. Fix MAGAN blobs and Scurve tests
+5. CE -> does it make sense to average the two directions --> In Process
+6. DIG -> FOSCTTM might be different based on off-diagonals used DONE
+7. Fix MAGAN blobs and Scurve tests DONE
+8. MAGAN correspondence loss function
+9. Kernal Density normalization for DIG
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -144,23 +147,24 @@ class test_manifold_algorithms():
             os.makedirs(self.base_directory) 
 
     """EVALUATION FUNCTIONS"""
-    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}):
+    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
         (y1, y2) = Y
 
         n1, n2 = len(y1), len(y2)
 
         knn = KNeighborsClassifier(**knn_args)
-        knn.fit(embedding[:n1, :], y1)
 
-        return knn.score(embedding[n1:, :], y2)
-    
-        """ Train on other domain, predict on other domain ---- TODO
-        knn.fit(embedding[n1:, :], y2)
+        if other_side:
+            knn.fit(embedding[:n1, :], y1)
 
-        return knn.score(embedding[:n1, :], y1)
-        """
+            return knn.score(embedding[n1:, :], y2)
 
-    
+        else:
+            #Train on other domain, predict on other domain ---- TODO
+            knn.fit(embedding[n1:, :], y2)
+
+            return knn.score(embedding[:n1, :], y1)
+        
     def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
         n1, n2 = np.shape(Wxy)
         if n1 != n2:
@@ -473,8 +477,12 @@ class test_manifold_algorithms():
 
                     #FOSCTTM Evaluation Metrics
                     try:
-                        DIG_FOSCTTM = self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A])
-                        print(f"            FOSCTTM Score: {DIG_FOSCTTM}")
+                        """DIG_FOSCTTM = self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A])
+                        print(f"            FOSCTTM Score: {DIG_FOSCTTM}")"""
+
+                        DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                        print(f"            FOSCTTM: {DIG_FOSCTTM}")
+
                     except Exception as e:
                         print(f"            FOSCTTM exception occured: {e}")
                         DIG_FOSCTTM = np.NaN
@@ -484,8 +492,13 @@ class test_manifold_algorithms():
                     #Cross Embedding Evaluation Metric
                     try:
                         emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
                         DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                        print(f"            CE Score: {DIG_CE}")
+                        print(f"            As Before CE Score: {DIG_CE}")
+
+                        DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4}, other_side = False)
+                        print(f"            Other Side CE Score: {DIG_CE}")
+
                     except Exception as e:
                         print(f"            Cross Embedding exception occured: {e}")
                         DIG_CE = np.NaN
@@ -504,7 +517,7 @@ class test_manifold_algorithms():
                         print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
 
                 #Save the numpy array
-                np.save(filename, DIG_scores)
+                #np.save(filename, DIG_scores)
 
         #Run successful
         return True
@@ -1049,6 +1062,7 @@ def clear_directory(text_curater = "all"):
                 "crx", "diabetes", "ecoli_5", "flare1", "glass", "heart_disease", "heart_failure", "hepatitis",
                 "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                 "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
+                "blobs", "S-curve",
                 "winequality-red", "zoo"]
 
     #Modify the file names to become directory names
