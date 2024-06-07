@@ -260,36 +260,6 @@ class DIG: #Diffusion Integration with Graphs
         completeData = np.vstack([full_data_A, full_data_B])
 
         return completeData
-    
-    def optimize_by_pred_anchors(self, epochs = 3, **find_possible_anchors_kwargs):
-        """Finds potential anchors after alignment, and then recalculates the entire alignment with the new anchor points for each epoch. 
-        
-        Parameters:
-        :anchor_limit: should be an integer. If fixed, it will determine the max anchors the algorithm will find.
-        :epochs: the number of iterations the cycle will go through. 
-        """
-        
-        #Rebuild Class for each epoch
-        for epoch in range(0, epochs):
-
-            #Find predicted anchors
-            predicted_anchors = self._find_possible_anchors(**find_possible_anchors_kwargs)
-
-            #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. 
-            if epoch == epochs - 1 and "hold_out_anchors" in find_possible_anchors_kwargs.keys():
-                predicted_anchors = np.concatenate((find_possible_anchors_kwargs["hold_out_anchors"], predicted_anchors), axis = 0)
-
-            #Add in the known anchors and reset the known_anchors
-            self.known_anchors = np.concatenate((self.known_anchors, predicted_anchors), axis = 0)
-
-            #Reconnect the graphs based on the new anchors
-            self.graphAB = self.merge_graphs()
-            
-            #Get Similarity matrix and distance matricies
-            self.similarity_matrix = self.get_pure_matricies(self.graphAB)
-
-            #Get Diffusion Matrix
-            self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
 
     """VISUALIZE AND TEST FUNCTIONS"""
     def plot_graphs(self):
