@@ -45,7 +45,7 @@ class DIG: #Diffusion Integration with Graphs
         self.graph_a = graphtools.Graph(self.dataA, knn = knn, knn_max = knn, decay = 40) #The Knn max stops additional connections
         self.graph_b  = graphtools.Graph(self.dataB, knn = knn, knn_max = knn, decay = 40)
 
-        #Normalize the graphs
+        #Create the kernals
         self.kernalsA  = np.array(self.graph_a.K.toarray())
         self.kernalsB = np.array(self.graph_b.K.toarray())
 
@@ -194,6 +194,9 @@ class DIG: #Diffusion Integration with Graphs
             t = find_optimal_t(matrix) #NOTE: Try checking the off diagonal with the entropy
             #print(f"Using optimal t value of {t}")
 
+
+        #TODO -- Maybe add bit about the kernal densities (Might not be right spot)
+        
         # Normalize the matrix
         normalized_matrix = self.row_normalize_matrix(matrix)
 
