@@ -53,6 +53,7 @@ Tmux Zombies
 """
 
 #Import libraries
+from ma_procrustes import MAprocr
 from DIG import DIG
 from SPUD import SPUD
 from ssma import ssma
@@ -647,6 +648,77 @@ class test_manifold_algorithms():
         #Run successful
         return True
     
+    def run_PCR_tests(self):
+        """Procrutees Manifold Alignment
+        
+        Needs no additional parameters"""
+
+        #Create file name
+        filename = self.create_filename("PCR")
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
+        #Store the results in an array
+        scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+
+        print("\n--------------------------------------   PCR TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
+
+        #Repeat through each knn value
+        for i, knn in enumerate(self.knn_range):
+            print(f"KNN {knn}")
+
+            #Initialize the class with the correct KNN
+            PCR_class = MAprocr(knn = knn, random_state = self.random_state, n_jobs = 1)
+
+            #Loop through each anchor. 
+            for j, anchor_percent in enumerate(self.percent_of_anchors):
+                print(f"    Percent of Anchors {anchor_percent}")
+
+                #In case the class initialization fails
+                try:
+                    #Reformat the anchors 
+                    sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
+                    sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
+                    labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
+                    #labelsh2 = self.labels[self.anchors.T[1]]
+                    labels_extended = np.concatenate((self.labels, labelsh1))
+
+                    #Fit it
+                    PCR_class.fit(self.split_A, self.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+                except Exception as e:
+                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECUASE {e}   <><><><><><>")
+                    scores[i, j, 0] = np.NaN
+                    scores[i, j, 1] = np.NaN
+                    continue
+
+                #FOSCTTM scores TODO: AVG the different FOCSTTMS
+                try:
+                    FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(PCR_class.W[self.split_A.vcount():, :self.split_A.vcount()])) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    print(f"        FOSCTTM {FOSCTTM}")
+                except Exception as e:
+                    print(f"        FOSCTTM exception occured: {e}")
+                    FOSCTTM = np.NaN
+                scores[i, j, 0] = FOSCTTM
+
+                #Cross Embedding Scores
+                try:
+                    emb = self.mds.fit_transform(1 - self.normalize_0_to_1(PCR_class.W))
+                    CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
+                    print(f"        Cross Embedding: {CE}")
+                except Exception as e:
+                    print(f"        Cross Embedding exception occured: {e}")
+                    CE = np.NaN
+                scores[i, j, 1] = CE
+
+        #Save the numpy array
+        np.save(filename, scores)
+
+        #Run successful
+        return True
+
     def run_SSMA_tests(self):
         """ No Additional arguments needed"""
 
