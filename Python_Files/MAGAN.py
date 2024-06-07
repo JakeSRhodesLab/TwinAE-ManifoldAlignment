@@ -57,9 +57,9 @@ def adapted_correspondence_loss(b1, b2, known_anchors):
         idx2 = int(anchor[1])
 
         # Compute the loss for the current anchor and add to the total loss
-        loss += tf.reduce_mean((tf.reduce_mean(b1[idx1]) - tf.reduce_mean(b2[idx2])) ** 2)
+        #loss += tf.reduce_mean((tf.reduce_mean(b1[idx1]) - tf.reduce_mean(b2[idx2])) ** 2)
 
-        #loss += tf.reduce_mean((b1[idx1] - b2[idx2]) ** 2)
+        loss += tf.reduce_mean((b1[idx1] - b2[idx2]) ** 2)
 
     return loss
 
@@ -279,8 +279,8 @@ class MAGAN(object):
         losses.append(tf.reduce_mean((self.xb2 - self.xb2_reconstructed)**2))
 
         # correspondences losses
-        losses.append(self.correspondence_loss(self.xb1, self.Gb2, self.known_anchors))  # Updated
-        losses.append(self.correspondence_loss(self.xb2, self.Gb1, self.known_anchors))  # Updated
+        losses.append(self.correspondence_loss(self.xb1, self.Gb1, self.known_anchors))  # Updated-- Swicthed GB1 to GB2
+        losses.append(self.correspondence_loss(self.xb2, self.Gb2, self.known_anchors))  # Updated
 
         self.loss_G = tf.reduce_mean(losses)
 
