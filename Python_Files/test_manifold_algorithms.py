@@ -679,10 +679,13 @@ class test_manifold_algorithms():
 
                 #In case the class initialization fails
                 try:
+                    #Get anchor count
+                    anchor_count = int(len(self.anchors)*anchor_percent)
+
                     #Reformat the anchors 
-                    sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
-                    sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
-                    labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] #NOTE: Can use these if we want to compare labels
+                    sharedD1 = self.split_A[self.anchors[:anchor_count].T[0]] 
+                    sharedD2 = self.split_B[self.anchors[:anchor_count].T[1]]
+                    labelsh1 = self.labels[self.anchors[:anchor_count].T[0]] #NOTE: Can use these if we want to compare labels
                     #labelsh2 = self.labels[self.anchors.T[1]]
                     labels_extended = np.concatenate((self.labels, labelsh1))
 
@@ -696,7 +699,10 @@ class test_manifold_algorithms():
 
                 #FOSCTTM scores TODO: AVG the different FOCSTTMS
                 try:
-                    FOSCTTM = self.FOSCTTM(1 - self.normalize_0_to_1(PCR_class.W[self.split_A.vcount():, :self.split_A.vcount()])) #Off Diagonal Block. NOTE: it has to be normalized because it returns values 0-2. We subtract one because it is in similarities
+                    len_A = len(self.split_A) + anchor_count
+                    FOSCTTM = np.mean([self.FOSCTTM(1 - PCR_class.W[len_A:, :len_A]), 
+                                       self.FOSCTTM(1 - PCR_class.W[:len_A, len_A:])])
+                    
                     print(f"        FOSCTTM {FOSCTTM}")
                 except Exception as e:
                     print(f"        FOSCTTM exception occured: {e}")
@@ -705,7 +711,7 @@ class test_manifold_algorithms():
 
                 #Cross Embedding Scores
                 try:
-                    emb = self.mds.fit_transform(1 - self.normalize_0_to_1(PCR_class.W))
+                    emb = self.mds.fit_transform(1 - PCR_class.W)
                     CE = self.cross_embedding_knn(emb, (labels_extended, labels_extended), knn_args = {'n_neighbors': 4}) #NOTE: This has a slight advantage because the anchors are counted twice
                     print(f"        Cross Embedding: {CE}")
                 except Exception as e:
@@ -1008,6 +1014,10 @@ class test_manifold_algorithms():
         #Prep SSMA
         SSMA_class = ssma(knn = knn, verbose = 0, r = 2) #R can also be = to this: (self.split_A.shape[1] + self.split_B.shape[1])
 
+        #Prep Procrustees
+        PCR_class = MAprocr(knn = knn, random_state = self.random_state, n_jobs = 1)
+
+
         #Create a task list to parrelel function all of the embeddings
         tasks = [
             (SPUD, SPUD_kwargs),
@@ -1016,7 +1026,8 @@ class test_manifold_algorithms():
             (NAMA.fit, {"self": nama, "known_anchors": self.anchors[:int(len(self.anchors)*anchor_percent)], "x": self.split_A, "y": self.split_B}),
             (DTA_class.fit, DTA_SSMA_kwargs),
             (SSMA_class.fit, DTA_SSMA_kwargs),
-            (JLMA_class.fit, {"X1":self.split_A, "X2": self.split_B, "correspondences": self.anchors[:int(len(self.anchors)*anchor_percent)]})
+            (JLMA_class.fit, {"X1":self.split_A, "X2": self.split_B, "correspondences": self.anchors[:int(len(self.anchors)*anchor_percent)]}),
+            (PCR_class.fit, DTA_SSMA_kwargs)
         ]
 
         # Use Parallel to run tasks concurrently
@@ -1033,22 +1044,23 @@ class test_manifold_algorithms():
         JLMA_block = JLMA_class.SquareDist(classes[6])
 
         #parralelise to create the embeddings
-        arg_list = [classes[0].block, classes[1].sim_diffusion_matrix, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block]
-        SPUD_emb, DIG_emb, MAGAN_emb, NAMA_emb, DTA_emb, SSMA_emb, JLMA_emb = Parallel(n_jobs = -3)(delayed(self.mds.fit_transform)(arg) for arg in arg_list)
+        arg_list = [classes[0].block, classes[1].sim_diffusion_matrix, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block, 1 - classes[7]]
+        SPUD_emb, DIG_emb, MAGAN_emb, NAMA_emb, DTA_emb, SSMA_emb, JLMA_emb, PCR_emb = Parallel(n_jobs = -3)(delayed(self.mds.fit_transform)(arg) for arg in arg_list)
 
 
         """Now Plot the Embeddings"""
         #Create the figure and set titles
-        fig, axes = plt.subplots(3, 3, figsize = (16, 15))
+        fig, axes = plt.subplots(5, 2, figsize = (10, 25))
         axes[0,0].set_title("NAMA")
         axes[1,0].set_title("SPUD")
         axes[0,1].set_title("DIG")
-        axes[0, 2].set_title("SSMA")
+        axes[2, 0].set_title("SSMA")
         axes[1,1].set_title("DTA")
-        axes[1,2].set_title("MAGAN")
-        axes[2,0].set_title("JLMA")
-        axes[2,1].set_title("Split A Baseline")
-        axes[2,2].set_title("Split B Baseline")
+        axes[2,1].set_title("MAGAN")
+        axes[3,0].set_title("JLMA")
+        axes[3,1].set_title("Procrutes")
+        axes[4,0].set_title("Split A Baseline")
+        axes[4,1].set_title("Split B Baseline")
 
         #Prepare Baseline Data
         from sklearn.decomposition import PCA
@@ -1068,19 +1080,20 @@ class test_manifold_algorithms():
         sns.scatterplot(x = NAMA_emb[:, 0], y = NAMA_emb[:, 1], ax = axes[0,0], **keywords)
         sns.scatterplot(x = SPUD_emb[:, 0], y = SPUD_emb[:, 1], ax = axes[1,0], **keywords)
         sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
-        sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[1,2], **keywords)
-        sns.scatterplot(x = JLMA_emb[:, 0], y = JLMA_emb[:, 1], ax = axes[2,0], **keywords)
+        sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[2,1], **keywords)
+        sns.scatterplot(x = JLMA_emb[:, 0], y = JLMA_emb[:, 1], ax = axes[3,0], **keywords)
+
 
         #Make sure we have enough dimensions 
         if min(len(self.split_A[1]), 2) < 2:
-            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 0], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
+            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 0], ax = axes[4,0], hue = pd.Categorical(self.labels), markers = "^")
         else:
-            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[2,1], hue = pd.Categorical(self.labels), markers = "^")
+            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[4,0], hue = pd.Categorical(self.labels), markers = "^")
 
         if min(len(self.split_B[1]), 2) < 2:
-            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 0], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
+            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 0], ax = axes[4,1], hue = pd.Categorical(self.labels), markers = "o")
         else:
-            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[2,2], hue = pd.Categorical(self.labels), markers = "o")
+            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[4,1], hue = pd.Categorical(self.labels), markers = "o")
 
 
 
@@ -1094,8 +1107,9 @@ class test_manifold_algorithms():
         }
 
         #Now the plotting
-        sns.scatterplot(x = DTA_emb[:, 0], y = DTA_emb[:, 1], ax = axes[0,2], **keywords)
-        sns.scatterplot(x = SSMA_emb[:, 0], y = SSMA_emb[:, 1], ax = axes[1,1], **keywords)
+        sns.scatterplot(x = DTA_emb[:, 0], y = DTA_emb[:, 1], ax = axes[1,1], **keywords)
+        sns.scatterplot(x = SSMA_emb[:, 0], y = SSMA_emb[:, 1], ax = axes[2,0], **keywords)
+        sns.scatterplot(x = PCR_emb[:, 0], y = PCR_emb[:, 1], ax = axes[3,1], **keywords)
 
         plt.plot()
 
@@ -1350,47 +1364,7 @@ def _upload_file(file):
             #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
             base_df = base_df._append(data_dict, ignore_index=True)
 
-        #METHOD DTA and JLMA
-        elif data_dict["method"] == "DTA":
-            #Loop through each Knn
-            for i in range(0, 10):
-                knn = (i*knn_increment) + 2
-                data_dict["KNN"] = knn
-
-                #These percents are rough, and not exact. This is so we can have similar estimates to compare
-                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
-
-                #Loop through each Anchor percentage
-                for j in range(len(AP_values)):
-                    data_dict["Percent_of_Anchors"] = AP_values[j]
-
-                    #Now use are data array to grab the FOSCTTM and CE scores
-                    data_dict["FOSCTTM"] = data[i, j, 0]
-                    data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
-
-                    #Create a new Data frame instance with all the asociated values
-                    df = df._append(data_dict, ignore_index=True)
-                    
-        elif data_dict["method"] == "JLMA":
-            #Loop through each Knn
-            for i in range(0, 10):
-                knn = (i*knn_increment) + 2
-                data_dict["KNN"] = knn
-
-                #These percents are rough, and not exact. This is so we can have similar estimates to compare
-                data_dict["Percent_of_KNN"] = (i * 0.02) + 0.01
-
-                #Loop through each Anchor percentage
-                for j in range(len(AP_values)):
-                    data_dict["Percent_of_Anchors"] = AP_values[j]
-
-                    #Now use are data array to grab the FOSCTTM and CE scores
-                    data_dict["FOSCTTM"] = data[i, j, 0]
-                    data_dict["Cross_Embedding_KNN"] = data[i, j, 1]
-
-                    #Create a new Data frame instance with all the asociated values
-                    df = df._append(data_dict, ignore_index=True)
-        
+        #METHOD DTA and JLMA and PCR
         #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
         else: 
             #Loop through each Knn

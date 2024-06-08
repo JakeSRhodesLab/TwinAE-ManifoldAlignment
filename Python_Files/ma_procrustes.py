@@ -175,5 +175,5 @@ class MAprocr():
         T = np.zeros((self.N1-self.Nshared,self.N2 - self.Nshared))
         T[range(self.N1-self.Nshared), a2] = 1
         
-        return T
+        return self.W #used to be t
 
