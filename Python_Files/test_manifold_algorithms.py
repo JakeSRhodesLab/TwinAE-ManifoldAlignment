@@ -1601,7 +1601,7 @@ def upload_to_DataFrame():
     base_df = base_df.drop(columns=["method", "seed"])
 
     #Merge the DataFrames together
-    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how="left")
+    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"])
 
     return merged_df.drop_duplicates()
 
