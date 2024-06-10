@@ -48,7 +48,7 @@ Tmux Zombies
 13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
 20. MAGAN on Carter
 21. MagBig on Collings
-23.
+23. PCR on Tukey
 
 """
 
@@ -1473,7 +1473,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1566,6 +1566,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
         Parallel(n_jobs=-15)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+
+    if run_PCR:
+        #Loop through each file (Using Parralel Processing) for SSMA
+        Parallel(n_jobs=-5)(delayed(instance.run_PCR_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_KNN_Tests:

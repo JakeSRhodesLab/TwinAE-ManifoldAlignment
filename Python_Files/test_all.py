@@ -14,10 +14,10 @@ import test_manifold_algorithms as tma
 
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
-csv_files = [#"zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
-             #"segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-             #"ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             #"S-curve", "blobs",
+csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+             "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
+             "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
+             "S-curve", "blobs",
              "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
              'Medicaldataset.csv', "water_potability.csv",
              'treeData.csv', 'winequality-red.csv', 'car.csv'
@@ -42,7 +42,8 @@ for split_type in ["turn", "skewed", "even", "distort", "random"]:
                             run_DTA = False,
                             run_NAMA = False,
                             run_SSMA = False,
-                            run_MAGAN= True,
+                            run_MAGAN= False,
                             run_JLMA = False,
                             run_KNN_Tests=False,
+                            run_PCR = True,
                             run_SPUD = False, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
