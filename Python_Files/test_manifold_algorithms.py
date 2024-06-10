@@ -12,25 +12,27 @@ General Notes:
 Changes Log:
 1. Fixed MAGAN files ---> Secondly, the new MAGAN approach doesn't work with varying amount of features for each domain
 2. Adjusted DIG algorithm
+3. Added Classification rows to MAGAN and NAMA
 
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
 3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real
-
+4. Created a function to predict connections and make them for DIG
 
 
 TASKS:
-1. Add Procrustees method
-2. Test without anchor limitiations
-3. Add "Pruning"
+1. Add Procrustees method DONE
+2. Test without anchor limitiations DONE
+3. Add "Pruning" DONE
 4. Keep the distance (instead of setting it as an anchor)
 5. CE -> does it make sense to average the two directions --> In Process
 6. DIG -> FOSCTTM might be different based on off-diagonals used DONE
 7. Fix MAGAN blobs and Scurve tests DONE
 8. MAGAN correspondence loss function
 9. Kernal Density normalization for DIG
+10. Fix classification rows 
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -1601,7 +1603,15 @@ def upload_to_DataFrame():
     base_df = base_df.drop(columns=["method", "seed"])
 
     #Merge the DataFrames together
-    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"])
+    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how = "left")
+
+    #Add the values for methods that don't have KNN by first finding the rows with missing 'KNN' values
+    missing_knn_df = merged_df[merged_df['KNN'].isna()]
+
+    # Find the best scores within each 'csv_file'
+    for csv_file in missing_knn_df['csv_file'].unique():
+        best_scores = merged_df[merged_df['csv_file'] == csv_file][['A_Classification_Score', 'B_Classification_Score']].max()
+        merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
 
     return merged_df.drop_duplicates()
 
