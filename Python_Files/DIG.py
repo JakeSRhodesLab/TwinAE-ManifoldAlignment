@@ -17,20 +17,25 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from scipy.optimize import linear_sum_assignment
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", verbose = 0):
-        """DataA is the first domain (or data set). DataB is the second domain (or data set). 
-        
-        Known Anchors should be in an array shape (n, 2), where n is the number of
-        corresponding points and index [n, 0] is the node in dataA that corresponds to [n, 1]
-        which is the node found in dataB
-        
-        t is the power to which we want to raise our diffusion matrix. If set to negative 1, it will find the optimal t
-        
-        Knn is the value of the amount of nearest neighbors we want. 
-        
-        Link determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
-        want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' mean we want to apply the page
-        ranking algorithm across the entire block matrix."""
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False,  verbose = 0):
+        """
+        Parameters:
+            :DataA: the first domain (or data set). 
+            :DataB: the second domain (or data set). 
+            :Known Anchors: It should be an array shaped (n, 2) where n is the number of
+                corresponding nodes. The first index should be the data point from DataA
+                that corresponds to DataB
+            :t: the power to which we want to raise our diffusion matrix. If set to 
+                negative 1, DIG will find the optimal t value.
+            :KNN: should be an integer. Represents the amount of nearest neighbors to 
+                construct the graphs.
+            :link: Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
+                want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
+                mean we want to apply the page ranking algorithm across the entire block matrix.
+            :density_normalization: A boolean value. If set to true, it will apply a density
+                normalization to the joined domains.     
+            """
+
 
         #For Need to know stuff 
         self.verbose = verbose
@@ -55,7 +60,7 @@ class DIG: #Diffusion Integration with Graphs
         self.graphAB = self.merge_graphs()
         
         #Get Similarity matrix and distance matricies
-        self.similarity_matrix = self.get_pure_matricies(self.graphAB)
+        self.similarity_matrix = self.get_pure_matricies(self.graphAB, density_normalization)
 
         #Get Diffusion Matrix
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
@@ -117,10 +122,14 @@ class DIG: #Diffusion Integration with Graphs
         row_sums = matrix.sum(axis=1)
         return matrix / row_sums[:, np.newaxis]
 
-    def get_pure_matricies(self, graph):
+    def get_pure_matricies(self, graph, normalize_density):
         """ Returns the similarity matrix"""
 
         matrix = graph.K.toarray()
+
+        #Apply density normalization
+        if normalize_density:
+            matrix = self.density_normalized_kernel(matrix, sigma = 10)
         
         #Normalize the matrix
         matrix = self.normalize_0_to_1(matrix)
@@ -140,6 +149,39 @@ class DIG: #Diffusion Integration with Graphs
                          [off_diagonal_block.T, self.normalize_0_to_1(self.kernalsB)]])
 
         return block
+    
+    def kernel_density_estimation(self, X, sigma):
+        """
+        Calculate the kernel density estimation for each point in X.
+        
+        Parameters:
+        X (numpy.ndarray): An array of shape (n_samples, n_features) containing the data points.
+        sigma (float): The bandwidth of the Gaussian kernel.
+        
+        Returns:
+        numpy.ndarray: An array of shape (n_samples,) containing the density estimates for each point.
+        """
+
+        squared_distances = np.sum((X[:, np.newaxis] - X) ** 2, axis=2)
+        densities = np.sum(np.exp(-squared_distances / (2 * sigma ** 2)), axis=1)
+        return densities
+
+    def density_normalized_kernel(self, X, sigma):
+        """
+        Calculate the density-normalized kernel for each pair of points in X.
+        
+        Parameters:
+        X (numpy.ndarray): An array of shape (n_samples, n_features) containing the data points.
+        sigma (float): The bandwidth of the Gaussian kernel.
+        
+        Returns:
+        numpy.ndarray: An array of shape (n_samples, n_samples) containing the density-normalized kernel values.
+        """
+
+        densities = self.kernel_density_estimation(X, sigma)
+        squared_distances = np.sum((X[:, np.newaxis] - X) ** 2, axis=2)
+        K_norm = np.exp(-squared_distances / (2 * sigma ** 2)) / np.sqrt(densities[:, np.newaxis] * densities)
+        return K_norm
     
     """THE PRIMARY FUNCTIONS"""
     def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)

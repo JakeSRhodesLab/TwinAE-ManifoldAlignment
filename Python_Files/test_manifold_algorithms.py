@@ -13,6 +13,8 @@ Changes Log:
 1. Fixed MAGAN files ---> Secondly, the new MAGAN approach doesn't work with varying amount of features for each domain
 2. Adjusted DIG algorithm
 3. Added Classification rows to MAGAN and NAMA
+4. Added Density Normalization function
+
 
 
 FUTURE IDEAS:
@@ -27,7 +29,7 @@ TASKS:
 2. Test without anchor limitiations DONE
 3. Add "Pruning" DONE
 4. Keep the distance (instead of setting it as an anchor)
-5. CE -> does it make sense to average the two directions --> In Process
+5. CE -> does it make sense to average the two directions --> Done
 6. DIG -> FOSCTTM might be different based on off-diagonals used DONE
 7. Fix MAGAN blobs and Scurve tests DONE
 8. MAGAN correspondence loss function
