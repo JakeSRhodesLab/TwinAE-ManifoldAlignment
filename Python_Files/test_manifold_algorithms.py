@@ -45,7 +45,8 @@ https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (16 days in)
-23. PCR on Tukey
+23. PCR on Tukey (1 day)
+24. CwDIG on Carter
 
 """
 
@@ -475,9 +476,6 @@ class test_manifold_algorithms():
 
                     #FOSCTTM Evaluation Metrics
                     try:
-                        """DIG_FOSCTTM = self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A])
-                        print(f"            FOSCTTM Score: {DIG_FOSCTTM}")"""
-
                         DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
                         print(f"            FOSCTTM: {DIG_FOSCTTM}")
 
@@ -492,10 +490,7 @@ class test_manifold_algorithms():
                         emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
 
                         DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                        print(f"            As Before CE Score: {DIG_CE}")
-
-                        DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4}, other_side = False)
-                        print(f"            Other Side CE Score: {DIG_CE}")
+                        print(f"            CE Score: {DIG_CE}")
 
                     except Exception as e:
                         print(f"            Cross Embedding exception occured: {e}")
@@ -515,11 +510,102 @@ class test_manifold_algorithms():
                         print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
 
                 #Save the numpy array
-                #np.save(filename, DIG_scores)
+                np.save(filename, DIG_scores)
 
         #Run successful
         return True
 
+    def run_DIG_Conections_tests(self, page_ranks = ("None", "off-diagonal", "full"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
+        """page_ranks should be whether or not we want to test the page_ranks
+        
+        predict should be a Boolean value and decide whether we want to test the amputation features. 
+        NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same"""
+
+        #Run through the tests with every variatioin
+        print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
+        for link in page_ranks:
+            print(f"Page rank applied: {link}")
+
+            #Create the filename
+            filename = self.create_filename("CwDIG", PageRanks = link)
+
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename):
+                print(f"    <><><><><>    File {filename} already exists   <><><><><>")
+                return True
+            
+            #Store the data in a numpy array
+            DIG_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), len(connection_limit), 2 + predict))
+
+            for j, knn in enumerate(self.knn_range):
+                print(f"    KNN {knn}")
+                for k, anchor_percent in enumerate(self.percent_of_anchors):
+                    print(f"        Percent of Anchors {anchor_percent}")
+                    for l, connection in enumerate(connection_limit):
+                        print(f"            Connection Limit: {connection}")
+
+                        try:
+                            #Create our class to run the tests
+                            DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link, verbose = 0)
+
+                            #Make the connection limit value
+                            if connection != None:
+                                connection = int(DIG_class.len_A * connection)
+
+                            #Boost the Algorithm
+                            DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto")
+
+                        except Exception as e:
+                            print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                            DIG_scores[j, k, l, 0] = np.NaN
+                            DIG_scores[j, k, l, 1] = np.NaN
+
+                            #If we are using predict, this must also be NaN
+                            if predict:
+                                DIG_scores[j, k, l, 2] = np.NaN
+                            continue
+
+                        #FOSCTTM Evaluation Metrics
+                        try:
+                            DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                            print(f"                FOSCTTM: {DIG_FOSCTTM}")
+
+                        except Exception as e:
+                            print(f"            FOSCTTM exception occured: {e}")
+                            DIG_FOSCTTM = np.NaN
+
+                        DIG_scores[j, k, 0] = DIG_FOSCTTM
+
+                        #Cross Embedding Evaluation Metric
+                        try:
+                            emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+                            DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                            print(f"                CE Score: {DIG_CE}")
+
+                        except Exception as e:
+                            print(f"                Cross Embedding exception occured: {e}")
+                            DIG_CE = np.NaN
+
+                        DIG_scores[j, k, 1] = DIG_CE
+
+                        #Predict features test
+                        if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                            #Testing the PREDICT labels features
+                            features_pred_B = DIG_class.predict_feature(predict="B")
+                            features_pred_A = DIG_class.predict_feature(predict="A")
+
+                            #Get the MAE for each set and average them
+                            DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                            DIG_scores[j, k, 2] = DIG_MAE
+                            print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+                #Save the numpy array
+                np.save(filename, DIG_scores)
+
+        #Run successful
+        return True
+    
     def run_NAMA_tests(self):
         """Needs no additional parameters"""
 
@@ -1469,7 +1555,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CwDIG = False, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1531,6 +1617,18 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_SPUD =
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=-7)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
+    if run_CwDIG:
+        #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
+        filtered_kwargs = {}
+        if "page_ranks" in kwargs:
+            filtered_kwargs["page_ranks"] = kwargs["page_ranks"]
+        if "predict" in kwargs:
+            filtered_kwargs["predict"] = kwargs["predict"]
+        if "connection_limit" in kwargs:
+            filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
+    
+        #Loop through each file (Using Parralel Processing) for DIG
+        Parallel(n_jobs=-15)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_SPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed

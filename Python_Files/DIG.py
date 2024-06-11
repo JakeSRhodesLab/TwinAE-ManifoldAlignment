@@ -410,16 +410,18 @@ class DIG: #Diffusion Integration with Graphs
                 print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
 
             #Find predicted anchors
-            new_connections = self._find_new_connections(self, pruned_connections, threshold = threshold, connection_limit = connection_limit)
+            new_connections = self._find_new_connections(pruned_connections = pruned_connections, threshold = threshold, connection_limit = connection_limit)
 
             if len(new_connections) < 1:
-                print("No new_connections. Exiting process")
+                if self.verbose > 0:
+                    print("No new_connections. Exiting process")
 
                 #Return false to signify we didn't go through all the tests
                 return False
 
             #Continue to show connections
-            print(f"New connections found: {len(new_connections)}")
+            if self.verbose > 0:
+                print(f"New connections found: {len(new_connections)}")
 
             if self.verbose > 2:
                 print("----------------------   Connections Below   ----------------------")
@@ -448,7 +450,8 @@ class DIG: #Diffusion Integration with Graphs
 
             #See if the extra connections helped
             if new_score < current_score:
-                print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
+                if self.verbose > 0:
+                    print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
                 
                 #Reset all the class variables
                 self.similarity_matrix = new_similarity_matrix
@@ -460,7 +463,8 @@ class DIG: #Diffusion Integration with Graphs
                 current_score = new_score
 
             else:
-                print(f"The new connections worsened the alignment by {new_score - current_score}\n-----------     Pruning the new connections. Continuing...    -----------\n")
+                if self.verbose > 0:
+                    print(f"The new connections worsened the alignment by {new_score - current_score}\n-----------     Pruning the new connections. Continuing...    -----------\n")
 
                 #Add the added connections to the the pruned_connections
                 if len(pruned_connections) < 1:
@@ -469,7 +473,9 @@ class DIG: #Diffusion Integration with Graphs
                     pruned_connections = np.concatenate([pruned_connections, new_connections[:, :2]]).astype(int)
             
         #Process Finished
-        print("<><><><><><><><><><<><><><><<> Epochs Finished <><><><><><><><><><><><><><><><><>")
+        if self.verbose > 0:
+            print("<><><><><><><><><><<><><><><<> Epochs Finished <><><><><><><><><><><><><><><><><>")
+
         return True
 
     """VISUALIZE AND TEST FUNCTIONS"""
