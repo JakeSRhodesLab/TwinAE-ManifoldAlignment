@@ -3,38 +3,34 @@
 """
 Questions:
 2. Would Professor like to know how to work the algorithms to get the right graphs for the paper?
-3. Too large of files - Git Error
-
-General Notes:
-1. Distance with SPUD seems to be arbitrarly better than the other arguments -> See the Pandas table
-2. With random splits, MAGAN preformance can vary dramatically within the same dataset based on the seed
+3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
 1. Fixed MAGAN files ---> Secondly, the new MAGAN approach doesn't work with varying amount of features for each domain
 2. Adjusted DIG algorithm
-3. Added Classification rows to MAGAN and NAMA
+3. Added Classification rows to MAGAN and NAMA, and fixed it so now their are straight comparisions
 4. Added Density Normalization function
+5. Added the "Add Conections" functions, and tested them for DIG
+6. Added more features to the ranking function -> Can see their scores
+7. Tested parameter defaults for auto connections, and set them :)
 
 
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
-3. We could have the algorithm discover "new anchors", and repeat the process with the anchors it guesses are real
-4. Created a function to predict connections and make them for DIG
-
 
 TASKS:
 1. Add Procrustees method DONE
 2. Test without anchor limitiations DONE
 3. Add "Pruning" DONE
-4. Keep the distance (instead of setting it as an anchor)
+4. Keep the distance (instead of setting it as an anchor) DONE
 5. CE -> does it make sense to average the two directions --> Done
 6. DIG -> FOSCTTM might be different based on off-diagonals used DONE
 7. Fix MAGAN blobs and Scurve tests DONE
-8. MAGAN correspondence loss function
-9. Kernal Density normalization for DIG
-10. Fix classification rows 
+8. MAGAN correspondence loss function DONE
+9. Kernal Density normalization for DIG DONE
+10. Fix classification rows DONE
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -48,10 +44,7 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-12. evens on Hilton -- All of the bigest data files (11 days in)
-13. all on carter -- RUNNING ALL COMBINATIONS --> (8 days in) ------ TEST EVENTUALLY FAILED BY EXCESSIVE MEMORY OVERDOSE --------- > Failed doing MAGAN <-- So eveerything else should be completed
-20. MAGAN on Carter
-21. MagBig on Collings
+12. evens on Hilton -- All of the bigest data files (16 days in)
 23. PCR on Tukey
 
 """
@@ -1187,7 +1180,6 @@ def clear_directory(text_curater = "all"):
         print("<><> Cancelling Process <><>")
         return False
 
-
 def _upload_file(file):
     #Simply for error finding
     original_file = MANIFOLD_DATA_DIR + file
@@ -1365,8 +1357,8 @@ def _upload_file(file):
                 data_dict["A_Classification_Score"] = data[k, 0]
                 data_dict["B_Classification_Score"] = data[k, 1]
 
-            #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
-            base_df = base_df._append(data_dict, ignore_index=True)
+                #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
+                base_df = base_df._append(data_dict, ignore_index=True)
 
         #METHOD DTA and JLMA and PCR
         #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
@@ -1595,9 +1587,10 @@ def upload_to_DataFrame():
     #Use Parralel processing to upload lines to dataframe
     processed_files = Parallel(n_jobs=-5)(delayed(_upload_file)(file) for file in files)
 
+    # Separate the DataFrames from the list of tuples
+    dataframes, base_dataframes = zip(*processed_files)
+
     # Convert the list of dictionaries to a pandas DataFrame
-    dataframes = [file[0] for file in processed_files]
-    base_dataframes = [file[1] for file in processed_files]
     df = pd.concat(dataframes, ignore_index=True)
     base_df = pd.concat(base_dataframes, ignore_index = True)
 

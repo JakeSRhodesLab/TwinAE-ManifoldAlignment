@@ -41,6 +41,7 @@ class DIG: #Diffusion Integration with Graphs
         self.verbose = verbose
         self.t = t
         self.link = link
+        self.normalize_density = density_normalization
 
         #Scale data
         self.dataA = self.normalize_0_to_1(dataA)
@@ -60,7 +61,7 @@ class DIG: #Diffusion Integration with Graphs
         self.graphAB = self.merge_graphs()
         
         #Get Similarity matrix and distance matricies
-        self.similarity_matrix = self.get_pure_matricies(self.graphAB, density_normalization)
+        self.similarity_matrix = self.get_pure_matricies(self.graphAB)
 
         #Get Diffusion Matrix
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
@@ -122,13 +123,13 @@ class DIG: #Diffusion Integration with Graphs
         row_sums = matrix.sum(axis=1)
         return matrix / row_sums[:, np.newaxis]
 
-    def get_pure_matricies(self, graph, normalize_density):
+    def get_pure_matricies(self, graph):
         """ Returns the similarity matrix"""
 
         matrix = graph.K.toarray()
 
         #Apply density normalization
-        if normalize_density:
+        if self.normalize_density:
             matrix = self.density_normalized_kernel(matrix, sigma = 10)
         
         #Normalize the matrix
@@ -182,7 +183,64 @@ class DIG: #Diffusion Integration with Graphs
         squared_distances = np.sum((X[:, np.newaxis] - X) ** 2, axis=2)
         K_norm = np.exp(-squared_distances / (2 * sigma ** 2)) / np.sqrt(densities[:, np.newaxis] * densities)
         return K_norm
-    
+
+    def _find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
+        """A helper function that finds and returns a list of possible anchors and their associated wieghts after alignment.
+            
+        Parameters:
+            :connection_limit: should be an integer. If set, it will cap out the max amount of anchors found.
+            :threshold: should be a float.
+                The threshold determines how similar a point has to be to another to be considered an anchor
+            :pruned_connections: should be a list formated like Known Anchors. The node connections in this list will not be considered
+                for possible connections. 
+            
+        returns possible anchors plus known anchors in a single list"""
+
+        #Keep Track of known-connections 
+        known_connections = self.similarity_matrix > 0 #Creates a mask of everywhere we have a connection
+
+        if self.verbose > 0:
+            print(f"Total number of Known_connections: {np.sum(known_connections)}")
+
+        #Set our Known-connections to inf values so they are not found and changed
+        array = np.array(self.sim_diffusion_matrix) #This is made into an array to ensure we aren't passing by reference
+        array[known_connections] = np.inf
+
+        #Modify our array just to be the off-diagonal 
+        array = array[:self.len_A, self.len_A:]
+
+        #Add in our pruned connections
+        array[pruned_connections] = np.inf
+
+        #Set anchor limit to 1/3 of the unknown data points
+        if connection_limit == None:
+            #connection_limit = int((np.min(array.shape) - len(self.known_anchors)) / 3)
+            connection_limit = int(array.shape[0] * array.shape[1])
+
+        """ This section actually finds and then curates potential anchors """
+
+        
+        # Flatten the array
+        array_flat = array.flatten()
+
+        # Get the indices that would sort the array
+        smallest_indices = np.argsort(array_flat)
+
+        # Select the indices of the first 5 smallest values
+        smallest_indices = smallest_indices[:connection_limit]
+
+        # Convert the flattened indices to tuple coordinates (row, column)
+        coordinates = [np.unravel_index(index, array.shape) for index in smallest_indices]
+
+        #Add in coordinate values as the third index in the tuple
+        coordinates = [(int(coordinate[0]), int(coordinate[1]), array[coordinate[0], coordinate[1]]) for coordinate in coordinates]
+
+        #Apply the Threshold
+        from itertools import takewhile
+        coordinates = np.array(list(takewhile(lambda x: x[2] < threshold, coordinates)))
+
+        return coordinates
+
     """THE PRIMARY FUNCTIONS"""
     def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
         """Creates a new graph from A and B using the known_anchors
@@ -305,6 +363,114 @@ class DIG: #Diffusion Integration with Graphs
         completeData = np.vstack([full_data_A, full_data_B])
 
         return completeData
+
+    def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto"):
+        """Finds potential anchors after alignment, and then recalculates the entire alignment with the new anchor points for each epoch. 
+        
+        Parameters:
+            :connection_limit: should be an integer. If set, it will cap out the max amount of anchors found. 
+                Best values to try: 1/5 of the length of data, 1/10 length of the data, 10x length of data, or None. 
+            :threshold: should be a float. If auto, the algorithm will determine it. It can not be higher than the median of the dataset.
+                The threshold determines how similar a point has to be to another to be considered an anchor
+            :pruned_connections: should be a list formated like Known Anchors. The node connections in this list will not be considered
+                for possible connections. 
+            :epochs: the number of iterations the cycle will go through. 
+        """
+
+        #Show the original connections
+        if self.verbose > 1:
+            print("<><><><><> Beggining Tests. Original Connections show below <><><><><>")
+            plt.imshow(self.similarity_matrix)
+            plt.show()
+
+        if threshold == "auto":
+            #Set the threshold to be the 10% limit of the connections
+            threshold = np.sort(self.sim_diffusion_matrix.flatten())[:int(len(self.sim_diffusion_matrix.flatten()) * .1)][-1]
+
+        if connection_limit == "auto":
+            #Set the connection limit to be 10x the shape (just because its usualy good and fast)
+            connection_limit = 10 * self.len_A
+
+        #Create an empty Numpy array
+        pruned_connections = np.array([]).astype(int)
+
+        #Get the current score of the alignment
+        current_score = np.mean([self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A]), self.FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:])])
+
+        #Find the Max value for new connections to be set too
+        second_max = np.median(self.similarity_matrix[self.similarity_matrix != 0])
+        
+        if self.verbose > 0:
+            print(f"Second max: {second_max}")
+        
+        #Rebuild Class for each epoch
+        for epoch in range(0, epochs):
+            
+            if self.verbose > 0:
+                print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
+
+            #Find predicted anchors
+            new_connections = self._find_new_connections(self, pruned_connections, threshold = threshold, connection_limit = connection_limit)
+
+            if len(new_connections) < 1:
+                print("No new_connections. Exiting process")
+
+                #Return false to signify we didn't go through all the tests
+                return False
+
+            #Continue to show connections
+            print(f"New connections found: {len(new_connections)}")
+
+            if self.verbose > 2:
+                print("----------------------   Connections Below   ----------------------")
+                for i, (row, col, val) in enumerate(new_connections):
+                    print(f"Pair {i+1}: ({row}, {col}) with value {val}")
+                    
+                print("\n\n\n")
+
+            #Copy Similarity matrix
+            new_similarity_matrix = np.array(self.similarity_matrix) #We do this redudant conversion to ensure we aren't copying over a reference
+
+            #Add the new connections
+            new_similarity_matrix[new_connections[:, 0].astype(int), (new_connections[:, 1] + self.len_A).astype(int)] = second_max - new_connections[:, 2] #The max_value minus is supposed to help go from distance to similarities
+            new_similarity_matrix[(new_connections[:, 0] + self.len_A).astype(int) , new_connections[:, 1].astype(int)] = second_max - new_connections[:, 2] #This is so we get the connections in the other off-diagonal block
+
+            #Show the new connections
+            if self.verbose > 1:
+                plt.imshow(new_similarity_matrix)
+                plt.show()
+            
+            #Get new Diffusion Matrix
+            new_sim_diffusion_matrix, new_projectionAB, new_projectionBA = self.get_diffusion(new_similarity_matrix, self.t, link = self.link)
+
+            #Get the new score
+            new_score = np.mean([self.FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A]), self.FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:])])
+
+            #See if the extra connections helped
+            if new_score < current_score:
+                print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
+                
+                #Reset all the class variables
+                self.similarity_matrix = new_similarity_matrix
+                self.sim_diffusion_matrix = new_sim_diffusion_matrix
+                self.projectionAB = new_projectionAB
+                self.projectionBA = new_projectionBA
+
+                #Reset the score
+                current_score = new_score
+
+            else:
+                print(f"The new connections worsened the alignment by {new_score - current_score}\n-----------     Pruning the new connections. Continuing...    -----------\n")
+
+                #Add the added connections to the the pruned_connections
+                if len(pruned_connections) < 1:
+                    pruned_connections = new_connections[:, :2].astype(int)
+                else:
+                    pruned_connections = np.concatenate([pruned_connections, new_connections[:, :2]]).astype(int)
+            
+        #Process Finished
+        print("<><><><><><><><><><<><><><><<> Epochs Finished <><><><><><><><><><><><><><><><><>")
+        return True
 
     """VISUALIZE AND TEST FUNCTIONS"""
     def plot_graphs(self):
