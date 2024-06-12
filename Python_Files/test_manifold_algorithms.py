@@ -46,7 +46,6 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (16 days in)
 23. PCR on Tukey (1 day)
-24. CwDIG on Carter
 
 """
 
@@ -574,7 +573,7 @@ class test_manifold_algorithms():
                             print(f"            FOSCTTM exception occured: {e}")
                             DIG_FOSCTTM = np.NaN
 
-                        DIG_scores[j, k, 0] = DIG_FOSCTTM
+                        DIG_scores[j, k, l, 0] = DIG_FOSCTTM
 
                         #Cross Embedding Evaluation Metric
                         try:
@@ -587,7 +586,7 @@ class test_manifold_algorithms():
                             print(f"                Cross Embedding exception occured: {e}")
                             DIG_CE = np.NaN
 
-                        DIG_scores[j, k, 1] = DIG_CE
+                        DIG_scores[j, k, l, 1] = DIG_CE
 
                         #Predict features test
                         if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
@@ -597,7 +596,7 @@ class test_manifold_algorithms():
 
                             #Get the MAE for each set and average them
                             DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                            DIG_scores[j, k, 2] = DIG_MAE
+                            DIG_scores[j, k, l, 2] = DIG_MAE
                             print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
 
                 #Save the numpy array
@@ -1370,6 +1369,46 @@ def _upload_file(file):
                     finally:
                         #Create a new Data frame instance with all the asociated values
                         df = df._append(data_dict, ignore_index=True)
+
+        #Split based on method
+        if data_dict["method"] == "CwDIG":
+
+            #Add the right Page Rank Argument
+            if "None" in file:
+                data_dict["Page_Rank"] = "None"
+            elif "off-diagonal" in file:
+                data_dict["Page_Rank"] = "off-diagonal"
+            else: #Then it is full
+                data_dict["Page_Rank"] = "full"
+
+            #Loop through each Knn
+            for j in range(0, 10):
+                knn = (j*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (j * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for k in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[k]
+
+                    for l in range(data.shape[2]):
+                        #Use the operation heading to set the values
+                        data_dict["Operation"] = "Anchor Limit: " + str(l) #TODO: At some point we will need to fix the file naming and so we can have this down
+
+                        #Now use are data array to grab the FOSCTTM and CE scores
+                        data_dict["FOSCTTM"] = data[j, k, l, 0]
+                        data_dict["Cross_Embedding_KNN"] = data[j, k, l, 1]
+
+                        #We failsafe this in a try because there might not be a finally loop
+                        try:
+                            data_dict["Predicted_Feature_MAE"] = data[j, k, l, 2]
+                        except:
+                            data_dict["Predicted_Feature_MAE"] = np.NaN
+                        finally:
+                            #Create a new Data frame instance with all the asociated values
+                            df = df._append(data_dict, ignore_index=True)
                     
         #Method SPUD
         elif data_dict["method"] == "SPUD":
@@ -1628,7 +1667,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CwDIG 
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-15)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-7)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_SPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
