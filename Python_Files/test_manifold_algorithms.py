@@ -6,13 +6,6 @@ Questions:
 3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
-1. Fixed MAGAN files ---> Secondly, the new MAGAN approach doesn't work with varying amount of features for each domain
-2. Adjusted DIG algorithm
-3. Added Classification rows to MAGAN and NAMA, and fixed it so now their are straight comparisions
-4. Added Density Normalization function
-5. Added the "Add Conections" functions, and tested them for DIG
-6. Added more features to the ranking function -> Can see their scores
-7. Tested parameter defaults for auto connections, and set them :)
 
 
 
@@ -21,16 +14,9 @@ FUTURE IDEAS:
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
 
 TASKS:
-1. Add Procrustees method DONE
-2. Test without anchor limitiations DONE
-3. Add "Pruning" DONE
-4. Keep the distance (instead of setting it as an anchor) DONE
-5. CE -> does it make sense to average the two directions --> Done
-6. DIG -> FOSCTTM might be different based on off-diagonals used DONE
-7. Fix MAGAN blobs and Scurve tests DONE
-8. MAGAN correspondence loss function DONE
-9. Kernal Density normalization for DIG DONE
-10. Fix classification rows DONE
+1. Fix DIG FOSCTTM -> Make it so it only uses known anchors
+2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? 
+3. Fix density normalization: Get the row sum for each row: 
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey

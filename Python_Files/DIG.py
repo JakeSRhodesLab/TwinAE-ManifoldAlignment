@@ -14,7 +14,7 @@ import seaborn as sns
 from phate import PHATE
 from vne import find_optimal_t
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from scipy.optimize import linear_sum_assignment
+from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
     def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False,  verbose = 0):
@@ -66,10 +66,6 @@ class DIG: #Diffusion Integration with Graphs
         #Get Diffusion Matrix
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
 
-        #Try doing diffusion the empy block way
-        """self.empty_block = self.get_zeros_and_ones_block()
-        self.empty_diffused, __, __ = self.get_diffusion(self.empty_block, t, link = link) #NOTE: We currently do not store these projections"""
-
     """EVALUATION FUNCTIONS BELOW"""
     def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
         n1, n2 = np.shape(Wxy)
@@ -84,6 +80,22 @@ class DIG: #Diffusion Integration with Graphs
         _, kneighbors = nn.kneighbors(dists)
 
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+    
+    def partial_FOSCTTM(self, Wxy, anchors): #Wxy should be just the parrallel matrix
+        """This uses only the provided known connections"""
+
+        n1, n2 = np.shape(Wxy)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = Wxy
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
     
     def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}):
         """Evaluation Metric that computes how many of the closest neighbors are correct"""
@@ -136,20 +148,6 @@ class DIG: #Diffusion Integration with Graphs
         matrix = self.normalize_0_to_1(matrix)
 
         return matrix
-    
-    def get_zeros_and_ones_block(self):
-        """This creates off-diagonal blocks with known anchor points set to 1, and all other values set to 0. It returns a block matrix"""
-        #Fill with zeros
-        off_diagonal_block = np.zeros(shape=(self.len_A, self.len_B))
-
-        #Set the anchors to 1
-        off_diagonal_block[self.known_anchors[:, 0], self.known_anchors[:, 1]] = 1
-
-        #Create block matrix
-        block = np.block([[self.normalize_0_to_1(self.kernalsA), off_diagonal_block],
-                         [off_diagonal_block.T, self.normalize_0_to_1(self.kernalsB)]])
-
-        return block
     
     def kernel_density_estimation(self, X, sigma):
         """
@@ -236,7 +234,6 @@ class DIG: #Diffusion Integration with Graphs
         coordinates = [(int(coordinate[0]), int(coordinate[1]), array[coordinate[0], coordinate[1]]) for coordinate in coordinates]
 
         #Apply the Threshold
-        from itertools import takewhile
         coordinates = np.array(list(takewhile(lambda x: x[2] < threshold, coordinates)))
 
         return coordinates
@@ -395,7 +392,7 @@ class DIG: #Diffusion Integration with Graphs
         pruned_connections = np.array([]).astype(int)
 
         #Get the current score of the alignment
-        current_score = np.mean([self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A]), self.FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:])])
+        current_score = np.mean([self.partial_FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A]), self.partial_FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:])])
 
         #Find the Max value for new connections to be set too
         second_max = np.median(self.similarity_matrix[self.similarity_matrix != 0])
@@ -446,7 +443,7 @@ class DIG: #Diffusion Integration with Graphs
             new_sim_diffusion_matrix, new_projectionAB, new_projectionBA = self.get_diffusion(new_similarity_matrix, self.t, link = self.link)
 
             #Get the new score
-            new_score = np.mean([self.FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A]), self.FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:])])
+            new_score = np.mean([self.partial_FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A]), self.partial_FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:])])
 
             #See if the extra connections helped
             if new_score < current_score:
@@ -480,44 +477,30 @@ class DIG: #Diffusion Integration with Graphs
 
     """VISUALIZE AND TEST FUNCTIONS"""
     def plot_graphs(self):
-        fig, axes = plt.subplots(2, 3, figsize = (13, 9))
-        axes[0, 0].imshow(self.kernalsA)
-        axes[0,0].set_title("Graph A Similarities")
-
-        """ This is if we wanted the Empty Block
-        #Graph B
-        axes[1, 0].imshow(self.empty_block)
-        axes[1,0].set_title("Empty Block")
-        """
+        fig, axes = plt.subplots(1, 3, figsize = (13, 9))
 
         #Similarity matrix
-        axes[0,1].imshow(self.similarity_matrix)
-        axes[0,1].set_title("Similarity Matrix")
+        axes[0].imshow(self.similarity_matrix)
+        axes[0].set_title("Similarity Matrix")
 
-        #Distance matrix
-        axes[1,2].imshow(self.projectionAB)
-        axes[1,2].set_title("Projection AB")
+        #Projection AB
+        axes[2].imshow(self.projectionAB)
+        axes[2].set_title("Projection AB")
 
         #Diffusion matrix
-        axes[0,2].imshow(self.sim_diffusion_matrix)
-        axes[0,2].set_title("Similarities Diffusion Matrix")
-
-        """This is if we wanted the Empty Block
-        #Distance diffusion matrix
-        axes[1,1].imshow(self.empty_diffused)
-        axes[1,1].set_title("Empty diffused")
-        """
+        axes[1].imshow(self.sim_diffusion_matrix)
+        axes[1].set_title("Similarities Diffusion Matrix")
 
         plt.show()
 
-    def plot_emb(self, labels, block, n_comp = 2, show_lines = True, show_anchors = True, use_phate = False, **kwargs): 
+    def plot_emb(self, labels, n_comp = 2, show_lines = True, show_anchors = True, use_phate = False, **kwargs): 
         #Convert to a MDS
         if use_phate:
             phate = PHATE(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            self.emb = phate.fit_transform(block)
+            self.emb = phate.fit_transform(self.sim_diffusion_matrix)
         else:
             mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            self.emb = mds.fit_transform(block) #Later we should implent this to just be the block
+            self.emb = mds.fit_transform(self.sim_diffusion_matrix) #Later we should implent this to just be the block
 
         #Stress is a value of how well the emd did. Lower the better.
         print(f"Model Stress: {mds.stress_}")
@@ -531,7 +514,7 @@ class DIG: #Diffusion Integration with Graphs
             print("Can't calculate the Cross embedding")
 
         try:    
-            print(f"FOSCTTM: {self.FOSCTTM(block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
+            print(f"FOSCTTM: {self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
 
@@ -605,7 +588,7 @@ class DIG: #Diffusion Integration with Graphs
         #Show plot
         plt.show()
 
-    def plot_t_grid(self, block, rate = 3):
+    def plot_t_grid(self, rate = 3):
         """Returns the best T value according to its FOSCTTM score"""
         fig, axes = plt.subplots(nrows=4, ncols=5, figsize=(20, 16)) # Creates a grid of 2x5 for the subplots
         F_scores = np.array([])
@@ -616,7 +599,7 @@ class DIG: #Diffusion Integration with Graphs
             
             # Perform the diffusion operation
             a = i * rate
-            diffused_array, projectionAB, projectionBA = self.get_diffusion(block, a)
+            diffused_array, projectionAB, projectionBA = self.get_diffusion(self.similarity_matrix, a)
 
             #Add Foscttm score
             F_scores = np.append(F_scores, self.FOSCTTM(diffused_array))
