@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False,  verbose = 0):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, merge = True,  verbose = 0):
         """
         Parameters:
             :DataA: the first domain (or data set). 
@@ -33,7 +33,9 @@ class DIG: #Diffusion Integration with Graphs
                 want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
                 mean we want to apply the page ranking algorithm across the entire block matrix.
             :density_normalization: A boolean value. If set to true, it will apply a density
-                normalization to the joined domains.     
+                normalization to the joined domains. 
+
+            :merge: If merge is set to True, it will use graphs, otherwise it will use kernals    
             """
 
 
@@ -56,9 +58,19 @@ class DIG: #Diffusion Integration with Graphs
         self.kernalsB = np.array(self.graph_b.K.toarray())
 
         self.known_anchors = known_anchors
+            
+        #This stores the length of the datasets A and B
+        self.len_A = len(self.dataA)
+        self.len_B = len(self.dataB)
+
+        #Change known_anchors to correspond to off diagonal matricies
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Connect the graphs
-        self.graphAB = self.merge_graphs()
+        if merge:
+            self.graphAB = self.merge_graphs()
+        else:
+            self.graphAB = self.merge_kernals()
         
         #Get Similarity matrix and distance matricies
         self.similarity_matrix = self.get_pure_matricies(self.graphAB)
@@ -135,10 +147,8 @@ class DIG: #Diffusion Integration with Graphs
         row_sums = matrix.sum(axis=1)
         return matrix / row_sums[:, np.newaxis]
 
-    def get_pure_matricies(self, graph):
+    def get_pure_matricies(self, matrix):
         """ Returns the similarity matrix"""
-
-        matrix = graph.K.toarray()
 
         #Apply density normalization
         if self.normalize_density:
@@ -246,15 +256,8 @@ class DIG: #Diffusion Integration with Graphs
         graphA = self.graph_a.to_igraph()
         graphB = self.graph_b.to_igraph()
 
-        #This stores the length of graph A and B
-        self.len_A = graphA.vcount()
-        self.len_B = graphB.vcount()
-
         #Merge the two graphs together
         merged = graphA.disjoint_union(graphB) #Note: The distances between graphs may not be the same. It this is the case, would we want to scale the data first?
-
-        #Change known_anchors to correspond between the new indexes
-        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Now conenct the anchors together.
         for anchor in self.known_anchors: 
@@ -279,7 +282,39 @@ class DIG: #Diffusion Integration with Graphs
         #Convert back to graphtools
         merged_graphtools = graphtools.api.from_igraph(merged)
 
-        return merged_graphtools
+        return merged_graphtools.K.toarray()
+
+    def merge_kernals(self): #This is an alternative approach to the merge graph function
+        """Returns a Similarity Block Matrix"""
+
+        #Create a list of the known connections between graphs, first starting with the known anchors
+        known_connections_A = []
+        known_connections_B = []
+
+        #Add in the the connections of each neighbor to each anchor
+        for anchor_pair in self.known_anchors: #TODO: Vectorize this somehow?
+
+            #For each anchor, add its connections to its corresponding anchor
+            known_connections_A += [(neighbor, anchor_pair[1]) for neighbor in set(self.graph_a.to_igraph().neighbors(anchor_pair[0], mode="out"))]
+            known_connections_B += [(anchor_pair[0], neighbor) for neighbor in set(self.graph_b.to_igraph().neighbors(anchor_pair[1], mode="out"))]
+
+        #Convert to a numpy array for advanced slicing
+        known_connections_A = np.array(known_connections_A)
+        known_connections_B = np.array(known_connections_B)
+
+        #Create empty blocks
+        top_right = np.zeros(shape =(self.len_A, self.len_B))
+
+        #Add the known anchors
+        top_right[self.known_anchors[:, 0], self.known_anchors[:,1]] = 1
+
+        #Add the kernal values to its block
+        top_right[known_connections_A[:, 0], known_connections_A[:, 1]] = self.kernalsA[known_connections_A[:, 0], known_connections_A[:, 1]]
+        top_right[known_connections_B[:, 0], known_connections_B[:, 1]] = self.kernalsB[known_connections_B[:, 0], known_connections_B[:, 1]]
+
+        #Return the block
+        return np.block([[self.kernalsA, top_right],
+                         [top_right.T, self.kernalsB]])
 
     def get_diffusion(self, matrix, t = -1, link = "None"): 
         """Returns the diffision matrix from the given matrix, to t steps. If t is -1, it will auto find the best one
