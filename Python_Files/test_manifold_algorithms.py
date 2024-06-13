@@ -6,6 +6,8 @@ Questions:
 3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
+1. On DIG, I added an alternative method to merge graphs called merge kernals. It seems to be about the same
+2. On General Tests, I added a "perfect" standard -- or a graph with all the anchors to use as a base. We wouldn't expect our models to get any better than it. 
 
 
 
@@ -1237,7 +1239,7 @@ def clear_directory(text_curater = "all"):
     #Add user confirmation
     print(f"Preparing to delete {len(curated_files)} files")
     print(f"First 10 file names to be deleted\n-------------------------------------------------\n{curated_files[:10]}")
-    proceed = input("Proceed? [y, n]")
+    proceed = "y"#input("Proceed? [y, n]")
 
     if proceed == "y":
         #Finally delete all files
