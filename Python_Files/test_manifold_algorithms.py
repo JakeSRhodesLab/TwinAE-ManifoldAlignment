@@ -8,17 +8,22 @@ Questions:
 Changes Log:
 1. On DIG, I added an alternative method to merge graphs called merge kernals. It seems to be about the same
 2. On General Tests, I added a "perfect" standard -- or a graph with all the anchors to use as a base. We wouldn't expect our models to get any better than it. 
+3. Curated Random files (making sure that all the files are tested against the same splits with the same seed, and that we only compare similar splits to each other)
+4. Added AP checks when creating files to prevent reruning tests already preformed. 
 
 
 
 FUTURE IDEAS:
 1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
 2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
+3. Possible with n domains?
 
 TASKS:
-1. Fix DIG FOSCTTM -> Make it so it only uses known anchors
+1. Fix DIG FOSCTTM -> Make it so it only uses known anchors -- DONE
 2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? 
 3. Fix density normalization: Get the row sum for each row: 
+4. Go through SPUD. Fix the shortest paths method? This may greatly simplify, making it so we don't have to get node paths
+5. There are duplicate file rows. FInd out why and fix it
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -34,10 +39,13 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 12. evens on Hilton -- All of the bigest data files (16 days in)
 23. PCR on Tukey (1 day)
+24. rand on Carter (running half of all random tests)
+25. rand on Hilton (running the other half of all random tests)
 
 """
 
 #Import libraries
+import glob
 from ma_procrustes import MAprocr
 from DIG import DIG
 from SPUD import SPUD
@@ -336,7 +344,7 @@ class test_manifold_algorithms():
         method = str(method)
 
         #Create filename 
-        filename = method + '(' + self.split[0] + str(self.random_state) + ')'
+        filename = self.base_directory + method + '(' + self.split[0] + str(self.random_state) + ')'
 
         #Loop though the Different opperations
         for key in kwargs:
@@ -344,16 +352,35 @@ class test_manifold_algorithms():
 
         #Add in the Anchors
         filename += "_AP(" #Short for Anchor Percent
-        for name in self.percent_of_anchors:
+
+        #Now check to see if we have run these tests with some anchor percents already
+        matching_files = glob.glob(filename + "*")
+
+        #Loop through and see what anchor percents we have already used
+        AP_values = set([])
+        for file in matching_files:
+            #Get the KNN increment, and then shrink the file to right size
+            knn_upper_bound = file.split("_")[-1]
+            file = file[:-(len(knn_upper_bound)+2)]
+
+            #Get the Anchor Percents
+            AP_index = file.find('_AP(')
+            AP_values = AP_values.union(set([float(num) for num in file[AP_index + 4:].split('-')]))
+
+        #Get the unused AP_values
+        AP_values = (set(self.percent_of_anchors) - AP_values)
+
+        #Add in the percent of anchors
+        for name in AP_values:
             filename += str(name) + "-"
 
         #Add the last index for knn range so we know what knn values were used
         filename = filename[:-1] + ")_" + str(self.knn_range[-1])
 
         #Finish file name
-        filename = self.base_directory + filename + ".npy"
+        filename = filename + ".npy"
 
-        return filename
+        return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
     def run_SPUD_tests(self, operations = ("average", "abs"), kind = ("distance", "pure", "similarity")): #NOTE: After lots of tests, Distance seems to always be the best in every scenario
@@ -369,19 +396,19 @@ class test_manifold_algorithms():
                 print(f"    Kind {type}")
                 
                 #Create files and store data
-                filename = self.create_filename("SPUD", Operation = operation, Kind = type)
+                filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = type)
 
                 #If file aready exists, then we are done :)
-                if os.path.exists(filename):
+                if os.path.exists(filename) or len(AP_values) < 1:
                     print(f"        <><><><><>    File {filename} already exists   <><><><><>")
                     continue
 
                 #Store the data in a numpy array
-                spud_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+                spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
                 for k, knn in enumerate(self.knn_range):
                     print(f"        KNN {knn}")
-                    for l, anchor_percent in enumerate(self.percent_of_anchors):
+                    for l, anchor_percent in enumerate(AP_values):
                         print(f"            Percent of Anchors {anchor_percent}")
 
                         try:
@@ -433,19 +460,19 @@ class test_manifold_algorithms():
             print(f"Page rank applied: {link}")
 
             #Create the filename
-            filename = self.create_filename("DIG", PageRanks = link)
+            filename, AP_values = self.create_filename("DIG", PageRanks = link)
 
             #If file aready exists, then we are done :)
-            if os.path.exists(filename):
+            if os.path.exists(filename) or len(AP_values) < 1:
                 print(f"    <><><><><>    File {filename} already exists   <><><><><>")
                 return True
             
             #Store the data in a numpy array
-            DIG_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2 + predict))
+            DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
 
             for j, knn in enumerate(self.knn_range):
                 print(f"    KNN {knn}")
-                for k, anchor_percent in enumerate(self.percent_of_anchors):
+                for k, anchor_percent in enumerate(AP_values):
                     print(f"        Percent of Anchors {anchor_percent}")
 
                     try:
@@ -514,19 +541,19 @@ class test_manifold_algorithms():
             print(f"Page rank applied: {link}")
 
             #Create the filename
-            filename = self.create_filename("CwDIG", PageRanks = link)
+            filename, AP_values = self.create_filename("CwDIG", PageRanks = link)
 
             #If file aready exists, then we are done :)
-            if os.path.exists(filename):
+            if os.path.exists(filename) or len(AP_values) < 1:
                 print(f"    <><><><><>    File {filename} already exists   <><><><><>")
                 return True
             
             #Store the data in a numpy array
-            DIG_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), len(connection_limit), 2 + predict))
+            DIG_scores = np.zeros((len(self.knn_range), len(AP_values), len(connection_limit), 2 + predict))
 
             for j, knn in enumerate(self.knn_range):
                 print(f"    KNN {knn}")
-                for k, anchor_percent in enumerate(self.percent_of_anchors):
+                for k, anchor_percent in enumerate(AP_values):
                     print(f"        Percent of Anchors {anchor_percent}")
                     for l, connection in enumerate(connection_limit):
                         print(f"            Connection Limit: {connection}")
@@ -597,22 +624,22 @@ class test_manifold_algorithms():
         """Needs no additional parameters"""
 
         #Create file name
-        filename = self.create_filename("NAMA")
+        filename, AP_values = self.create_filename("NAMA")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
 
         #Store the results in an array
-        NAMA_scores = np.zeros((len(self.percent_of_anchors), 2))
+        NAMA_scores = np.zeros((len(AP_values), 2))
 
         #Create the Nama object on the dataset
         nama = NAMA(ot_reg = 0.001)
 
         print("\n-------------------------------------   NAMA TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
         
-        for i, anchor_percent in enumerate(self.percent_of_anchors):
+        for i, anchor_percent in enumerate(AP_values):
             print(f"Percent of Anchors {anchor_percent}")
 
             #Fit NAMA
@@ -653,15 +680,15 @@ class test_manifold_algorithms():
         """Needs no additional parameters"""
 
         #Create file name
-        filename = self.create_filename("DTA")
+        filename, AP_values = self.create_filename("DTA")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
         #Store the results in an array
-        DTA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+        DTA_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
         print("\n--------------------------------------   DTA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
 
@@ -673,7 +700,7 @@ class test_manifold_algorithms():
             DTA_class = DTA(knn = knn, entR=0.001, verbose = 0)
 
             #Loop through each anchor. 
-            for j, anchor_percent in enumerate(self.percent_of_anchors):
+            for j, anchor_percent in enumerate(AP_values):
                 print(f"    Percent of Anchors {anchor_percent}")
 
                 #In case the class initialization fails
@@ -724,15 +751,15 @@ class test_manifold_algorithms():
         Needs no additional parameters"""
 
         #Create file name
-        filename = self.create_filename("PCR")
+        filename, AP_values = self.create_filename("PCR")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
         #Store the results in an array
-        scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+        scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
         print("\n--------------------------------------   PCR TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
 
@@ -744,7 +771,7 @@ class test_manifold_algorithms():
             PCR_class = MAprocr(knn = knn, random_state = self.random_state, n_jobs = 1)
 
             #Loop through each anchor. 
-            for j, anchor_percent in enumerate(self.percent_of_anchors):
+            for j, anchor_percent in enumerate(AP_values):
                 print(f"    Percent of Anchors {anchor_percent}")
 
                 #In case the class initialization fails
@@ -799,7 +826,7 @@ class test_manifold_algorithms():
         """ No Additional arguments needed"""
 
         #Add the last index for knn range so we know what knn values were used
-        filename = self.create_filename("SSMA")
+        filename, AP_values = self.create_filename("SSMA")
 
         #If file aready exists, then we are done :)
         if os.path.exists(filename):
@@ -807,7 +834,7 @@ class test_manifold_algorithms():
             return True
         
         #Create an array to store the important data in 
-        SSMA_scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+        SSMA_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
         print("\n--------------------------------------   SSMA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
         #Repeat through each knn value
@@ -817,7 +844,7 @@ class test_manifold_algorithms():
             SSMA_class = ssma(knn = knn, verbose = 0, r = 2) #R can also be = to this: (self.split_A.shape[1] + self.split_B.shape[1])
 
             #Loop through each anchor. 
-            for j, anchor_percent in enumerate(self.percent_of_anchors):
+            for j, anchor_percent in enumerate(AP_values):
                 print(f"    Percent of Anchors {anchor_percent}")
 
                 #Test to see if class initialization fails
@@ -866,20 +893,20 @@ class test_manifold_algorithms():
         """Needs no additional parameters"""
 
         #Create file name
-        filename = self.create_filename("MAGAN")
+        filename, AP_values = self.create_filename("MAGAN")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
 
         #Store the results in an array
-        MAGAN_scores = np.zeros((len(self.percent_of_anchors), 2))
+        MAGAN_scores = np.zeros((len(AP_values), 2))
 
         print("\n-------------------------------------   MAGAN TESTS  " + self.base_directory[52:-1] + "  -------------------------------------\n")
 
         #Loop through each anchor. 
-        for j, anchor_percent in enumerate(self.percent_of_anchors):
+        for j, anchor_percent in enumerate(AP_values):
             print(f"    Percent of Anchors {anchor_percent}")
 
             #Run Magan and tests
@@ -920,15 +947,15 @@ class test_manifold_algorithms():
         """Needs no additional parameters"""
 
         #Create file name
-        filename = self.create_filename("JLMA")
+        filename, AP_values = self.create_filename("JLMA")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
         #Store the results in an array
-        scores = np.zeros((len(self.knn_range), len(self.percent_of_anchors), 2))
+        scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
         print("\n--------------------------------------   JLMA TESTS " + self.base_directory[52:-1] + "   --------------------------------------\n")
 
@@ -940,7 +967,7 @@ class test_manifold_algorithms():
             JLMA_class = JLMA(k = knn, d = min(len(self.split_B[1]), len(self.split_A[1])))
 
             #Loop through each anchor. 
-            for j, anchor_percent in enumerate(self.percent_of_anchors):
+            for j, anchor_percent in enumerate(AP_values):
                 print(f"    Percent of Anchors {anchor_percent}")
 
                 #In case the class initialization fails
@@ -989,7 +1016,7 @@ class test_manifold_algorithms():
         Gets the baseline classification without doing any alignment for each data set"""
 
         #Create file name
-        filename = self.create_filename("Base_Line_Scores")
+        filename, AP_values = self.create_filename("Base_Line_Scores")
 
         #If file aready exists, then we are done :)
         if os.path.exists(filename):
@@ -1239,7 +1266,7 @@ def clear_directory(text_curater = "all"):
     #Add user confirmation
     print(f"Preparing to delete {len(curated_files)} files")
     print(f"First 10 file names to be deleted\n-------------------------------------------------\n{curated_files[:10]}")
-    proceed = "y"#input("Proceed? [y, n]")
+    proceed = input("Proceed? [y, n]")
 
     if proceed == "y":
         #Finally delete all files

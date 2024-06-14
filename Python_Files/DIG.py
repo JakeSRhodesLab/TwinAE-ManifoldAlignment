@@ -1,4 +1,4 @@
-#Diffusion Integration with 
+#Diffusion Integration with Graphs
 
 """Ideas for upgrades
 1. Auto recognition for point correspondence -> Potential errors (it could potentially be harmful if there isn't a 1 to 1 correspondence). Additional question: how helpful is it to have additional anchors?"""

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import igraph as ig
 from sklearn.manifold import MDS
 import seaborn as sns
+from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD:
   def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average", show = False):
@@ -112,37 +113,37 @@ class SPUD:
     return node_paths
   
   """EVALUATION FUNCTIONS"""
-    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
-        (y1, y2) = Y
+  def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
+      (y1, y2) = Y
 
-        n1, n2 = len(y1), len(y2)
+      n1, n2 = len(y1), len(y2)
 
-        knn = KNeighborsClassifier(**knn_args)
+      knn = KNeighborsClassifier(**knn_args)
 
-        if other_side:
-            knn.fit(embedding[:n1, :], y1)
+      if other_side:
+          knn.fit(embedding[:n1, :], y1)
 
-            return knn.score(embedding[n1:, :], y2)
+          return knn.score(embedding[n1:, :], y2)
 
-        else:
-            #Train on other domain, predict on other domain ---- TODO
-            knn.fit(embedding[n1:, :], y2)
+      else:
+          #Train on other domain, predict on other domain ---- TODO
+          knn.fit(embedding[n1:, :], y2)
 
-            return knn.score(embedding[:n1, :], y1)
-        
-    def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
-        n1, n2 = np.shape(Wxy)
-        if n1 != n2:
-            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+          return knn.score(embedding[:n1, :], y1)
+      
+  def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
+      n1, n2 = np.shape(Wxy)
+      if n1 != n2:
+          raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
 
-        dists = Wxy
+      dists = Wxy
 
-        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
-        nn.fit(dists)
+      nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+      nn.fit(dists)
 
-        _, kneighbors = nn.kneighbors(dists)
+      _, kneighbors = nn.kneighbors(dists)
 
-        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+      return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
   
   """THE PRIMARY FUNCTIONS""" 
   def get_shortest_paths(self, nodePaths, pureDistanceMatrix): #NOTE: This is currently finding the path to its nearest anchor, and not necessarily the right anchor to connect with the other graph
@@ -245,7 +246,7 @@ class SPUD:
 
   def plot_emb(self, labels, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
         """Creates and plots the embedding for ease"""
-        
+
         #Convert to a MDS
         mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
         self.emb = mds.fit_transform(self.block) #Later we should implent this to just be the block
@@ -263,7 +264,7 @@ class SPUD:
             print("Can't calculate the Cross embedding")
 
         try:    
-            print(f"FOSCTTM: {self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
+            print(f"FOSCTTM: {self.FOSCTTM(self.block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
 
