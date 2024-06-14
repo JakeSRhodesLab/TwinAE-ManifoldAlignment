@@ -78,6 +78,7 @@ class DIG: #Diffusion Integration with Graphs
         #Get Diffusion Matrix
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
 
+        # NOTE: The above line returns the order projectionAB then projection BA, but get_diffusion returns BA then AB
     """EVALUATION FUNCTIONS BELOW"""
     def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
         n1, n2 = np.shape(Wxy)
