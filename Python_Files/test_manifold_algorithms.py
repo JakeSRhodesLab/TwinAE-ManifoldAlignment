@@ -10,6 +10,7 @@ Changes Log:
 2. On General Tests, I added a "perfect" standard -- or a graph with all the anchors to use as a base. We wouldn't expect our models to get any better than it. 
 3. Curated Random files (making sure that all the files are tested against the same splits with the same seed, and that we only compare similar splits to each other)
 4. Added AP checks when creating files to prevent reruning tests already preformed. 
+5. Greatly reformated SPUD code to make it easier to read and follow
 
 
 
@@ -1237,7 +1238,7 @@ def find_words_order(text, words):
     # Return only the words, sorted by their appearance
     return [word for _, word in positions]
 
-def clear_directory(text_curater = "all"):
+def clear_directory(text_curater = "all", not_text = None):
     """CAREFUL. THIS WIPES THE MANIFOLD DATA DIRECTORY CLEAN"""
 
     #Use all of our files
@@ -1258,10 +1259,18 @@ def clear_directory(text_curater = "all"):
             files += [os.path.join(directory, file) for file in os.listdir(directory)]
 
     if text_curater != "all":
-        curated_files = []
-        curated_files += [file for file in files if text_curater in file]
+        selected_files = []
+        selected_files += [file for file in files if text_curater in file]
     else:
-        curated_files = files
+        selected_files = files
+
+    #Filter out with text in it
+    if not_text == None:
+        curated_files = selected_files
+    else:
+        curated_files = []
+        curated_files = [file for file in selected_files if not_text not in file]
+        
 
     #Add user confirmation
     print(f"Preparing to delete {len(curated_files)} files")
