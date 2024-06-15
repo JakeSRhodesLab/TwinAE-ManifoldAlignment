@@ -1412,7 +1412,7 @@ def _upload_file(file):
 
             #Get the Connection value
             con_index = file.find('_Con(')
-            data_dict["Operation"] = "Connection: " + file[con_index + 5:AP_index-1]
+            data_dict["Operation"] = str(file[con_index + 5:AP_index-1])
 
             #Loop through each Knn
             for j in range(0, 10):
