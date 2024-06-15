@@ -6,11 +6,14 @@ Questions:
 3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
-1. On DIG, I added an alternative method to merge graphs called merge kernals. It seems to be about the same
+1. On DIG, I added an alternative method to merge graphs called merge kernals. It seems to be about the same (I ended up removing it, because the method was a little bit slower and less precise)
 2. On General Tests, I added a "perfect" standard -- or a graph with all the anchors to use as a base. We wouldn't expect our models to get any better than it. 
 3. Curated Random files (making sure that all the files are tested against the same splits with the same seed, and that we only compare similar splits to each other)
 4. Added AP checks when creating files to prevent reruning tests already preformed. 
 5. Greatly reformated SPUD code to make it easier to read and follow
+6. Fixed Duplicate files issues 
+7. Added a demonstration file in which we tested on Alzheimers Data
+8. Fixed the density normalization function. Overall, it seems unhelpful
 
 
 
@@ -20,11 +23,8 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Fix DIG FOSCTTM -> Make it so it only uses known anchors -- DONE
-2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? 
-3. Fix density normalization: Get the row sum for each row: 
+2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? MAKE IT BETTER! 
 4. Go through SPUD. Fix the shortest paths method? This may greatly simplify, making it so we don't have to get node paths
-5. There are duplicate file rows. FInd out why and fix it
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -38,10 +38,7 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-12. evens on Hilton -- All of the bigest data files (16 days in)
-23. PCR on Tukey (1 day)
-24. rand on Carter (running half of all random tests)
-25. rand on Hilton (running the other half of all random tests)
+27. rand on Carter (1 day)
 
 """
 

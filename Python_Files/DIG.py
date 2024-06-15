@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, merge = True,  verbose = 0):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, verbose = 0):
         """
         Parameters:
             :DataA: the first domain (or data set). 
@@ -67,10 +67,7 @@ class DIG: #Diffusion Integration with Graphs
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Connect the graphs
-        if merge:
-            self.graphAB = self.merge_graphs()
-        else:
-            self.graphAB = self.merge_kernals()
+        self.graphAB = self.merge_graphs()
         
         #Get Similarity matrix and distance matricies
         self.similarity_matrix = self.get_pure_matricies(self.graphAB)
@@ -153,44 +150,37 @@ class DIG: #Diffusion Integration with Graphs
 
         #Apply density normalization
         if self.normalize_density:
-            matrix = self.density_normalized_kernel(matrix, sigma = 10)
+            matrix = self.density_normalized_kernel(matrix)
         
         #Normalize the matrix
         matrix = self.normalize_0_to_1(matrix)
 
         return matrix
-    
-    def kernel_density_estimation(self, X, sigma):
+
+    import numpy as np
+
+    def density_normalized_kernel(self, K):
         """
-        Calculate the kernel density estimation for each point in X.
-        
+        Compute the density-normalized kernel matrix.
+
         Parameters:
-        X (numpy.ndarray): An array of shape (n_samples, n_features) containing the data points.
-        sigma (float): The bandwidth of the Gaussian kernel.
-        
+        K (numpy.ndarray): The original kernel matrix (n x n).
+
         Returns:
-        numpy.ndarray: An array of shape (n_samples,) containing the density estimates for each point.
+        numpy.ndarray: The density-normalized kernel matrix (n x n).
         """
-
-        squared_distances = np.sum((X[:, np.newaxis] - X) ** 2, axis=2)
-        densities = np.sum(np.exp(-squared_distances / (2 * sigma ** 2)), axis=1)
-        return densities
-
-    def density_normalized_kernel(self, X, sigma):
-        """
-        Calculate the density-normalized kernel for each pair of points in X.
+        # Compute the density estimates p by summing the values of each row
+        p = np.sum(K, axis=1)
         
-        Parameters:
-        X (numpy.ndarray): An array of shape (n_samples, n_features) containing the data points.
-        sigma (float): The bandwidth of the Gaussian kernel.
+        # Ensure p is a column vector
+        p = p.reshape(-1, 1)
         
-        Returns:
-        numpy.ndarray: An array of shape (n_samples, n_samples) containing the density-normalized kernel values.
-        """
-
-        densities = self.kernel_density_estimation(X, sigma)
-        squared_distances = np.sum((X[:, np.newaxis] - X) ** 2, axis=2)
-        K_norm = np.exp(-squared_distances / (2 * sigma ** 2)) / np.sqrt(densities[:, np.newaxis] * densities)
+        # Compute the outer product of the density estimates
+        p_outer = np.sqrt(p @ p.T)
+        
+        # Compute the density-normalized kernel
+        K_norm = K / p_outer
+        
         return K_norm
 
     def _find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
@@ -284,38 +274,6 @@ class DIG: #Diffusion Integration with Graphs
         merged_graphtools = graphtools.api.from_igraph(merged)
 
         return merged_graphtools.K.toarray()
-
-    def merge_kernals(self): #This is an alternative approach to the merge graph function
-        """Returns a Similarity Block Matrix"""
-
-        #Create a list of the known connections between graphs, first starting with the known anchors
-        known_connections_A = []
-        known_connections_B = []
-
-        #Add in the the connections of each neighbor to each anchor
-        for anchor_pair in self.known_anchors: #TODO: Vectorize this somehow?
-
-            #For each anchor, add its connections to its corresponding anchor
-            known_connections_A += [(neighbor, anchor_pair[1]) for neighbor in set(self.graph_a.to_igraph().neighbors(anchor_pair[0], mode="out"))]
-            known_connections_B += [(anchor_pair[0], neighbor) for neighbor in set(self.graph_b.to_igraph().neighbors(anchor_pair[1], mode="out"))]
-
-        #Convert to a numpy array for advanced slicing
-        known_connections_A = np.array(known_connections_A)
-        known_connections_B = np.array(known_connections_B)
-
-        #Create empty blocks
-        top_right = np.zeros(shape =(self.len_A, self.len_B))
-
-        #Add the known anchors
-        top_right[self.known_anchors[:, 0], self.known_anchors[:,1]] = 1
-
-        #Add the kernal values to its block
-        top_right[known_connections_A[:, 0], known_connections_A[:, 1]] = self.kernalsA[known_connections_A[:, 0], known_connections_A[:, 1]]
-        top_right[known_connections_B[:, 0], known_connections_B[:, 1]] = self.kernalsB[known_connections_B[:, 0], known_connections_B[:, 1]]
-
-        #Return the block
-        return np.block([[self.kernalsA, top_right],
-                         [top_right.T, self.kernalsB]])
 
     def get_diffusion(self, matrix, t = -1, link = "None"): 
         """Returns the diffision matrix from the given matrix, to t steps. If t is -1, it will auto find the best one
