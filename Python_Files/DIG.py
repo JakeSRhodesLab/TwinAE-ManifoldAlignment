@@ -355,7 +355,7 @@ class DIG: #Diffusion Integration with Graphs
 
         return completeData
 
-    def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto"):
+    def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
         """Finds potential anchors after alignment, and then recalculates the entire alignment with the new anchor points for each epoch. 
         
         Parameters:
@@ -363,6 +363,8 @@ class DIG: #Diffusion Integration with Graphs
                 Best values to try: 1/5 of the length of data, 1/10 length of the data, 10x length of data, or None. 
             :threshold: should be a float. If auto, the algorithm will determine it. It can not be higher than the median of the dataset.
                 The threshold determines how similar a point has to be to another to be considered an anchor
+            :hold_out_anchors: Only matters if Threshold is set to auto. These anchors are used as a test to validate the Threshold.
+                They should be in the same format as the Known Anchors.
             :pruned_connections: should be a list formated like Known Anchors. The node connections in this list will not be considered
                 for possible connections. 
             :epochs: the number of iterations the cycle will go through. 
@@ -373,6 +375,33 @@ class DIG: #Diffusion Integration with Graphs
             print("<><><><><> Beggining Tests. Original Connections show below <><><><><>")
             plt.imshow(self.similarity_matrix)
             plt.show()
+
+        
+        #Set pruned_connections to equal hold_out_anchhor connections if they exist, empty otherwise
+        if len(hold_out_anchors) > 0:
+            #Firt add the anchor connections (We do this first to A, as it will later be added to pruned anchors. This helps us later when adding the known values in at the end)
+            pruned_connections = list(hold_out_anchors)
+
+            hold_neighbors_A = []
+            hold_neighbors_B = []
+
+            #Add in the the connections of each neighbor to each anchor
+            for anchor_pair in hold_out_anchors: #TODO: Vectorize this somehow?
+
+                #Cache the data
+                hold_neighbors_A += [(neighbor, anchor_pair[1]) for neighbor in set(self.graph_a.to_igraph().neighbors(anchor_pair[0], mode="out"))]
+                hold_neighbors_B += [(anchor_pair[0], neighbor) for neighbor in set(self.graph_b.to_igraph().neighbors(anchor_pair[1], mode="out"))]
+
+                #Add the connections
+                pruned_connections += hold_neighbors_A
+                pruned_connections += hold_neighbors_B
+            
+            #Convert to Numpy array for advanced indexing
+            hold_neighbors_A = np.array(hold_neighbors_A)
+            hold_neighbors_B = np.array(hold_neighbors_B)
+            
+        else:
+            pruned_connections = []
 
         if threshold == "auto":
             #Set the threshold to be the 10% limit of the connections
@@ -386,7 +415,7 @@ class DIG: #Diffusion Integration with Graphs
         pruned_connections = np.array([]).astype(int)
 
         #Get the current score of the alignment
-        current_score = np.mean([self.partial_FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A]), self.partial_FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:])])
+        current_score = np.mean([self.partial_FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
 
         #Find the Max value for new connections to be set too
         second_max = np.median(self.similarity_matrix[self.similarity_matrix != 0])
@@ -401,11 +430,32 @@ class DIG: #Diffusion Integration with Graphs
                 print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
 
             #Find predicted anchors
-            new_connections = self._find_new_connections(pruned_connections = pruned_connections, threshold = threshold, connection_limit = connection_limit)
+            new_connections = self._find_new_connections(pruned_connections, threshold = threshold, connection_limit = connection_limit)
 
             if len(new_connections) < 1:
                 if self.verbose > 0:
                     print("No new_connections. Exiting process")
+
+                #Add in the known anchors and reset the known_anchors and other init variables
+                if len(hold_out_anchors) > 0:
+                    #Cached info 
+                    adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
+
+                    #Set the anchors
+                    self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = 1
+                    self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = 1
+
+                    #Set the other connections (taking values from the top left)
+                    self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+                    self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+
+                    #Take connection values from the bottom right 
+                    self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+                    self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+                    #Get Diffusion Matrix
+                    self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
+                
 
                 #Return false to signify we didn't go through all the tests
                 return False
@@ -413,13 +463,6 @@ class DIG: #Diffusion Integration with Graphs
             #Continue to show connections
             if self.verbose > 0:
                 print(f"New connections found: {len(new_connections)}")
-
-            if self.verbose > 2:
-                print("----------------------   Connections Below   ----------------------")
-                for i, (row, col, val) in enumerate(new_connections):
-                    print(f"Pair {i+1}: ({row}, {col}) with value {val}")
-                    
-                print("\n\n\n")
 
             #Copy Similarity matrix
             new_similarity_matrix = np.array(self.similarity_matrix) #We do this redudant conversion to ensure we aren't copying over a reference
@@ -437,13 +480,13 @@ class DIG: #Diffusion Integration with Graphs
             new_sim_diffusion_matrix, new_projectionAB, new_projectionBA = self.get_diffusion(new_similarity_matrix, self.t, link = self.link)
 
             #Get the new score
-            new_score = np.mean([self.partial_FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A]), self.partial_FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:])])
+            new_score = np.mean([self.partial_FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
 
             #See if the extra connections helped
-            if new_score < current_score:
+            if new_score < current_score or len(hold_out_anchors) < 1:
                 if self.verbose > 0:
                     print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
-                
+
                 #Reset all the class variables
                 self.similarity_matrix = new_similarity_matrix
                 self.sim_diffusion_matrix = new_sim_diffusion_matrix
@@ -462,6 +505,32 @@ class DIG: #Diffusion Integration with Graphs
                     pruned_connections = new_connections[:, :2].astype(int)
                 else:
                     pruned_connections = np.concatenate([pruned_connections, new_connections[:, :2]]).astype(int)
+
+        #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. 
+        if epoch == epochs - 1 and len(hold_out_anchors) > 0:
+            #Cached info 
+            adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
+
+            #Set the anchors
+            self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = 1
+            self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = 1
+
+            #Set the other connections (taking values from the top left)
+            self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+            self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+
+            #Take connection values from the bottom right 
+            self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+            self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+            #Recalculate diffusion matrix
+            self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix, self.t, link = self.link)
+
+            #Show the final connections
+            if self.verbose > 1:
+                print("Added Hold Out Anchor Conections")
+                plt.imshow(self.similarity_matrix)
+                plt.show()
             
         #Process Finished
         if self.verbose > 0:

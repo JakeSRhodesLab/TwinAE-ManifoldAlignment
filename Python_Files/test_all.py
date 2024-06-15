@@ -17,10 +17,10 @@ import test_manifold_algorithms as tma
 csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
              "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
              "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             "S-curve", "blobs",
-             "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
-             'Medicaldataset.csv', "water_potability.csv",
-             'treeData.csv', 'winequality-red.csv', 'car.csv'
+             "S-curve", "blobs"
+             #"crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
+             #'Medicaldataset.csv', "water_potability.csv",
+             #'treeData.csv', 'winequality-red.csv', 'car.csv'
              ]
 
 """
@@ -35,17 +35,17 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 """
 
 
-#for split_type in ["turn", "skewed", "even", "distort", "random"]:
+for split_type in ["turn", "skewed", "even", "distort", "random"]:
 
-tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments
-                            split = "random", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None", 'full', 'off-diagonal'], predict = True, #DIG key arguments
-                            run_CwDIG=False, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
-                            run_DTA = True,
-                            run_NAMA = True,
-                            run_SSMA = True,
-                            run_MAGAN= True,
-                            run_JLMA = True,
+    tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments
+                            split = split_type, verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
+                            run_DIG = False, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_CwDIG=True, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
+                            run_DTA = False,
+                            run_NAMA = False,
+                            run_SSMA = False,
+                            run_MAGAN= False,
+                            run_JLMA = False,
                             run_KNN_Tests=False,
-                            run_PCR = True,
-                            run_SPUD = True, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
+                            run_PCR = False,
+                            run_SPUD = False, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments

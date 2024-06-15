@@ -14,6 +14,7 @@ Changes Log:
 6. Fixed Duplicate files issues 
 7. Added a demonstration file in which we tested on Alzheimers Data
 8. Fixed the density normalization function. Overall, it seems unhelpful
+9. Added CwDIG tests
 
 
 
@@ -538,43 +539,47 @@ class test_manifold_algorithms():
         for link in page_ranks:
             print(f"Page rank applied: {link}")
 
-            #Create the filename
-            filename, AP_values = self.create_filename("CwDIG", PageRanks = link)
+            for connection in connection_limit:
+                print(f"    Connection Limit: {connection}")
 
-            #If file aready exists, then we are done :)
-            if os.path.exists(filename) or len(AP_values) < 1:
-                print(f"    <><><><><>    File {filename} already exists   <><><><><>")
-                return True
-            
-            #Store the data in a numpy array
-            DIG_scores = np.zeros((len(self.knn_range), len(AP_values), len(connection_limit), 2 + predict))
+                #Create the filename
+                filename, AP_values = self.create_filename("CwDIG", PageRanks = link, Connection_limit = str(connection))
 
-            for j, knn in enumerate(self.knn_range):
-                print(f"    KNN {knn}")
-                for k, anchor_percent in enumerate(AP_values):
-                    print(f"        Percent of Anchors {anchor_percent}")
-                    for l, connection in enumerate(connection_limit):
-                        print(f"            Connection Limit: {connection}")
+                #If file aready exists, then we are done :)
+                if os.path.exists(filename) or len(AP_values) < 1:
+                    print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                    return True
+                
+                #Store the data in a numpy array
+                DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
+
+                for j, knn in enumerate(self.knn_range):
+                    print(f"        KNN {knn}")
+                    for k, anchor_percent in enumerate(AP_values):
+                        print(f"            Percent of Anchors {anchor_percent}")
+
+                        #Cache this information so it is faster
+                        anchor_amount = int((len(self.anchors) * anchor_percent)/2)
 
                         try:
                             #Create our class to run the tests
-                            DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link, verbose = 0)
+                            DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:anchor_amount], t = -1, knn = knn, link = link, verbose = 0)
 
                             #Make the connection limit value
                             if connection != None:
                                 connection = int(DIG_class.len_A * connection)
 
                             #Boost the Algorithm
-                            DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto")
+                            DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
 
                         except Exception as e:
                             print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
-                            DIG_scores[j, k, l, 0] = np.NaN
-                            DIG_scores[j, k, l, 1] = np.NaN
+                            DIG_scores[j, k, 0] = np.NaN
+                            DIG_scores[j, k, 1] = np.NaN
 
                             #If we are using predict, this must also be NaN
                             if predict:
-                                DIG_scores[j, k, l, 2] = np.NaN
+                                DIG_scores[j, k, 2] = np.NaN
                             continue
 
                         #FOSCTTM Evaluation Metrics
@@ -586,7 +591,7 @@ class test_manifold_algorithms():
                             print(f"            FOSCTTM exception occured: {e}")
                             DIG_FOSCTTM = np.NaN
 
-                        DIG_scores[j, k, l, 0] = DIG_FOSCTTM
+                        DIG_scores[j, k, 0] = DIG_FOSCTTM
 
                         #Cross Embedding Evaluation Metric
                         try:
@@ -599,7 +604,7 @@ class test_manifold_algorithms():
                             print(f"                Cross Embedding exception occured: {e}")
                             DIG_CE = np.NaN
 
-                        DIG_scores[j, k, l, 1] = DIG_CE
+                        DIG_scores[j, k, 1] = DIG_CE
 
                         #Predict features test
                         if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
@@ -609,7 +614,7 @@ class test_manifold_algorithms():
 
                             #Get the MAE for each set and average them
                             DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                            DIG_scores[j, k, l, 2] = DIG_MAE
+                            DIG_scores[j, k, 2] = DIG_MAE
                             print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
 
                 #Save the numpy array
@@ -1395,12 +1400,16 @@ def _upload_file(file):
         if data_dict["method"] == "CwDIG":
 
             #Add the right Page Rank Argument
-            if "None" in file:
-                data_dict["Page_Rank"] = "None"
+            if "full" in file:
+                data_dict["Page_Rank"] = "full"
             elif "off-diagonal" in file:
                 data_dict["Page_Rank"] = "off-diagonal"
-            else: #Then it is full
-                data_dict["Page_Rank"] = "full"
+            else: #Then it is None
+                data_dict["Page_Rank"] = "None"
+
+            #Get the Connection value
+            con_index = file.find('_Con(')
+            data_dict["Operation"] = "Connection: " + file[con_index + 5:AP_index-1]
 
             #Loop through each Knn
             for j in range(0, 10):
@@ -1414,22 +1423,18 @@ def _upload_file(file):
                 for k in range(len(AP_values)):
                     data_dict["Percent_of_Anchors"] = AP_values[k]
 
-                    for l in range(data.shape[2]):
-                        #Use the operation heading to set the values
-                        data_dict["Operation"] = "Anchor Limit: " + str(l) #TODO: At some point we will need to fix the file naming and so we can have this down
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[j, k, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[j, k, 1]
 
-                        #Now use are data array to grab the FOSCTTM and CE scores
-                        data_dict["FOSCTTM"] = data[j, k, l, 0]
-                        data_dict["Cross_Embedding_KNN"] = data[j, k, l, 1]
-
-                        #We failsafe this in a try because there might not be a finally loop
-                        try:
-                            data_dict["Predicted_Feature_MAE"] = data[j, k, l, 2]
-                        except:
-                            data_dict["Predicted_Feature_MAE"] = np.NaN
-                        finally:
-                            #Create a new Data frame instance with all the asociated values
-                            df = df._append(data_dict, ignore_index=True)
+                    #We failsafe this in a try because there might not be a finally loop
+                    try:
+                        data_dict["Predicted_Feature_MAE"] = data[j, k, 2]
+                    except:
+                        data_dict["Predicted_Feature_MAE"] = np.NaN
+                    finally:
+                        #Create a new Data frame instance with all the asociated values
+                        df = df._append(data_dict, ignore_index=True)
                     
         #Method SPUD
         elif data_dict["method"] == "SPUD":
