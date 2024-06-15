@@ -40,6 +40,9 @@ https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
 27. rand on Carter (1 day)
+28. CDIG doing random on Tukey (1 day)
+29. CDIG doing distort on hilton
+30. CDIG doing all on Collings
 
 """
 
