@@ -308,10 +308,10 @@ class DIG: #Diffusion Integration with Graphs
         diffusion_matrix = np.linalg.matrix_power(normalized_matrix, t)
 
         #Prepare the Projection Matricies by normalizing each domain by itself
-        domainBA = diffusion_matrix[:self.len_A, self.len_A:] #Bottom Left
-        domainAB = diffusion_matrix[self.len_A:, :self.len_A] #Top right
-        domainBA = self.row_normalize_matrix(domainBA)
+        domainAB = diffusion_matrix[:self.len_A, self.len_A:]#Top Right
+        domainBA = diffusion_matrix[self.len_A:, :self.len_A] #Bottom Left
         domainAB = self.row_normalize_matrix(domainAB)
+        domainBA = self.row_normalize_matrix(domainBA)
         
         #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
         diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
@@ -319,7 +319,7 @@ class DIG: #Diffusion Integration with Graphs
         #Normalize the matrix
         diffused = self.normalize_0_to_1(diffused)
 
-        return diffused, domainBA, domainAB
+        return diffused, domainAB, domainBA
 
     def predict_feature(self, predict = "A"):
         """Embedding should be the embedding wanted.

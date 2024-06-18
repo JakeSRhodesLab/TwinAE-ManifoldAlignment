@@ -6,15 +6,7 @@ Questions:
 3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
-1. On DIG, I added an alternative method to merge graphs called merge kernals. It seems to be about the same (I ended up removing it, because the method was a little bit slower and less precise)
-2. On General Tests, I added a "perfect" standard -- or a graph with all the anchors to use as a base. We wouldn't expect our models to get any better than it. 
-3. Curated Random files (making sure that all the files are tested against the same splits with the same seed, and that we only compare similar splits to each other)
-4. Added AP checks when creating files to prevent reruning tests already preformed. 
-5. Greatly reformated SPUD code to make it easier to read and follow
-6. Fixed Duplicate files issues 
-7. Added a demonstration file in which we tested on Alzheimers Data
-8. Fixed the density normalization function. Overall, it seems unhelpful
-9. Added CwDIG tests
+1. Fixed the upload function and added the boosted CwDIG test results
 
 
 
@@ -26,6 +18,8 @@ FUTURE IDEAS:
 TASKS:
 2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? MAKE IT BETTER! 
 4. Go through SPUD. Fix the shortest paths method? This may greatly simplify, making it so we don't have to get node paths
+5. Maybe test the idea of comparing the normalization between rows when we do our diffusion matrix in DIG. Also maybe look at Hellinger Distance
+6. Make a visual of showing sparse labels from one domain to the other
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -1774,7 +1768,7 @@ def upload_to_DataFrame():
         best_scores = merged_df[merged_df['csv_file'] == csv_file][['A_Classification_Score', 'B_Classification_Score']].max()
         merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
 
-    return merged_df.drop_duplicates()
+    return merged_df#.drop_duplicates()
 
 def change_old_files_to_new():
     """Goes through all files and changes them to be consistent with the new file formatting"""
