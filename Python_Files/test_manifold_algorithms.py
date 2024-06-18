@@ -7,6 +7,7 @@ Questions:
 
 Changes Log:
 1. Fixed the upload function and added the boosted CwDIG test results
+2. Added dropna to the rankings functions: this is so that the rankings are fair, because the algorithms were boosted when others had Nan values
 
 
 
