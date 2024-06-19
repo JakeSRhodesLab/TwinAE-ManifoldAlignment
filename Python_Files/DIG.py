@@ -196,10 +196,13 @@ class DIG: #Diffusion Integration with Graphs
         numpy.ndarray: Distance matrix.
         """
 
-        # Calculate the square roots of the matrices
+        #Create a single matrix by stacking the two blocks
+        matrix = np.vstack([matrix[:self.len_A, :self.len_A], matrix[self.len_A:, self.len_A:]])
+
+        #Reshape the maticies
         sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :])
         sqrt_matrix2 = np.sqrt(matrix[np.newaxis, :, :])
-        
+
         # Calculate the squared differences
         squared_diff = (sqrt_matrix1 - sqrt_matrix2) ** 2
         
@@ -341,10 +344,14 @@ class DIG: #Diffusion Integration with Graphs
         domainAB = self.row_normalize_matrix(domainAB)
         domainBA = self.row_normalize_matrix(domainBA)
         
-        if self.hellinger:
+        #If hellinger was chose then do this, and also check len a is the same 
+        if self.hellinger and self.len_A == self.len_B:
             #Apply the hellinger process
             diffused = self.hellinger_distance_matrix(diffusion_matrix)
         else:
+            if self.hellinger and self.verbose > 0:
+                print("Unable to compute hellinger because datasets are not the same size.")
+
             #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
             diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
     
@@ -451,6 +458,10 @@ class DIG: #Diffusion Integration with Graphs
 
         #Find the Max value for new connections to be set too
         second_max = np.median(self.similarity_matrix[self.similarity_matrix != 0])
+
+        #Make sure we aren't finding values greater than it
+        if threshold > second_max:
+            second_max = threshold + 0.01
         
         if self.verbose > 0:
             print(f"Second max: {second_max}")
@@ -596,7 +607,7 @@ class DIG: #Diffusion Integration with Graphs
         #Stress is a value of how well the emd did. Lower the better.
         print(f"Model Stress: {mds.stress_}")
 
-        if labels != None:
+        if type(labels)!= type(None):
             #Print the evaluation metrics as well
             first_labels = labels[:self.len_A]
             second_labels = labels[self.len_A:]
