@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, hellinger = False, verbose = 0):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, DTM = "log", verbose = 0):
         """
         Parameters:
             :DataA: the first domain (or data set). 
@@ -35,7 +35,7 @@ class DIG: #Diffusion Integration with Graphs
             :density_normalization: A boolean value. If set to true, it will apply a density
                 normalization to the joined domains. 
 
-            :merge: If merge is set to True, it will use graphs, otherwise it will use kernals    
+            :DTM: Diffusion Transformation method. Can be set to "hellinger", "kl" or "log"
             """
 
 
@@ -44,7 +44,7 @@ class DIG: #Diffusion Integration with Graphs
         self.t = t
         self.link = link
         self.normalize_density = density_normalization
-        self.hellinger = hellinger
+        self.DTM = DTM.lower()
 
         #Scale data
         self.dataA = self.normalize_0_to_1(dataA)
@@ -158,7 +158,29 @@ class DIG: #Diffusion Integration with Graphs
 
         return matrix
 
-    import numpy as np
+    def kl_divergence_matrix(self, matrix):
+        """
+        Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
+
+        Parameters:
+        matrix1 (numpy.ndarray): First matrix
+        matrix2 (numpy.ndarray): Second matrix
+
+        Returns:
+        numpy.ndarray: Divergence matrix
+        """
+        
+        # Ensure there are no zero values in matrix2 to avoid division by zero
+        matrix = np.where(matrix == 0, 1e-10, matrix)
+        
+        # Ensure there are no zero values in matrix1 to avoid log(0)
+        #matrix1 = np.where(matrix1 == 0, 1e-10, matrix1)
+        
+        # Calculate the KL divergence
+        divergence_matrix = np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2)
+        
+        #normalize it and return the matrix!
+        return self.normalize_0_to_1(divergence_matrix)
 
     def density_normalized_kernel(self, K):
         """
@@ -345,12 +367,17 @@ class DIG: #Diffusion Integration with Graphs
         domainBA = self.row_normalize_matrix(domainBA)
         
         #If hellinger was chose then do this, and also check len a is the same 
-        if self.hellinger and self.len_A == self.len_B:
+        if self.DTM == "hellinger" and self.len_A == self.len_B:
             #Apply the hellinger process
             diffused = self.hellinger_distance_matrix(diffusion_matrix)
+
+        elif self.DTM == "kl" and self.len_A == self.len_B:
+            #Apply the hellinger process
+            diffused = self.kl_divergence_matrix(diffusion_matrix)
+
         else:
-            if self.hellinger and self.verbose > 0:
-                print("Unable to compute hellinger because datasets are not the same size.")
+            if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
+                print("Unable to compute hellinger or kl because datasets are not the same size.")
 
             #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
             diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
