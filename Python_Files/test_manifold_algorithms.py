@@ -2,12 +2,12 @@
 
 """
 Questions:
-2. Would Professor like to know how to work the algorithms to get the right graphs for the paper?
-3. Stat room website doens't work anymore? Bad Gateway?
 
 Changes Log:
 1. Fixed the upload function and added the boosted CwDIG test results
 2. Added dropna to the rankings functions: this is so that the rankings are fair, because the algorithms were boosted when others had Nan values
+3. Added Hellinger Function and tested it
+4. Added functionality to compute embeddings without labels
 
 
 
@@ -17,10 +17,13 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-2. Update the predict Connections function to use that score | Maybe make it so it uses all connections found each time? MAKE IT BETTER! 
 4. Go through SPUD. Fix the shortest paths method? This may greatly simplify, making it so we don't have to get node paths
 5. Maybe test the idea of comparing the normalization between rows when we do our diffusion matrix in DIG. Also maybe look at Hellinger Distance
 6. Make a visual of showing sparse labels from one domain to the other
+7. Update our methods to work like SK-Learn's
+8. Make the predictions model better! 
+9. Read over the Overleaf paper
+10. Get rid of the needed labels part for our function
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey

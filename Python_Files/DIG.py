@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, verbose = 0):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, hellinger = False, verbose = 0):
         """
         Parameters:
             :DataA: the first domain (or data set). 
@@ -44,6 +44,7 @@ class DIG: #Diffusion Integration with Graphs
         self.t = t
         self.link = link
         self.normalize_density = density_normalization
+        self.hellinger = hellinger
 
         #Scale data
         self.dataA = self.normalize_0_to_1(dataA)
@@ -182,6 +183,33 @@ class DIG: #Diffusion Integration with Graphs
         K_norm = K / p_outer
         
         return K_norm
+    
+    def hellinger_distance_matrix(self, matrix):
+        """
+        This compares each row to each other row in the matrix with the Hellinger
+        algorithm -- determining similarities between distributions. 
+        
+        Parameters:
+        matrix (numpy.ndarray): Matrix for the computation. Is expected to be the block.
+        
+        Returns:
+        numpy.ndarray: Distance matrix.
+        """
+
+        # Calculate the square roots of the matrices
+        sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :])
+        sqrt_matrix2 = np.sqrt(matrix[np.newaxis, :, :])
+        
+        # Calculate the squared differences
+        squared_diff = (sqrt_matrix1 - sqrt_matrix2) ** 2
+        
+        # Sum along the last axis to get the sum of squared differences
+        sum_squared_diff = np.sum(squared_diff, axis=2)
+        
+        # Calculate the Hellinger distances
+        distances = np.sqrt(sum_squared_diff) / np.sqrt(2)
+        
+        return distances
 
     def _find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
         """A helper function that finds and returns a list of possible anchors and their associated wieghts after alignment.
@@ -274,7 +302,7 @@ class DIG: #Diffusion Integration with Graphs
         merged_graphtools = graphtools.api.from_igraph(merged)
 
         return merged_graphtools.K.toarray()
-
+    
     def get_diffusion(self, matrix, t = -1, link = "None"): 
         """Returns the diffision matrix from the given matrix, to t steps. If t is -1, it will auto find the best one
 
@@ -313,11 +341,15 @@ class DIG: #Diffusion Integration with Graphs
         domainAB = self.row_normalize_matrix(domainAB)
         domainBA = self.row_normalize_matrix(domainBA)
         
-        #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
-        diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
+        if self.hellinger:
+            #Apply the hellinger process
+            diffused = self.hellinger_distance_matrix(diffusion_matrix)
+        else:
+            #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
+            diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
     
-        #Normalize the matrix
-        diffused = self.normalize_0_to_1(diffused)
+            #Normalize the matrix
+            diffused = self.normalize_0_to_1(diffused)
 
         return diffused, domainAB, domainBA
 
@@ -556,25 +588,25 @@ class DIG: #Diffusion Integration with Graphs
 
         plt.show()
 
-    def plot_emb(self, labels, n_comp = 2, show_lines = True, show_anchors = True, use_phate = False, **kwargs): 
+    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
         #Convert to a MDS
-        if use_phate:
-            phate = PHATE(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            self.emb = phate.fit_transform(self.sim_diffusion_matrix)
-        else:
-            mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            self.emb = mds.fit_transform(self.sim_diffusion_matrix) #Later we should implent this to just be the block
+        mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
+        self.emb = mds.fit_transform(self.sim_diffusion_matrix) #Later we should implent this to just be the block
 
         #Stress is a value of how well the emd did. Lower the better.
         print(f"Model Stress: {mds.stress_}")
 
-        #Print the evaluation metrics as well
-        first_labels = labels[:self.len_A]
-        second_labels = labels[self.len_A:]
-        try: #Will fail if the domains shapes aren't equal
-            print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
-        except:
-            print("Can't calculate the Cross embedding")
+        if labels != None:
+            #Print the evaluation metrics as well
+            first_labels = labels[:self.len_A]
+            second_labels = labels[self.len_A:]
+            try: #Will fail if the domains shapes aren't equal
+                print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
+            except:
+                print("Can't calculate the Cross embedding")
+        else:
+            #Set all labels to be the same
+            labels = np.ones(shape = (len(self.emb)))
 
         try:    
             print(f"FOSCTTM: {self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
