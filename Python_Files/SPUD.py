@@ -11,7 +11,7 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD:
-  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average", show = False):
+  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average"):
         '''dataA and dataB should simply just be the data. We will convert it
         to Igraph. Same as nama or mali
 
@@ -31,8 +31,6 @@ class SPUD:
         #Set the values
         self.decay = decay
         self.operation = operation
-        self.show = show
-
 
         #Create Igraphs from the input.
         if knn == "connect": #TODO: implement the similarity function
@@ -40,19 +38,20 @@ class SPUD:
           self.graphB = self.construct_connected_graph(dataB)
 
         else:
-          Gx = graphtools.Graph(dataA, knn = knn, decay = self.decay, knn_max= knn) 
-          Gy = graphtools.Graph(dataB, knn = knn, decay = self.decay, knn_max= knn)
+          Ga = graphtools.Graph(dataA, knn = knn, decay = self.decay, knn_max= knn) 
+          Gb = graphtools.Graph(dataB, knn = knn, decay = self.decay, knn_max= knn)
 
           #Create the igraph distances
-          self.graphA = Gx.to_igraph()
-          self.graphB = Gy.to_igraph()
+          self.graphA = Ga.to_igraph()
+          self.graphB = Gb.to_igraph()
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
         self.len_B = self.graphB.vcount()
 
         #Create Same Graph Distance Matricies by direct connections
-        self.pure_matrix_A, self.pure_matrix_B = self.get_pure_distance(dataA, dataB)
+        self.matrix_A = self.get_SGDM(dataA)
+        self.matrix_B = self.get_SGDM(dataB)
 
         #Making our known Anchors
         self.known_anchors = np.array(known_anchors)
@@ -65,9 +64,22 @@ class SPUD:
         self.matrix_AB = self.get_DGDM()
 
         #Finally, get the block matrix
-        self.block = self.get_block_matrix()
+        self.block = np.block([[self.matrix_A, self.matrix_AB], [self.matrix_AB.T, self.matrix_B]])
+
 
   """HELPER FUNCTIONS"""
+  def normalize_0_to_1(self, value):
+    """Normalizes the value to be between 0 and 1"""
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(value[~np.isinf(value)]) != 0:
+      value = (value - value.min()) / (value[~np.isinf(value)].max() - value.min())
+
+    #Reset inf values
+    value[np.isinf(value)] = 1
+
+    return value
+
   def construct_connected_graph(self, graphData, initial_knn=2):
     """This function is called forces the graph to be fully connected"""
     connected = False
@@ -88,17 +100,14 @@ class SPUD:
 
     return g
 
-  def get_pure_distance(self, x, y):
-    """This returns the normalized distances within each domain"""
+  def get_SGDM(self, data):
+    """SGDM - Same Graph Distance Matrix.
+    This returns the normalized distances within each domain"""
     #Just using a normal distance matrix without Igraph
-    x_dists = squareform(pdist(x))
-    y_dists = squareform(pdist(y))
+    dists = squareform(pdist(data))
 
-    #normalize it
-    x_dists = x_dists / np.max(x_dists, axis = None)
-    y_dists = y_dists / np.max(y_dists, axis = None)
-
-    return x_dists, y_dists
+    #Normalize it and return the data
+    return self.normalize_0_to_1(dists)
 
   def make_node_paths(self, graph, anchors):
     """Will return all the node paths in a list"""
@@ -176,28 +185,22 @@ class SPUD:
     #Convert to an array
     node_distance_matrix = np.array(node_distance_matrix) #Question: code might run faster if we start it as an array
 
-    #Scale it and check to ensure no devision by 0
-    if np.max(node_distance_matrix[~np.isinf(node_distance_matrix)]) != 0:
-      node_distance_matrix = node_distance_matrix / np.max(node_distance_matrix[~np.isinf(node_distance_matrix)])
-
-    #Reset inf values
-    node_distance_matrix[np.isinf(node_distance_matrix)] = 1
-
-    return node_distance_matrix
+    return self.normalize_0_to_1(node_distance_matrix)
   
   def get_DGDM(self):
+    """DGDM - Different Graphs Distance Matrix
+    Finds the value of the off-diagonal blocks by traversing from graph through the anchor point to the other graph"""
+
     #Create the nodes to anchor distances for each graph
-    self.all_dist_to_anchors_A = self.get_shortest_paths(self.node_paths_A, self.pure_matrix_A)
-    self.all_dist_to_anchors_B = self.get_shortest_paths(self.node_paths_B, self.pure_matrix_B)
+    self.all_dist_to_anchors_A = self.get_shortest_paths(self.node_paths_A, self.matrix_A) #Shaped (length of matrix, length of known anchors)
+    self.all_dist_to_anchors_B = self.get_shortest_paths(self.node_paths_B, self.matrix_B)
 
-
-    #Add each value together. A[:, np.newaxis, :] + B[np.newaxis, :, :]
+    #Add each value together
     if self.operation == "average":
-      all_anchors = (self.all_dist_to_anchors_A[:, np.newaxis, :] + self.all_dist_to_anchors_B[np.newaxis, :, :]) #/2 NOTE: I removed the /2 and it looks better -- Not too tested though
+      all_anchors = (self.all_dist_to_anchors_A[:, np.newaxis, :] + self.all_dist_to_anchors_B[np.newaxis, :, :]) #/2 - It seems to work better without deviding
       return all_anchors.min(axis=2) #use the smallest distance
 
-    #NOTE: Test these again! Which method works the best
-    elif self.operation == "abs": #The abs method works... but the new approach here isn't as good
+    elif self.operation == "abs":
       #return (np.abs(self.all_dist_to_anchors_A[:, np.newaxis, :] - self.all_dist_to_anchors_B[np.newaxis, :, :])).min(axis=2)
 
       #Because we don't want to go through two far away nodes... so just do the closest one... if not we can just do this line: return np.abs(self.all_dist_to_anchors_A[:, np.newaxis, :] - self.all_dist_to_anchors_B[np.newaxis, :, :])
@@ -216,35 +219,30 @@ class SPUD:
 
       #This line creates a third matrix with shape (150, 150) with the smallest of the two arrays
       return np.minimum(all_anchors[row_indices, col_indices, A_smallest_index], all_anchors[row_indices, col_indices, B_smallest_index])
-
-  #Note: We could add logic to block_matrix to choose between pure_matrix_A and matrix_A when the graph is best. Unsure how this would translate to other datasets
-  def get_block_matrix(self):
-    """Returns the block matrix."""
-
-    block_matrix = np.block([[self.pure_matrix_A, self.matrix_AB], #interestingly, it does better with the pure
-                             [self.matrix_AB.T, self.pure_matrix_B]])
-
-
-    #Plot the block matrix
-    if self.show:
-      plt.figure(figsize=(10, 8))
-      sns.heatmap(block_matrix, cmap='viridis', mask = (block_matrix > 4))
-      plt.title('Block Matrix')
-      plt.xlabel('Graph A Vertex')
-      plt.ylabel('Graph B Vertex')
-      plt.show()
-
-    return block_matrix
+    
+    else:
+       raise RuntimeError('Operation not understood. Please use "average" or "abs"')
 
   """VISUALIZATION FUNCTIONS"""
-  def veiw_graphs(self):
-    fig, axes = plt.subplots(1, 2, figsize = (13, 10))
+  def plot_graphs(self):
+
+    #Plot the block matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 4))
+    plt.title('Block Matrix')
+    plt.xlabel('Graph A Vertex')
+    plt.ylabel('Graph B Vertex')
+    plt.show()
+
+    #Plot the graph connections
+    fig, axes = plt.subplots(1, 2, figsize = (10, 5))
     ig.plot(self.graphA, vertex_color=['green'], target=axes[0], vertex_label= list(range(self.len_A)))
     ig.plot(self.graphB, vertex_color=['cyan'], target=axes[1], vertex_label= list(range(self.len_B)))
     axes[0].set_title("Graph A")
     axes[1].set_title("Graph B")
+    plt.show()
 
-  def plot_emb(self, labels, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
+  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
         """Creates and plots the embedding for ease"""
 
         #Convert to a MDS
@@ -254,14 +252,17 @@ class SPUD:
         #Stress is a value of how well the emd did. Lower the better.
         print(f"Model Stress: {mds.stress_}")
 
-        #Print the evaluation metrics as well
-        first_labels = labels[:self.len_A]
-        second_labels = labels[self.len_A:]
-
-        try: #Will fail if the domains shapes aren't equal
-            print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
-        except:
-            print("Can't calculate the Cross embedding")
+        if type(labels)!= type(None):
+            #Print the evaluation metrics as well
+            first_labels = labels[:self.len_A]
+            second_labels = labels[self.len_A:]
+            try: #Will fail if the domains shapes aren't equal
+                print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
+            except:
+                print("Can't calculate the Cross embedding")
+        else:
+            #Set all labels to be the same
+            labels = np.ones(shape = (len(self.emb)))
 
         try:    
             print(f"FOSCTTM: {self.FOSCTTM(self.block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
