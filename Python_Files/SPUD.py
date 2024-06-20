@@ -224,21 +224,21 @@ class SPUD:
 
   """VISUALIZATION FUNCTIONS"""
   def plot_graphs(self):
-
-    #Plot the block matrix
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 4))
-    plt.title('Block Matrix')
-    plt.xlabel('Graph A Vertex')
-    plt.ylabel('Graph B Vertex')
-    plt.show()
-
     #Plot the graph connections
     fig, axes = plt.subplots(1, 2, figsize = (10, 5))
     ig.plot(self.graphA, vertex_color=['green'], target=axes[0], vertex_label= list(range(self.len_A)))
     ig.plot(self.graphB, vertex_color=['cyan'], target=axes[1], vertex_label= list(range(self.len_B)))
     axes[0].set_title("Graph A")
     axes[1].set_title("Graph B")
+    plt.show()
+  
+  def plot_heat_map(self):
+    #Plot the block matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 4))
+    plt.title('Block Matrix')
+    plt.xlabel('Graph A Vertex')
+    plt.ylabel('Graph B Vertex')
     plt.show()
 
   def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
