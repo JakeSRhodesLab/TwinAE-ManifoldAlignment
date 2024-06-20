@@ -163,25 +163,21 @@ class DIG: #Diffusion Integration with Graphs
         Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
 
         Parameters:
-        matrix1 (numpy.ndarray): First matrix
-        matrix2 (numpy.ndarray): Second matrix
+        matrix (numpy.ndarray): This should be the diffused matrix
 
         Returns:
         numpy.ndarray: Divergence matrix
         """
-        
+
         # Ensure there are no zero values in matrix2 to avoid division by zero
         matrix = np.where(matrix == 0, 1e-10, matrix)
-        
-        # Ensure there are no zero values in matrix1 to avoid log(0)
-        #matrix1 = np.where(matrix1 == 0, 1e-10, matrix1)
-        
-        # Calculate the KL divergence
-        divergence_matrix = np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2)
-        
-        #normalize it and return the matrix!
-        return self.normalize_0_to_1(divergence_matrix)
 
+        #Normalize and do all the math to preform the KL divergence
+        matrix = self.normalize_0_to_1(squareform(pdist(np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2))))
+
+        #return the block matrix!
+        return matrix 
+    
     def density_normalized_kernel(self, K):
         """
         Compute the density-normalized kernel matrix.

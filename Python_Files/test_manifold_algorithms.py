@@ -8,12 +8,12 @@ Changes Log:
 2. Added dropna to the rankings functions: this is so that the rankings are fair, because the algorithms were boosted when others had Nan values
 3. Added Hellinger Function and tested it
 4. Added functionality to compute embeddings without labels
+5. Altered the Hellinger function and improved it! -> (Maybe we could go farther and have it be the merge graphs function even...)
+6. Added KL divergence -> cannot figure out why the matrix isn't symmetric
 
 
 
 FUTURE IDEAS:
-1. If kind = Distance is preforming arbitrarly the best, delete the other kind functions
-2. Make it so we can have incomplete splits --> or use splits with not all of the data. Its possible that some features may actually hinder the process (Similar to Doctor's being overloaded with information)
 3. Possible with n domains?
 
 TASKS:
