@@ -9,7 +9,8 @@ Changes Log:
 3. Added Hellinger Function and tested it
 4. Added functionality to compute embeddings without labels
 5. Altered the Hellinger function and improved it! -> (Maybe we could go farther and have it be the merge graphs function even...)
-6. Added KL divergence -> cannot figure out why the matrix isn't symmetric
+6. Added KL divergence an preformed exploratory tests
+7. Methodically went over the SPUD methodology for shortest paths. Our previous method was better than their standard path (and all my attempts to make it better)
 
 
 
@@ -17,13 +18,12 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-4. Go through SPUD. Fix the shortest paths method? This may greatly simplify, making it so we don't have to get node paths
-5. Maybe test the idea of comparing the normalization between rows when we do our diffusion matrix in DIG. Also maybe look at Hellinger Distance
 6. Make a visual of showing sparse labels from one domain to the other
-7. Update our methods to work like SK-Learn's
 8. Make the predictions model better! 
 9. Read over the Overleaf paper
-10. Get rid of the needed labels part for our function
+
+FINAL TASKS: (When we are at last preparing the code for use)
+1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey

@@ -66,7 +66,6 @@ class SPUD:
         #Finally, get the block matrix
         self.block = np.block([[self.matrix_A, self.matrix_AB], [self.matrix_AB.T, self.matrix_B]])
 
-
   """HELPER FUNCTIONS"""
   def normalize_0_to_1(self, value):
     """Normalizes the value to be between 0 and 1"""
