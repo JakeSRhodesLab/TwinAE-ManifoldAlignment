@@ -11,7 +11,7 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD:
-  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average"):
+  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average", verbose = 0):
         '''dataA and dataB should simply just be the data. We will convert it
         to Igraph. Same as nama or mali
 
@@ -31,6 +31,7 @@ class SPUD:
         #Set the values
         self.decay = decay
         self.operation = operation
+        self.verbose = verbose
 
         #Create Igraphs from the input.
         if knn == "connect": #TODO: implement the similarity function

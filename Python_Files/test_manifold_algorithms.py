@@ -10,15 +10,14 @@ Changes Log:
 4. Added functionality to compute embeddings without labels
 5. Altered the Hellinger function and improved it! -> (Maybe we could go farther and have it be the merge graphs function even...)
 6. Added KL divergence an preformed exploratory tests
-7. Methodically went over the SPUD methodology for shortest paths. Our previous method was better than their standard path (and all my attempts to make it better)
-
+7. Methodically went over the SPUD methodology for shortest paths. Our previous method was better than their standard path (and all my attempts to make it better). SEE SPUD_COPY
+8. Added Sparse Visualization testing
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-6. Make a visual of showing sparse labels from one domain to the other
 8. Make the predictions model better! 
 9. Read over the Overleaf paper
 
@@ -38,9 +37,6 @@ https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
 27. rand on Carter (1 day)
-28. CDIG doing random on Tukey (1 day)
-29. CDIG doing distort on hilton
-30. CDIG doing all on Collings
 
 """
 
