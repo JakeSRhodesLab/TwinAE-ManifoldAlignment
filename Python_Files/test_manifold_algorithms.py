@@ -12,6 +12,7 @@ Changes Log:
 6. Added KL divergence an preformed exploratory tests
 7. Methodically went over the SPUD methodology for shortest paths. Our previous method was better than their standard path (and all my attempts to make it better). SEE SPUD_COPY
 8. Added Sparse Visualization testing
+9. Rewrote the SPUD algorithm -- great improvements in prediction and speed. This was redid for the connections adding function we hope to use later
 
 
 FUTURE IDEAS:
@@ -20,6 +21,7 @@ FUTURE IDEAS:
 TASKS:
 8. Make the predictions model better! 
 9. Read over the Overleaf paper
+10. SPUD connections algorithm
 
 FINAL TASKS: (When we are at last preparing the code for use)
 1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
@@ -36,7 +38,7 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-27. rand on Carter (1 day)
+27. rand on Carter (4 day)
 
 """
 
@@ -379,66 +381,62 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    def run_SPUD_tests(self, operations = ("average", "abs"), kind = ("distance", "pure", "similarity")): #NOTE: After lots of tests, Distance seems to always be the best in every scenario
-        """Operations should be a tuple of the different operations wanted to run. All are included by default. 
-        
-        Kind should be a tuple of the different opperations wanted to run. All are included by default."""
+    def run_SPUD_tests(self, operations = ("average", "abs")): #NOTE: After lots of tests, Distance seems to always be the best in every scenario
+        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for operation in operations:
             print(f"Operation {operation}")
-            for type in kind:
-                print(f"    Kind {type}")
-                
-                #Create files and store data
-                filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = type)
 
-                #If file aready exists, then we are done :)
-                if os.path.exists(filename) or len(AP_values) < 1:
-                    print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-                    continue
+            #Create files and store data
+            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "distance")
 
-                #Store the data in a numpy array
-                spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                continue
 
-                for k, knn in enumerate(self.knn_range):
-                    print(f"        KNN {knn}")
-                    for l, anchor_percent in enumerate(AP_values):
-                        print(f"            Percent of Anchors {anchor_percent}")
+            #Store the data in a numpy array
+            spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
 
-                        try:
-                            #Create the class with all the arguments
-                            spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation, kind = type)
-                        except Exception as e:
-                            print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
-                            spud_scores[k, l, 0] = np.NaN
-                            spud_scores[k, l, 1] = np.NaN
-                            continue
+            for k, knn in enumerate(self.knn_range):
+                print(f"        KNN {knn}")
+                for l, anchor_percent in enumerate(AP_values):
+                    print(f"            Percent of Anchors {anchor_percent}")
 
-                        #FOSCTTM METRICS
-                        try:
-                            spud_FOSCTTM = self.FOSCTTM(spud_class.matrix_AB)
-                            print(f"                FOSCTTM Score: {spud_FOSCTTM}")
-                        except Exception as e:
-                            print(f"                FOSCTTM exception occured: {e}")
-                            spud_FOSCTTM = np.NaN
-                        
-                        spud_scores[k, l, 0] = spud_FOSCTTM
+                    try:
+                        #Create the class with all the arguments
+                        spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation)
+                    except Exception as e:
+                        print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                        spud_scores[k, l, 0] = np.NaN
+                        spud_scores[k, l, 1] = np.NaN
+                        continue
 
-                        #Cross Embedding Metrics
-                        try:
-                            emb = self.mds.fit_transform(spud_class.block)
-                            spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                            print(f"                CE Score: {spud_CE}")
-                        except Exception as e:
-                            print(f"                Cross Embedding exception occured: {e}")
-                            spud_CE = np.NaN
-                        
-                        spud_scores[k, l, 1] = spud_CE
-                
-                #Save the numpy array
-                np.save(filename, spud_scores)
+                    #FOSCTTM METRICS
+                    try:
+                        spud_FOSCTTM = self.FOSCTTM(spud_class.matrix_AB)
+                        print(f"                FOSCTTM Score: {spud_FOSCTTM}")
+                    except Exception as e:
+                        print(f"                FOSCTTM exception occured: {e}")
+                        spud_FOSCTTM = np.NaN
+                    
+                    spud_scores[k, l, 0] = spud_FOSCTTM
+
+                    #Cross Embedding Metrics
+                    try:
+                        emb = self.mds.fit_transform(spud_class.block)
+                        spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                        print(f"                CE Score: {spud_CE}")
+                    except Exception as e:
+                        print(f"                Cross Embedding exception occured: {e}")
+                        spud_CE = np.NaN
+                    
+                    spud_scores[k, l, 1] = spud_CE
+            
+            #Save the numpy array
+            np.save(filename, spud_scores)
 
         #Run successful
         return True

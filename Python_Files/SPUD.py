@@ -186,8 +186,7 @@ class SPUD:
         #Check to make sure the path isn't empty
         if len(path) > 0:
           #Add all the paths together at once
-          distances = pureDistanceMatrix[node[:-1], node[1:]].sum(axis=1)
-
+          distances = pureDistanceMatrix[path[:-1], path[1:]].sum()
 
           #We want to use the shortest one
           node_distance_to_anchors.append(distances)
