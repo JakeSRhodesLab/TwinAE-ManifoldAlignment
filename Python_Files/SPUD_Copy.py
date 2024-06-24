@@ -22,7 +22,7 @@ class SPUD_Copy:
         Knn states how many nearest neighbors we want to use in the graph. If
         Knn is set to "connect" then it will ensure connection in the graph.
 
-        Operation is the way we want to calculate to the distances: can do
+        Operation is the way we want to calculate to the distances: can do normalize,
         average or abs (for the distance between the two nodes)
 
         Show is a boolean value. Set to True if you want to see the distance
@@ -30,6 +30,11 @@ class SPUD_Copy:
 
         #Set the values
         self.decay = decay
+
+        #Check to make sure that the domains are the same size
+        if operation == "abs" and len(dataA) != len(dataB):
+            raise AssertionError('The operation abs only works with a one-to-one correspondence.')
+        
         self.operation = operation
 
         #Create Igraphs from the input.
@@ -49,12 +54,9 @@ class SPUD_Copy:
         #Get the distances
         self.block = self.get_block()
 
-        #Finally, get the block matrix
-        #self.block = np.block([[self.matrix_A, self.matrix_AB], [self.matrix_AB.T, self.matrix_B]])
-
   """HELPER FUNCTIONS"""
   def normalize_0_to_1(self, value):
-    """Normalizes the value to be between 0 and 1"""
+    """Normalizes the value to be between 0 and 1 and resets infinite values"""
 
     #Scale it and check to ensure no devision by 0
     if np.max(value[~np.isinf(value)]) != 0:
@@ -124,38 +126,6 @@ class SPUD_Copy:
 
         #Return the Igraph object
         return merged
-
-  def get_shortest_paths(self, nodePaths, pureDistanceMatrix): #NOTE: This is currently finding the path to its nearest anchor, and not necessarily the right anchor to connect with the other graph
-    """Get Same Graph Distance Matrix by going through each node path and adding each distance.
-    It returns a matrix of every node and the distances to their anchors"""
-
-    #Create an empty list to return
-    node_distance_matrix = []
-
-    #Loop through Node paths
-    for node in nodePaths:
-      node_distance_to_anchors = []
-      #Loop through each path
-      for path in node: #We could just select the one that has the least connections to save time and computing power -- it will be close to the actuall but not the same
-        #Check to make sure the path isn't empty
-        if len(path) > 0:
-          distance_to_anchor = 0
-
-          #Now loop through the connections
-          for index in range(len(path)-1):
-            distance_to_anchor += pureDistanceMatrix[path[index]][path[index+1]]
-
-          #We want to use the shortest one
-          node_distance_to_anchors.append(distance_to_anchor)
-        else: #Path size is infintie
-          node_distance_to_anchors.append(np.inf)
-
-      node_distance_matrix.append(node_distance_to_anchors)
-
-    #Convert to an array
-    node_distance_matrix = np.array(node_distance_matrix) #Question: code might run faster if we start it as an array
-
-    return self.normalize_0_to_1(node_distance_matrix)
     
   def get_block(self):
     """Returns a transformed and normalized block"""
@@ -171,13 +141,17 @@ class SPUD_Copy:
     elif self.operation == "average":
        off_diagonal = block[:self.len_A, self.len_A:] * 0.5
 
+    elif self.operation == "abs":
+      #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
+      block1 = (block[:self.len_A, self.len_A:] - block[:self.len_A, :self.len_A])
+      block2 = (block[:self.len_A, self.len_A:] - block[self.len_A:, self.len_A:])
+      off_diagonal = np.abs(block1 - block2)
+
     #Re-apply the transfomration to the block NOTE: the main diagonals are already normalized
     block[:self.len_A, self.len_A:] = off_diagonal
     block[self.len_A:, :self.len_A] = off_diagonal.T
 
     return block
-
-
 
   """VISUALIZATION FUNCTIONS"""
   def plot_graphs(self):
@@ -194,7 +168,7 @@ class SPUD_Copy:
   def plot_heat_map(self):
     #Plot the block matrix
     plt.figure(figsize=(8, 6))
-    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 4))
+    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 50))
     plt.title('Block Matrix')
     plt.xlabel('Graph A Vertex')
     plt.ylabel('Graph B Vertex')
