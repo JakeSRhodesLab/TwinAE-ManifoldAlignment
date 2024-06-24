@@ -473,9 +473,6 @@ class DIG: #Diffusion Integration with Graphs
             #Set the connection limit to be 10x the shape (just because its usualy good and fast)
             connection_limit = 10 * self.len_A
 
-        #Create an empty Numpy array
-        pruned_connections = np.array([]).astype(int)
-
         #Get the current score of the alignment
         current_score = np.mean([self.partial_FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
 

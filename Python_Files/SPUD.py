@@ -62,7 +62,7 @@ class SPUD:
         self.node_paths_B = self.make_node_paths(self.graphB, self.known_anchors.T[1])
 
         #Get the off-diagonal blocks
-        self.matrix_AB = self.get_DGDM()
+        self.matrix_AB = self.normalize_0_to_1(self.get_DGDM())
 
         #Finally, get the block matrix
         self.block = np.block([[self.matrix_A, self.matrix_AB], [self.matrix_AB.T, self.matrix_B]])
@@ -154,6 +154,22 @@ class SPUD:
 
       return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
   
+  def partial_FOSCTTM(self, Wxy, anchors): #Wxy should be just the parrallel matrix
+        """This uses only the provided known connections"""
+
+        n1, n2 = np.shape(Wxy)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = Wxy
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
+  
   """THE PRIMARY FUNCTIONS""" 
   def get_shortest_paths(self, nodePaths, pureDistanceMatrix): #NOTE: This is currently finding the path to its nearest anchor, and not necessarily the right anchor to connect with the other graph
     """Get Same Graph Distance Matrix by going through each node path and adding each distance.
@@ -169,14 +185,12 @@ class SPUD:
       for path in node: #We could just select the one that has the least connections to save time and computing power -- it will be close to the actuall but not the same
         #Check to make sure the path isn't empty
         if len(path) > 0:
-          distance_to_anchor = 0
+          #Add all the paths together at once
+          distances = pureDistanceMatrix[node[:-1], node[1:]].sum(axis=1)
 
-          #Now loop through the connections
-          for index in range(len(path)-1):
-            distance_to_anchor += pureDistanceMatrix[path[index]][path[index+1]]
 
           #We want to use the shortest one
-          node_distance_to_anchors.append(distance_to_anchor)
+          node_distance_to_anchors.append(distances)
         else: #Path size is infintie
           node_distance_to_anchors.append(np.inf)
 
