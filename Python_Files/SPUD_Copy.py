@@ -141,6 +141,14 @@ class SPUD_Copy:
     elif self.operation == "average":
        off_diagonal = block[:self.len_A, self.len_A:] * 0.5
 
+    elif self.operation == "minimize":
+       #This should be chosen when we know there is a strong relationship between the two domains
+       off_diagonal = block[:self.len_A, self.len_A:] * 0.2
+
+    elif self.operation == "maximize":
+       #This should be chosen when we know there is a weak relationship between the two domains
+       off_diagonal = block[:self.len_A, self.len_A:] * 0.8
+
     elif self.operation == "abs":
       #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
       block1 = (block[:self.len_A, self.len_A:] - block[:self.len_A, :self.len_A])
