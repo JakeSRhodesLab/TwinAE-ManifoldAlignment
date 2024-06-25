@@ -11,7 +11,7 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD_Copy:
-  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "normalize"):
+  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "normalize", verbose = 0):
         '''dataA and dataB should simply just be the data. We will convert it
         to Igraph. Same as nama or mali
 
@@ -32,6 +32,7 @@ class SPUD_Copy:
 
         #Set the values
         self.decay = decay
+        self.verbose = verbose
 
         #Check to make sure that the domains are the same size
         if operation == "abs" and len(dataA) != len(dataB):
@@ -110,6 +111,22 @@ class SPUD_Copy:
       _, kneighbors = nn.kneighbors(dists)
 
       return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+  
+  def partial_FOSCTTM(self, Wxy, anchors): #Wxy should be just the parrallel matrix
+        """This uses only the provided known connections"""
+
+        n1, n2 = np.shape(Wxy)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = Wxy
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
   
   """THE PRIMARY FUNCTIONS""" 
   def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
