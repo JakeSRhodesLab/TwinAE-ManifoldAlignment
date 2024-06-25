@@ -381,7 +381,7 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    def run_SPUD_tests(self, operations = ("average", "abs")): #NOTE: After lots of tests, Distance seems to always be the best in every scenario
+    def run_SPUD_tests(self, operations = ("average", "abs")): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -390,7 +390,7 @@ class test_manifold_algorithms():
             print(f"Operation {operation}")
 
             #Create files and store data
-            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "distance")
+            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "distance") # When we are ready to test the Spud copy, we can swicth this to "merge"
 
             #If file aready exists, then we are done :)
             if os.path.exists(filename) or len(AP_values) < 1:

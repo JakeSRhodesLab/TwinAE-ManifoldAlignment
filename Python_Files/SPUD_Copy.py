@@ -23,7 +23,9 @@ class SPUD_Copy:
         Knn is set to "connect" then it will ensure connection in the graph.
 
         Operation is the way we want to calculate to the distances: can do normalize,
-        average or abs (for the distance between the two nodes)
+        average, abs (for the distance between the two nodes), maximize or minimize. 
+        TODO: In the future, maybe instead of maximize or minimize we can allow the user
+        to input a float value and use that for greater flexibility. 
 
         Show is a boolean value. Set to True if you want to see the distance
         matrix.'''
@@ -52,7 +54,7 @@ class SPUD_Copy:
         self.graphAB = self.merge_graphs()
 
         #Get the distances
-        self.block = self.get_block()
+        self.block = self.get_block(self.graphAB)
 
   """HELPER FUNCTIONS"""
   def normalize_0_to_1(self, value):
@@ -127,11 +129,11 @@ class SPUD_Copy:
         #Return the Igraph object
         return merged
     
-  def get_block(self):
+  def get_block(self, graph):
     """Returns a transformed and normalized block"""
 
     #Get the block
-    block = np.array(self.graphAB.distances(weights = "weight", algorithm = "dijkstra"))
+    block = np.array(graph.distances(weights = "weight", algorithm = "dijkstra"))
 
     #Cache off-diagonal block for efficiency and do methods based on operation:
     if self.operation == "normalize":
