@@ -33,7 +33,8 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-27. rand on Carter (4 day)
+27. rand on Carter (6 day)
+28. skew on Collings (1 day -- cleaning up all the skewed files)
 
 """
 
