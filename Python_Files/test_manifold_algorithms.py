@@ -4,21 +4,16 @@
 Questions:
 
 Changes Log:
-1. Fixed the upload function and added the boosted CwDIG test results
-2. Added dropna to the rankings functions: this is so that the rankings are fair, because the algorithms were boosted when others had Nan values
-3. Added Hellinger Function and tested it
-4. Added functionality to compute embeddings without labels
-5. Altered the Hellinger function and improved it! -> (Maybe we could go farther and have it be the merge graphs function even...)
-6. Added KL divergence an preformed exploratory tests
-7. Methodically went over the SPUD methodology for shortest paths. Our previous method was better than their standard path (and all my attempts to make it better). SEE SPUD_COPY
-8. Added Sparse Visualization testing
-9. Rewrote the SPUD algorithm -- great improvements in prediction and speed. This was redid for the connections adding function we hope to use later
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
+0. Test Feature splits -> Fixed Skewed and Even
+1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions
+2. Create the distance from the maximum score -> We can plot this too!
+
 8. Make the predictions model better! 
 9. Read over the Overleaf paper
 10. SPUD connections algorithm
@@ -47,6 +42,7 @@ import glob
 from ma_procrustes import MAprocr
 from DIG import DIG
 from SPUD import SPUD
+from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
 from jlma import JLMA
@@ -381,7 +377,7 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    def run_SPUD_tests(self, operations = ("average", "abs")): 
+    def run_SPUD_tests(self, operations = ("average", "abs")): #NOTE: Running SPUD_copy data currently
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -416,7 +412,7 @@ class test_manifold_algorithms():
 
                     #FOSCTTM METRICS
                     try:
-                        spud_FOSCTTM = self.FOSCTTM(spud_class.matrix_AB)
+                        spud_FOSCTTM = self.FOSCTTM(spud_class.block[:spud_class.len_A, spud_class.len_A:])
                         print(f"                FOSCTTM Score: {spud_FOSCTTM}")
                     except Exception as e:
                         print(f"                FOSCTTM exception occured: {e}")
@@ -1235,6 +1231,13 @@ def find_words_order(text, words):
     # Return only the words, sorted by their appearance
     return [word for _, word in positions]
 
+# Function to check if a string contains any of the substrings
+def contains_any_substring(s, substrings):
+    for sub in substrings:
+        if sub in s:
+            return True
+    return False
+
 def clear_directory(text_curater = "all", not_text = None):
     """CAREFUL. THIS WIPES THE MANIFOLD DATA DIRECTORY CLEAN"""
 
@@ -1264,6 +1267,12 @@ def clear_directory(text_curater = "all", not_text = None):
     #Filter out with text in it
     if not_text == None:
         curated_files = selected_files
+    
+    #if its a list we need to repeat the thing
+    elif type(not_text) == list:
+        curated_files = []
+        curated_files = [file for file in selected_files if not contains_any_substring(file, not_text)]
+    
     else:
         curated_files = []
         curated_files = [file for file in selected_files if not_text not in file]

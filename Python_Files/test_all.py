@@ -35,17 +35,17 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 """
 
 
-#for split_type in ["turn", "skewed", "even", "distort", "random"]:
+for split_type in ["skewed", "even", "distort", "random", "turn"]:
 
-tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
-                            split = "random", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
+    tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+                            split = split_type, verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
+                            run_DIG = False, page_ranks = ("None", "off-diagonal", "full"), predict = True, #DIG key arguments
                             run_CwDIG=False, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
-                            run_DTA = True,
-                            run_NAMA = True,
-                            run_SSMA = True,
-                            run_MAGAN= True,
-                            run_JLMA = True,
-                            run_KNN_Tests=True,
-                            run_PCR = True,
-                            run_SPUD = True, operations = ("average", "abs"), kind = ("pure", "similarity", "distance")) #SPUD key arguments
+                            run_DTA = False,
+                            run_NAMA = False,
+                            run_SSMA = False,
+                            run_MAGAN= False,
+                            run_JLMA = False,
+                            run_KNN_Tests=False,
+                            run_PCR = False,
+                            run_SPUD = True, operations = ("average", "abs", "normalize")) #SPUD key arguments
