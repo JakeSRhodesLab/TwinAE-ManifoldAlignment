@@ -33,9 +33,10 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-27. rand on Carter (6 day)
-28. skew on Collings (1 day -- cleaning up all the skewed files)
-29. even on Cox (1 day -- cleaning up all even files)
+28. skew on hilton (2 day -- cleaning up all the skewed files)
+29. even on Cox (2 day -- cleaning up all even files)
+30. Cspud on Collings (3 days -- Running Cspud files)
+31. Cspud on Tukey (1 day -- running cspud files)
 
 """
 
@@ -439,6 +440,65 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
+    def run_CSPUD_tests(self, operations = ("average", "abs")): #NOTE: Running SPUD_copy data currently
+        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+
+        #We are going to run test with every variation
+        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
+        for operation in operations:
+            print(f"Operation {operation}")
+
+            #Create files and store data
+            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "merge") # When we are ready to test the Spud copy, we can swicth this to "merge"
+
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                continue
+
+            #Store the data in a numpy array
+            spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
+
+            for k, knn in enumerate(self.knn_range):
+                print(f"        KNN {knn}")
+                for l, anchor_percent in enumerate(AP_values):
+                    print(f"            Percent of Anchors {anchor_percent}")
+
+                    try:
+                        #Create the class with all the arguments
+                        spud_class = SPUD_Copy(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation)
+                    except Exception as e:
+                        print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                        spud_scores[k, l, 0] = np.NaN
+                        spud_scores[k, l, 1] = np.NaN
+                        continue
+
+                    #FOSCTTM METRICS
+                    try:
+                        spud_FOSCTTM = self.FOSCTTM(spud_class.block[:spud_class.len_A, spud_class.len_A:])
+                        print(f"                FOSCTTM Score: {spud_FOSCTTM}")
+                    except Exception as e:
+                        print(f"                FOSCTTM exception occured: {e}")
+                        spud_FOSCTTM = np.NaN
+                    
+                    spud_scores[k, l, 0] = spud_FOSCTTM
+
+                    #Cross Embedding Metrics
+                    try:
+                        emb = self.mds.fit_transform(spud_class.block)
+                        spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                        print(f"                CE Score: {spud_CE}")
+                    except Exception as e:
+                        print(f"                Cross Embedding exception occured: {e}")
+                        spud_CE = np.NaN
+                    
+                    spud_scores[k, l, 1] = spud_CE
+            
+            #Save the numpy array
+            np.save(filename, spud_scores)
+
+        #Run successful
+        return True
     #We can add t as a parameter, and run tests on that as well, but I feel like the auto is good enough for now
     def run_DIG_tests(self, page_ranks = ("None", "off-diagonal", "full"), predict = False):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
@@ -1448,12 +1508,16 @@ def _upload_file(file):
             #Assign the operation
             if "average" in file:
                 data_dict["Operation"] = "average"
+            elif "normalize" in file:
+                data_dict["Operation"] = "normalize"
             else: 
                 data_dict["Operation"] = "abs" #There might be a more intuitive name for this 
 
             #Assign its Kind
             if "distance" in file:
                 data_dict["SPUDS_Algorithm"] = "distance"
+            elif "merge" in file:
+                data_dict["SPUDS_Algorithm"] = "merge"
             elif "pure" in file:
                 data_dict["SPUDS_Algorithm"] = "pure"
             else:
@@ -1626,7 +1690,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CwDIG = False, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1711,6 +1775,17 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CwDIG 
 
         #Loop through each file (Using Parralel Processing) for SPUD
         Parallel(n_jobs=-3)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+
+    if run_CSPUD:
+        #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
+        filtered_kwargs = {}
+        if "operations" in kwargs:
+            filtered_kwargs["operations"] = kwargs["operations"]
+        if "kind" in kwargs:
+            filtered_kwargs["kind"] = kwargs["kind"]
+
+        #Loop through each file (Using Parralel Processing) for SPUD
+        Parallel(n_jobs=-3)(delayed(instance.run_CSPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
