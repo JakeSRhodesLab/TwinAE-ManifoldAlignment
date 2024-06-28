@@ -10,7 +10,7 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-0. Test Feature splits -> Fixed Skewed and Even
+0. Test Feature splits -> Fixed Skewed and Even DONE and running
 1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions
 2. Create the distance from the maximum score -> We can plot this too!
 
@@ -35,6 +35,7 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 27. rand on Carter (6 day)
 28. skew on Collings (1 day -- cleaning up all the skewed files)
+29. even on Cox (1 day -- cleaning up all even files)
 
 """
 
