@@ -1750,7 +1750,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-7)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -1763,7 +1763,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-7)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_SPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -1785,36 +1785,36 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-3)(delayed(instance.run_CSPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_CSPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-7)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=-7)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-7)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
 
     if run_JLMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-15)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-15)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
 
     if run_PCR:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-5)(delayed(instance.run_PCR_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_PCR_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_KNN_Tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-3)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=-1)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
 
 
     return manifold_instances
