@@ -17,7 +17,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from itertools import takewhile
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", density_normalization = False, DTM = "log", verbose = 0):
+    def __init__(self, dataA, dataB, known_anchors, t = -1, knn = 5, link = "None", precompute = True, density_normalization = False, DTM = "log", verbose = 0):
         """
         Parameters:
             :DataA: the first domain (or data set). 
@@ -51,12 +51,22 @@ class DIG: #Diffusion Integration with Graphs
         self.dataB = self.normalize_0_to_1(dataB)
 
         #Create graphs with graphtools
-        self.graph_a = graphtools.Graph(self.dataA, knn = knn, knn_max = knn, decay = 40) #The Knn max stops additional connections
-        self.graph_b  = graphtools.Graph(self.dataB, knn = knn, knn_max = knn, decay = 40)
+        if precompute:
+            #Create kernals
+            self.kernalsA = self.get_SGDM(dataA)
+            self.kernalsB = self.get_SGDM(dataB)
 
-        #Create the kernals
-        self.kernalsA  = np.array(self.graph_a.K.toarray())
-        self.kernalsB = np.array(self.graph_b.K.toarray())
+            #Create Graphs
+            self.graph_a = graphtools.Graph(1 - self.kernalsA, knn = knn, knn_max = knn, decay = 40, precomputed = "affinity") #The Knn max stops additional connections
+            self.graph_b  = graphtools.Graph(1 - self.kernalsB, knn = knn, knn_max = knn, decay = 40, precomputed = "affinity")
+        else:
+            #Create Graphs
+            self.graph_a = graphtools.Graph(self.dataA, knn = knn, knn_max = knn, decay = 40, precomputed = None) #The Knn max stops additional connections
+            self.graph_b  = graphtools.Graph(self.dataB, knn = knn, knn_max = knn, decay = 40, precomputed = None)
+
+            #Create the kernals
+            self.kernalsA  = np.array(self.graph_a.K.toarray())
+            self.kernalsB = np.array(self.graph_b.K.toarray())
 
         self.known_anchors = known_anchors
             
@@ -122,6 +132,17 @@ class DIG: #Diffusion Integration with Graphs
     """HELPER FUNCTIONS BELOW"""
     def normalize_0_to_1(self, value):
         return (value - value.min()) / (value.max() - value.min())
+    
+    def get_SGDM(self, data):
+        """SGDM - Same Graph Distance Matrix.
+        This returns the normalized distances within each domain"""
+        
+        #Just using a normal distance matrix without Igraph
+        data = squareform(pdist(data))
+
+        #Normalize it and return the data
+        return self.normalize_0_to_1(data)
+
 
     def apply_page_rank(self, matrix, alpha = 0.95):
         """
