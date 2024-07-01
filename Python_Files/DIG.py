@@ -57,8 +57,8 @@ class DIG: #Diffusion Integration with Graphs
             self.kernalsB = self.get_SGDM(dataB)
 
             #Create Graphs
-            self.graph_a = graphtools.Graph(1 - self.kernalsA, knn = knn, knn_max = knn, decay = 40, precomputed = "affinity") #The Knn max stops additional connections
-            self.graph_b  = graphtools.Graph(1 - self.kernalsB, knn = knn, knn_max = knn, decay = 40, precomputed = "affinity")
+            self.graph_a = graphtools.Graph(self.kernalsA, knn = knn, knn_max = knn, decay = 40, precomputed = "distance") #The Knn max stops additional connections
+            self.graph_b  = graphtools.Graph(self.kernalsB, knn = knn, knn_max = knn, decay = 40, precomputed = "distance")
         else:
             #Create Graphs
             self.graph_a = graphtools.Graph(self.dataA, knn = knn, knn_max = knn, decay = 40, precomputed = None) #The Knn max stops additional connections

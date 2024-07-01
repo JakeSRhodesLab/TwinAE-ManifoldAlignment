@@ -4,6 +4,11 @@
 Questions:
 
 Changes Log:
+1. Updated the veiwing function -> you can just veiw some of the methods at the same time
+2. Seperated out SPUD into the two SPUD_D and SPUD_M (where SPUD_D is the original and SPUD_M is the merged approach)
+3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
+    a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
+4. Fixed Feature splits - > With Skewed and Even (due to the random nature of the seeds)
 
 
 FUTURE IDEAS:
@@ -33,10 +38,12 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (2 day -- cleaning up all the skewed files)
-29. even on Cox (2 day -- cleaning up all even files)
-30. Cspud on Collings (3 days -- Running Cspud files)
-31. Cspud on Tukey (1 day -- running cspud files)
+28. skew on hilton (5 day -- cleaning up all the skewed files)
+29. even on Cox (5 day -- cleaning up all even files)
+30. Cspud on Collings (5 days -- Running Cspud files)
+31. Cspud on Tukey (3 day -- running cspud files)
+32. Random Rspud on Collimgs
+33. Distort tests (Dspud) on Cox
 
 """
 

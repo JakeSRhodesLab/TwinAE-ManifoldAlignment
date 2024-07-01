@@ -37,6 +37,7 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
 
 #for split_type in ["skewed", "even", "distort", "random", "turn"]:
 
+"""
 #Even
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
@@ -83,6 +84,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407,
                             run_SPUD = False, operations = ("average", "abs", "normalize")) #SPUD key arguments
 
 #distort
+"""
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
                             run_DIG = False, page_ranks = ["None"], predict = True, #DIG key arguments
