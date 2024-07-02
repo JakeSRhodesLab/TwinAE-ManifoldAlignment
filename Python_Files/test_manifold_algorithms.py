@@ -38,12 +38,12 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (5 day -- cleaning up all the skewed files)
-29. even on Cox (5 day -- cleaning up all even files)
-30. Cspud on Collings (5 days -- Running Cspud files)
-31. Cspud on Tukey (3 day -- running cspud files)
-32. Random Rspud on Collimgs
-33. Distort tests (Dspud) on Cox
+28. skew on hilton (6 day -- cleaning up all the skewed files)
+29. even on Cox (6 day -- cleaning up all even files)
+30. Cspud on Collings (6 days -- Running Cspud files)
+31. Cspud on Tukey (6 day -- running cspud files)
+32. Random Rspud on Collimgs _> 2 day
+33. Distort tests (Dspud) on Cox _> 2 day
 
 """
 
@@ -1615,7 +1615,8 @@ def _upload_file(file):
     
     #If there was an error anywhere in processing the data
     except Exception as e:
-        print(f"Error occured with {original_file}, and it will not be fully uploaded. It was {e}")
+        print(f"Error occured with {original_file}, and it will not be fully uploaded. It was {e}. Will delete")
+        os.remove(original_file)
         
         #It will be empty
         return (df, base_df)
