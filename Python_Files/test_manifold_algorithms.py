@@ -15,9 +15,8 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-0. Test Feature splits -> Fixed Skewed and Even DONE and running
-1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions
-2. Create the distance from the maximum score -> We can plot this too!
+1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions DONE
+2. Create the distance from the maximum score -> We can plot this too! DONE
 
 8. Make the predictions model better! 
 9. Read over the Overleaf paper
