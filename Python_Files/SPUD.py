@@ -209,7 +209,7 @@ class SPUD:
     self.all_dist_to_anchors_B = self.get_shortest_paths(self.node_paths_B, self.matrix_B)
 
     #Add each value together
-    if self.operation == "average":
+    if self.operation == "average": #NOTE: this is techniqually a misnomer -> this gets the mininum
       all_anchors = (self.all_dist_to_anchors_A[:, np.newaxis, :] + self.all_dist_to_anchors_B[np.newaxis, :, :]) #/2 - It seems to work better without deviding
       return all_anchors.min(axis=2) #use the smallest distance
 
