@@ -9,6 +9,8 @@ Changes Log:
 3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
     a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
 4. Fixed Feature splits - > With Skewed and Even (due to the random nature of the seeds)
+5. Added a new ranking style (as we talked about)
+6. Added functionality to plot the ranks
 
 
 FUTURE IDEAS:
