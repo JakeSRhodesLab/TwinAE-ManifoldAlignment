@@ -9,19 +9,16 @@ Changes Log:
 3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
     a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
 4. Fixed Feature splits - > With Skewed and Even (due to the random nature of the seeds)
-5. Added a new ranking style (as we talked about)
+5. Added a new ranking style (as we talked about) that compared from the maximum
 6. Added functionality to plot the ranks
+7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions DONE
-2. Create the distance from the maximum score -> We can plot this too! DONE
-
-8. Make the predictions model better! 
-9. Read over the Overleaf paper
+1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions DONE 
 10. SPUD connections algorithm
 
 FINAL TASKS: (When we are at last preparing the code for use)

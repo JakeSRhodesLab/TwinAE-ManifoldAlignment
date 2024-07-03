@@ -22,8 +22,8 @@ class SPUD_Copy:
         Knn states how many nearest neighbors we want to use in the graph. If
         Knn is set to "connect" then it will ensure connection in the graph.
 
-        Operation is the way we want to calculate to the distances: can do normalize,
-        average, abs (for the distance between the two nodes), maximize or minimize. 
+        Operation is the way we want to calculate to the distances: can do normalize (which is abs method normalized),
+        abs (for the distance between the two nodes), None, or a float value (that scales the resulting off-diagonal). 
         TODO: In the future, maybe instead of maximize or minimize we can allow the user
         to input a float value and use that for greater flexibility. 
 
@@ -40,9 +40,13 @@ class SPUD_Copy:
         
         self.operation = operation
 
+        #Save the distances in domains
+        self.distsA = self.get_SGDM(dataA)
+        self.distsB = self.get_SGDM(dataB)
+
         #Create Igraphs from the input.
-        self.graphA = graphtools.Graph(self.get_SGDM(dataA), knn = knn, decay = self.decay, knn_max= knn, precomputed='affinity').to_igraph()
-        self.graphB = graphtools.Graph(self.get_SGDM(dataB), knn = knn, decay = self.decay, knn_max= knn,  precomputed='affinity').to_igraph()
+        self.graphA = graphtools.Graph(self.distsA, knn = knn, decay = self.decay, knn_max= knn).to_igraph() #precomputed='affinity'
+        self.graphB = graphtools.Graph(self.distsB, knn = knn, decay = self.decay, knn_max= knn).to_igraph() #precomputed='affinity'
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
@@ -63,7 +67,7 @@ class SPUD_Copy:
 
     #Scale it and check to ensure no devision by 0
     if np.max(value[~np.isinf(value)]) != 0:
-      value = (value - value.min()) / (value[~np.isinf(value)].max() - value.min())
+      value = (value - value.min()) / (value[~np.isinf(value)].max() - value.min()) 
 
     #Reset inf values
     value[np.isinf(value)] = 1
@@ -149,34 +153,39 @@ class SPUD_Copy:
   def get_block(self, graph):
     """Returns a transformed and normalized block"""
 
-    #Get the block
-    block = np.array(graph.distances(weights = "weight", algorithm = "dijkstra"))
+    #Get the vertices to find the distances between
+    vertices = np.array(range(self.len_A))
 
-    #Cache off-diagonal block for efficiency and do methods based on operation:
-    if self.operation == "normalize":
-      #Normalize 0 to 1
-      off_diagonal = self.normalize_0_to_1(block[:self.len_A, self.len_A:])
+    #Get the off-diagonal block by using the distance method
+    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = vertices, target = vertices + self.len_A, weights = "weight", algorithm = "dijkstra")))
 
-    elif self.operation == "average":
-       off_diagonal = block[:self.len_A, self.len_A:] * 0.5
+    """#Reset inf and NaN values
+    max = off_diagonal[~np.isinf(off_diagonal)].max() * 1.1
+    off_diagonal[np.isinf(off_diagonal)] = max
+    off_diagonal[np.isnan(off_diagonal)] = max"""
 
-    elif self.operation == "minimize":
-       #This should be chosen when we know there is a strong relationship between the two domains
-       off_diagonal = block[:self.len_A, self.len_A:] * 0.2
+    #Apply modifications to operation differences
+    if type(self.operation) == float:
+       off_diagonal *= self.operation
 
-    elif self.operation == "maximize":
-       #This should be chosen when we know there is a weak relationship between the two domains
-       off_diagonal = block[:self.len_A, self.len_A:] * 0.8
+    if self.operation == "sqrt":
+       off_diagonal = np.sqrt(off_diagonal + 0.000001)
 
-    elif self.operation == "abs":
+    if self.operation == "log":
+       off_diagonal = np.log(off_diagonal + 0.000001)
+
+    elif self.operation == "abs" or self.operation == "normalize":
       #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
-      block1 = (block[:self.len_A, self.len_A:] - block[:self.len_A, :self.len_A])
-      block2 = (block[:self.len_A, self.len_A:] - block[self.len_A:, self.len_A:])
+      block1 = (off_diagonal - self.distsA)
+      block2 = (off_diagonal - self.distsB)
       off_diagonal = np.abs(block1 - block2)
 
-    #Re-apply the transfomration to the block NOTE: the main diagonals are already normalized
-    block[:self.len_A, self.len_A:] = off_diagonal
-    block[self.len_A:, :self.len_A] = off_diagonal.T
+      if self.operation == "normalize":
+          off_diagonal = self.normalize_0_to_1(off_diagonal)
+
+    #Create the block
+    block = np.block([[self.distsA, off_diagonal],
+                      [off_diagonal.T, self.distsB]])
 
     return block
 
