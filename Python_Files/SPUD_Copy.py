@@ -166,13 +166,14 @@ class SPUD_Copy:
 
     #Apply modifications to operation differences
     if type(self.operation) == float:
-       off_diagonal *= self.operation
+      off_diagonal *= self.operation
 
     if self.operation == "sqrt":
-       off_diagonal = np.sqrt(off_diagonal + 0.000001)
+      off_diagonal = np.sqrt(off_diagonal + 1)
+      off_diagonal = off_diagonal - off_diagonal.min()
 
     if self.operation == "log":
-       off_diagonal = np.log(off_diagonal + 0.000001)
+      off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
 
     elif self.operation == "abs" or self.operation == "normalize":
       #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
@@ -181,7 +182,7 @@ class SPUD_Copy:
       off_diagonal = np.abs(block1 - block2)
 
       if self.operation == "normalize":
-          off_diagonal = self.normalize_0_to_1(off_diagonal)
+        off_diagonal = self.normalize_0_to_1(off_diagonal)
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
