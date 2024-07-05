@@ -22,8 +22,7 @@ class SPUD_Copy:
         Knn states how many nearest neighbors we want to use in the graph. If
         Knn is set to "connect" then it will ensure connection in the graph.
 
-        Operation is the way we want to calculate to the distances: can do normalize (which is abs method normalized),
-        abs (for the distance between the two nodes), None, or a float value (that scales the resulting off-diagonal). 
+        Operation is the way we want to calculate to the distances: can do log, sqrt, None, or a float value (that scales the resulting off-diagonal). 
         TODO: In the future, maybe instead of maximize or minimize we can allow the user
         to input a float value and use that for greater flexibility. 
 
@@ -179,20 +178,6 @@ class SPUD_Copy:
 
       else:
         off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
-
-    elif self.operation == "abs" or self.operation == "normalize":
-      #Check to make sure the dimensions are the same
-      if len(verticesA) != len(verticesB):
-        print("Cannot compute the absolute distance or normalize function due to different domain sizes. Proceeding with no modification.")
-
-      else:
-        #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
-        block1 = (off_diagonal - self.distsA)
-        block2 = (off_diagonal - self.distsB)
-        off_diagonal = np.abs(block1 - block2)
-
-        if self.operation == "normalize":
-          off_diagonal = self.normalize_0_to_1(off_diagonal)
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
