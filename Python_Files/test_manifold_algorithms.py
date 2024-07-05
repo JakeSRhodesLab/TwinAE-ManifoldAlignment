@@ -347,7 +347,7 @@ class test_manifold_algorithms():
 
         #Loop though the Different opperations
         for key in kwargs:
-            filename += "_" + str(key)[:3] + "(" + kwargs[key] + ')'
+            filename += "_" + str(key)[:3] + "(" + str(kwargs[key]) + ')'
 
         #Add in the Anchors
         filename += "_AP(" #Short for Anchor Percent

@@ -14,13 +14,13 @@ import test_manifold_algorithms as tma
 
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
-csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
-             "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-             "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             "S-curve", "blobs",
-             "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
-             #'Medicaldataset.csv', "water_potability.csv",
-             #'treeData.csv', 'winequality-red.csv', 'car.csv'
+csv_files = [#"zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+             #"segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
+             #"ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
+             #"S-curve", "blobs",
+             #"crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
+             'Medicaldataset.csv', "water_potability.csv",
+             'treeData.csv', 'winequality-red.csv', 'car.csv'
              ]
 
 """
@@ -52,7 +52,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407,
                             run_PCR = False,
                             run_CSPUD = True,
                             run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
-"""
+
 #Skewed
 tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969, 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
@@ -66,7 +66,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969, 3407,
                             run_KNN_Tests=False,
                             run_PCR = False,
                             run_CSPUD = True,
-                            run_SPUD = False, operations = ("average", "abs", "normalize")) #SPUD key arguments
+                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
 
 #Random
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
@@ -81,7 +81,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407,
                             run_KNN_Tests=False,
                             run_PCR = False,
                             run_CSPUD = True,
-                            run_SPUD = False, operations = ("average", "abs", "normalize")) #SPUD key arguments
+                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
 
 #distort
 
@@ -97,5 +97,5 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667, 9515]
                             run_KNN_Tests=False,
                             run_PCR = False,
                             run_CSPUD = True,
-                            run_SPUD = False, operations = ("average", "abs", "normalize")) #SPUD key arguments
-"""
+                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
+
