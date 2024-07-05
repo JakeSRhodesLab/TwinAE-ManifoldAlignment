@@ -12,6 +12,7 @@ Changes Log:
 5. Added a new ranking style (as we talked about) that compared from the maximum
 6. Added functionality to plot the ranks
 7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
+8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful
 
 
 FUTURE IDEAS:
@@ -19,7 +20,6 @@ FUTURE IDEAS:
 
 TASKS:
 1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions DONE 
-10. SPUD connections algorithm
 
 FINAL TASKS: (When we are at last preparing the code for use)
 1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
@@ -1508,12 +1508,16 @@ def _upload_file(file):
         elif data_dict["method"] == "SPUD":
 
             #Assign the operation
-            if "average" in file:
-                data_dict["Operation"] = "average"
-            elif "normalize" in file:
+            if "abs" in file:
+                data_dict["Operation"] = "abs"
+            elif "sqrt" in file:
+                data_dict["Operation"] = "sqrt"
+            elif "none" in file:
                 data_dict["Operation"] = "normalize"
+            elif "log" in file:
+                data_dict["Operation"] = "log"
             else: 
-                data_dict["Operation"] = "abs" #There might be a more intuitive name for this 
+                data_dict["Operation"] = "average" #There might be a more intuitive name for this 
 
             #Assign its Kind
             if "distance" in file:
