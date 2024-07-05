@@ -12,7 +12,7 @@ Changes Log:
 5. Added a new ranking style (as we talked about) that compared from the maximum
 6. Added functionality to plot the ranks
 7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
-8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful
+8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful. It is incredibly fast too working with subsetted Data (or sparse Data)
 
 
 FUTURE IDEAS:

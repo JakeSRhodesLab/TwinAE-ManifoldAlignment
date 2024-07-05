@@ -235,6 +235,7 @@ class SPUD_Copy:
         #Now plot the points
         import pandas as pd
         ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax.set_title("SPUD")
 
         #To plot line connections
         if show_lines:
