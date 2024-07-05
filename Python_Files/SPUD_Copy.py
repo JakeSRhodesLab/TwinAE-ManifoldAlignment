@@ -154,10 +154,11 @@ class SPUD_Copy:
     """Returns a transformed and normalized block"""
 
     #Get the vertices to find the distances between
-    vertices = np.array(range(self.len_A))
+    verticesA = np.array(range(self.len_A))
+    verticesB = np.array(range(self.len_B))
 
     #Get the off-diagonal block by using the distance method
-    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = vertices, target = vertices + self.len_A, weights = "weight", algorithm = "dijkstra")))
+    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
 
     """#Reset inf and NaN values
     max = off_diagonal[~np.isinf(off_diagonal)].max() * 1.1
@@ -173,16 +174,25 @@ class SPUD_Copy:
       off_diagonal = off_diagonal - off_diagonal.min()
 
     if self.operation == "log":
-      off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
+      if len(verticesA) != len(verticesB):
+        print("Cannot compute the log modification due to different domain sizes. Proceeding with no modification.")
+
+      else:
+        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
 
     elif self.operation == "abs" or self.operation == "normalize":
-      #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
-      block1 = (off_diagonal - self.distsA)
-      block2 = (off_diagonal - self.distsB)
-      off_diagonal = np.abs(block1 - block2)
+      #Check to make sure the dimensions are the same
+      if len(verticesA) != len(verticesB):
+        print("Cannot compute the absolute distance or normalize function due to different domain sizes. Proceeding with no modification.")
 
-      if self.operation == "normalize":
-        off_diagonal = self.normalize_0_to_1(off_diagonal)
+      else:
+        #Finds the off-diagonal by finding the how each domain adds to the off-diagonal then subtracting the two together
+        block1 = (off_diagonal - self.distsA)
+        block2 = (off_diagonal - self.distsB)
+        off_diagonal = np.abs(block1 - block2)
+
+        if self.operation == "normalize":
+          off_diagonal = self.normalize_0_to_1(off_diagonal)
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
