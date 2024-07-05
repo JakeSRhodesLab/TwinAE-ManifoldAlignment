@@ -19,8 +19,8 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
              "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
              "S-curve", "blobs",
              "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
-             'Medicaldataset.csv', "water_potability.csv",
-             'treeData.csv', 'winequality-red.csv', 'car.csv'
+             #'Medicaldataset.csv', "water_potability.csv",
+             #'treeData.csv', 'winequality-red.csv', 'car.csv'
              ]
 
 """
@@ -50,8 +50,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407,
                             run_JLMA = False,
                             run_KNN_Tests=False,
                             run_PCR = False,
-                            run_CSPUD = False,
-                            run_SPUD = True, operations = ("average", "abs")) #SPUD key arguments
+                            run_CSPUD = True,
+                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
 """
 #Skewed
 tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969, 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515

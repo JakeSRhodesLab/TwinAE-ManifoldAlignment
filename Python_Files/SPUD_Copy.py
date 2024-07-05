@@ -159,11 +159,6 @@ class SPUD_Copy:
     #Get the off-diagonal block by using the distance method
     off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
 
-    """#Reset inf and NaN values
-    max = off_diagonal[~np.isinf(off_diagonal)].max() * 1.1
-    off_diagonal[np.isinf(off_diagonal)] = max
-    off_diagonal[np.isnan(off_diagonal)] = max"""
-
     #Apply modifications to operation differences
     if type(self.operation) == float:
       off_diagonal *= self.operation

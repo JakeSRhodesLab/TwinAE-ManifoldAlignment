@@ -36,12 +36,9 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (7 day -- cleaning up all the skewed files)
-29. even on Cox (1 day after Crash due to excessive memory -- cleaning up all even files)
-30. Cspud on Collings (6 days -- Running Cspud files)
-31. Cspud on Tukey (6 day -- running cspud files)
-32. Random Rspud on Collimgs _> 2 day
-33. Distort tests (Dspud) on Cox _> 2 day
+28. skew on hilton (9 day -- cleaning up all the skewed files)
+29. even on Cox (3 day after Crash due to excessive memory -- cleaning up all even files)
+30. even on Collings (8 days -- Running Cspud files)
 
 """
 
