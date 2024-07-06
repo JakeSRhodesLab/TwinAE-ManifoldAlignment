@@ -19,7 +19,8 @@ FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Help with Overleaf paper -> specifically "bells and whistles" and split descriptions DONE 
+1. Finish running SPUD_M tests
+2. Finish running CwDIG tests
 
 FINAL TASKS: (When we are at last preparing the code for use)
 1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
@@ -36,9 +37,9 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (9 day -- cleaning up all the skewed files)
-29. even on Cox (3 day after Crash due to excessive memory -- cleaning up all even files)
-30. even on Collings (8 days -- Running Cspud files)
+28. skew on hilton (10 day -- cleaning up all the skewed files)
+29. even on Cox (4 day after Crash due to excessive memory -- cleaning up all even files)
+30-35: All of the CSPUD across different files. Running 2 day
 
 """
 
