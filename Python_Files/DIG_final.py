@@ -70,15 +70,15 @@ class DIG: #Diffusion Integration with Graphs
             self.kernalsB = self.get_SGDM(dataB)
 
             #Create Graphs using our precomputed kernals
-            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = "distance", **self.kwargs) #The Knn max stops additional connections
+            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = "distance", **self.kwargs)
             self.graph_b  = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = "distance", **self.kwargs)
 
         else:
             #Create Graphs and allow it to use the normal data
-            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = None, **self.kwargs) #The Knn max stops additional connections
+            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = None, **self.kwargs)
             self.graph_b  = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = None, **self.kwargs)
 
-            #Create the kernals
+            #Get the Kernal Data from the graphs
             self.kernalsA  = np.array(self.graph_a.K.toarray())
             self.kernalsB = np.array(self.graph_b.K.toarray())
 
@@ -95,13 +95,12 @@ class DIG: #Diffusion Integration with Graphs
         self.graphAB = self.merge_graphs()
         
         #Get Similarity matrix and distance matricies
-        self.similarity_matrix = self.get_pure_matricies(self.graphAB)
+        self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
 
         #Get Diffusion Matrix
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
-        # NOTE: The above line returns the order projectionAB then projection BA, but get_diffusion returns BA then AB
-    """EVALUATION FUNCTIONS BELOW"""
+    """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def FOSCTTM(self, Wxy): 
         """FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
         
@@ -147,31 +146,45 @@ class DIG: #Diffusion Integration with Graphs
 
         return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
     
-    def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}):
-        """Evaluation Metric that computes how many of the closest neighbors are correct"""
-        (y1, y2) = Y
+    def cross_embedding_knn(self, embedding, labels, knn_args = {'n_neighbors': 4}):
+        """Often abreviated as CE. 
+        
+        This trains a knn model using points only from one domain to predict the labels
+        in the other domain. It returns the accuracy score. The closer to 1, the better."""
 
-        n1, n2 = len(y1), len(y2)
+        (labels1, labels2) = labels
+
+        n1 = len(labels1)
 
         knn = KNeighborsClassifier(**knn_args)
-        knn.fit(embedding[:n1, :], y1)
+        knn.fit(embedding[:n1, :], labels1)
 
-        return knn.score(embedding[n1:, :], y2)
+        return knn.score(embedding[n1:, :], labels2)
 
-    """HELPER FUNCTIONS BELOW"""
+    """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def normalize_0_to_1(self, value):
         return (value - value.min()) / (value.max() - value.min())
     
     def get_SGDM(self, data):
         """SGDM - Same Graph Distance Matrix.
-        This returns the normalized distances within each domain"""
+        This returns the normalized distances within the domain.
         
-        #Just using a normal distance matrix without Igraph
+        Data should be the data of that makes up the domain."""
+        
+        #Get the distance measures for each data point and squareform it.
         data = squareform(pdist(data))
 
         #Normalize it and return the data
         return self.normalize_0_to_1(data)
+    
+    def row_normalize_matrix(self, matrix):
+        """Returns a row normalized matrix"""
 
+        #Get the sum for each row
+        row_sums = matrix.sum(axis=1)
+
+        #Prefrom the row-normalized division
+        return matrix / row_sums[:, np.newaxis]
 
     def apply_page_rank(self, matrix, alpha = 0.95):
         """
@@ -184,20 +197,17 @@ class DIG: #Diffusion Integration with Graphs
         Returns:
         - The modified matrix incorporating the damping factor and teleportation.
         """
+
         #Get the shape
         N, M = matrix.shape
 
         # Apply the damping factor and add the teleportation matrix
         return alpha * matrix + (1 - alpha) * np.ones((N, M)) / N
 
-    def row_normalize_matrix(self, matrix):
-        """This row normalizes the matrix """
-        # Normalize the matrix so that each row sums to 1
-        row_sums = matrix.sum(axis=1)
-        return matrix / row_sums[:, np.newaxis]
-
-    def get_pure_matricies(self, matrix):
-        """ Returns the similarity matrix"""
+    def get_similarity_matrix(self, matrix):
+        """Applies adjustments to get the similarity Matrix
+        
+        Returns the similarity matrix"""
 
         #Apply density normalization
         if self.normalize_density:
@@ -212,6 +222,8 @@ class DIG: #Diffusion Integration with Graphs
         """
         Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
 
+        Link to KL divergence formula and definition: https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence
+
         Parameters:
         matrix (numpy.ndarray): This should be the diffused matrix
 
@@ -219,13 +231,13 @@ class DIG: #Diffusion Integration with Graphs
         numpy.ndarray: Divergence matrix
         """
 
-        # Ensure there are no zero values in matrix2 to avoid division by zero
+        # Ensure there are no zero values to avoid division by zero
         matrix = np.where(matrix == 0, 1e-10, matrix)
 
         #Normalize and do all the math to preform the KL divergence
         matrix = self.normalize_0_to_1(squareform(pdist(np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2))))
 
-        #return the block matrix!
+        #Return the block matrix!
         return matrix 
     
     def density_normalized_kernel(self, K):
@@ -238,6 +250,7 @@ class DIG: #Diffusion Integration with Graphs
         Returns:
         numpy.ndarray: The density-normalized kernel matrix (n x n).
         """
+
         # Compute the density estimates p by summing the values of each row
         p = np.sum(K, axis=1)
         
@@ -282,40 +295,42 @@ class DIG: #Diffusion Integration with Graphs
         
         return distances
 
-    def _find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
-        """A helper function that finds and returns a list of possible anchors and their associated wieghts after alignment.
+    def find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
+        """A helper function that finds and returns a list of the closest connections and their associated wieghts after alignment.
             
         Parameters:
-            :connection_limit: should be an integer. If set, it will cap out the max amount of anchors found.
+            :connection_limit: should be an integer. If set, the function will find no more than the connection amount specified. 
             :threshold: should be a float.
-                The threshold determines how similar a point has to be to another to be considered an anchor
-            :pruned_connections: should be a list formated like Known Anchors. The node connections in this list will not be considered
-                for possible connections. 
+                The threshold determines how similar a point has to be to another to be kept as a connection. 
+            :pruned_connections: should be a list formated like (n1, n2) where n1 is a point in Domain A, and n2 is a point in Domain B.
+                The node connections in this list will not be considered for possible connections. 
             
-        returns possible anchors plus known anchors in a single list"""
+        returns the possible connections"""
 
-        #Keep Track of known-connections 
-        known_connections = self.similarity_matrix > 0 #Creates a mask of everywhere we have a connection
+        #Keep Track of known-connections by creating a mask of everywhere we have a connection
+        known_connections = self.similarity_matrix > 0
 
         if self.verbose > 0:
             print(f"Total number of Known_connections: {np.sum(known_connections)}")
 
+        
+        #This is made into an array to ensure the self.sim_diffusion_matrix is not changed
+        array = np.array(self.sim_diffusion_matrix)
+
         #Set our Known-connections to inf values so they are not found and changed
-        array = np.array(self.sim_diffusion_matrix) #This is made into an array to ensure we aren't passing by reference
         array[known_connections] = np.inf
 
-        #Modify our array just to be the off-diagonal 
+        #Modify our array just to be the off-diagonal portion
         array = array[:self.len_A, self.len_A:]
 
-        #Add in our pruned connections
+        #Set the pruned_connections to be infinite as well
         array[pruned_connections] = np.inf
 
-        #Set anchor limit to 1/3 of the unknown data points
+        #Set the connection_limit to be 1/3 of available connections if no limit was given
         if connection_limit == None:
-            #connection_limit = int((np.min(array.shape) - len(self.known_anchors)) / 3)
-            connection_limit = int(array.shape[0] * array.shape[1])
+            connection_limit = int((np.min(array.shape) - len(self.known_anchors)) / 3)
 
-        """ This section actually finds and then curates potential anchors """
+        """ This section below actually finds and then curates potential anchors """
 
         
         # Flatten the array
@@ -545,7 +560,7 @@ class DIG: #Diffusion Integration with Graphs
                 print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
 
             #Find predicted anchors
-            new_connections = self._find_new_connections(pruned_connections, threshold = threshold, connection_limit = connection_limit)
+            new_connections = self.find_new_connections(pruned_connections, threshold = threshold, connection_limit = connection_limit)
 
             if len(new_connections) < 1:
                 if self.verbose > 0:
