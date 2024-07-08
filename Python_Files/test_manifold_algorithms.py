@@ -13,6 +13,7 @@ Changes Log:
 6. Added functionality to plot the ranks
 7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
 8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful. It is incredibly fast too working with subsetted Data (or sparse Data)
+9. Created a new file called DIG_final. Its DIG functionally, but reformatted SK-learn style, and beter comments
 
 
 FUTURE IDEAS:
