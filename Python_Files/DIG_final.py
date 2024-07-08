@@ -1,20 +1,17 @@
-#Diffusion Integration with Graphs
+#DIG (Diffusion Integration with Graphs)
 
-"""Ideas for upgrades
-1. Auto recognition for point correspondence -> Potential errors (it could potentially be harmful if there isn't a 1 to 1 correspondence). Additional question: how helpful is it to have additional anchors?"""
-
-#Install the needed libraries
-from scipy.spatial.distance import pdist, squareform
+#Import the needed libraries
 import graphtools
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from vne import find_optimal_t
+from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
-import seaborn as sns
-from phate import PHATE
-from vne import find_optimal_t
+from scipy.spatial.distance import pdist, squareform
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from itertools import takewhile
+
 
 class DIG: #Diffusion Integration with Graphs
     def __init__(self, t = -1, knn = 5, page_rank = "None", precompute = True, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
@@ -787,65 +784,25 @@ class DIG: #Diffusion Integration with Graphs
         #Show plot
         plt.show()
 
-    def plot_projection(self, labels, n_comp = 2, use_phate = False, use_original_data = False):
-        """Plots the data in both Domain A and Domain B
-        
-        Matrix should be the union of the two graphs. """
-
-        #Seperate domains from matrix
-        domainA = self.similarity_matrix[:self.len_A, :self.len_A]
-        domainB = self.similarity_matrix[self.len_A:, self.len_A:]
-
-        #Create the Emb
-        if use_phate:
-            phate = PHATE(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            embA = phate.fit_transform(domainA)
-            embB = phate.fit_transform(domainB)
-        else: #The first section is using similarities and the second is without it being precomputed
-            if use_original_data:
-                mds = MDS(metric=True, random_state = 42, n_components= n_comp) #Note, we could also compute this using the original data
-                embA = mds.fit_transform(self.dataA)
-                embB = mds.fit_transform(self.dataB)
-            else:
-                mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp) #Note, we could also compute this using the original data
-                embA = mds.fit_transform(1 - domainA)
-                embB = mds.fit_transform(1 - domainB)  
-
-
-
-        #Multiply our embeddings across the projections
-        projectedA = (embA[:, None, :] * self.projectionAB[:, :, None]).sum(axis=0)
-        projectedB = (embB[:, None, :] * self.projectionBA[:, :, None]).sum(axis=0)
-
-        #Add the projected points to each embedding
-        embA = np.vstack((embA, projectedB)) #The domains may not be equal to the original
-        embB = np.vstack((projectedA, embB))
-
-        #Plot the two graphs
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 7))
-
-        #Create custom styles for each graph
-        styles = ['Domain A' if i < self.len_A else 'Domain B' for i in range(len(embA[:]))]
-        labelsA = np.concatenate([labels[:self.len_A], labels[:self.len_A]])
-        axes[0].set_title("Domain A")
-        sns.scatterplot(x = embA[:, 0], y = embA[:, 1], style = styles, hue = pd.Categorical(labelsA), ax = axes[0], s=80, markers= {"Domain A": "^", "Domain B" : "o"})
-
-        styles = ['Domain A' if i < self.len_B else 'Domain B' for i in range(len(embB[:]))]
-        labelsB = np.concatenate([labels[self.len_A:], labels[self.len_A:]])
-        axes[1].set_title("Domain B")
-        sns.scatterplot(x = embB[:, 0], y = embB[:, 1], style = styles, hue = pd.Categorical(labelsB), ax = axes[1], s=80, markers= {"Domain A": "^", "Domain B" : "o"})
-
-        #Show plot
-        plt.show()
-
     def plot_t_grid(self, rate = 3):
-        """Returns the best T value according to its FOSCTTM score"""
+        """Plots the powered diffusion operator many times each with a different t value. Also plots
+        the associated projection matrix. 
+        
+        Arguments:
+            :rate: the value by which to increment t for each iteration.
+            
+        It has no return.
+        """
 
         #Store the original t value
         t_str = str(self.t)
+        
+        #Create the figure
+        fig, axes = plt.subplots(nrows=4, ncols=5, figsize=(20, 16))
 
-        fig, axes = plt.subplots(nrows=4, ncols=5, figsize=(20, 16)) # Creates a grid of 2x5 for the subplots
+        #Create an empty list to store the FOSCTTM scores
         F_scores = np.array([])
+
         for i in range(1, 11):
             # Calculate the row and column index for the current subplot
             row = (i - 1) // 5
@@ -855,14 +812,14 @@ class DIG: #Diffusion Integration with Graphs
             self.t = i * rate
             diffused_array, projectionAB, projectionBA = self.get_diffusion(self.similarity_matrix)
 
-            #Add Foscttm score
+            #Calculate FOSCTTM score
             F_scores = np.append(F_scores, self.FOSCTTM(diffused_array))
             
             # Plotting the diffused array
             ax = axes[row, col]
             ax.imshow(diffused_array)
             ax.set_title(f'T value {self.t}, FOSCTTM {(F_scores[i-1]):.4g}')
-            ax.axis('off') # Hide the axes ticks
+            ax.axis('off')
 
             #Plotting the associated Projections
             ax = axes[row+2, col]
@@ -870,8 +827,9 @@ class DIG: #Diffusion Integration with Graphs
             ax.set_title(f'ProjectionAB: T value {self.t}')
             ax.axis('off')
             
-
+        #Show the plot
         plt.tight_layout()
+        plt.show()
 
         #Restore t value
         self.t = int(t_str)
