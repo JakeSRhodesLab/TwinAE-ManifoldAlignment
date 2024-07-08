@@ -586,10 +586,10 @@ class DIG: #Diffusion Integration with Graphs
                 print(f"New connections found: {len(new_connections)}")
 
             #Copy Similarity matrix
-            new_similarity_matrix = np.array(self.similarity_matrix) #We do this redudant conversion to ensure we aren't copying over a reference
+            new_similarity_matrix = np.array(self.similarity_matrix) #We do this redudant conversion to an array to ensure we aren't copying over a reference
 
             #Add the new connections
-            new_similarity_matrix[new_connections[:, 0].astype(int), (new_connections[:, 1] + self.len_A).astype(int)] = max_weight - new_connections[:, 2] #The max_value minus is supposed to help go from distance to similarities
+            new_similarity_matrix[new_connections[:, 0].astype(int), (new_connections[:, 1] + self.len_A).astype(int)] = max_weight - new_connections[:, 2] #The max_weight minus is supposed to help go from distance to similarities
             new_similarity_matrix[(new_connections[:, 0] + self.len_A).astype(int) , new_connections[:, 1].astype(int)] = max_weight - new_connections[:, 2] #This is so we get the connections in the other off-diagonal block
 
             #Show the new connections
@@ -597,19 +597,19 @@ class DIG: #Diffusion Integration with Graphs
                 plt.imshow(new_similarity_matrix)
                 plt.show()
 
-
             #Get new Diffusion Matrix
             new_sim_diffusion_matrix = self.get_diffusion(new_similarity_matrix, return_projection = False)
 
-            #Get the new score
+            #Get the new alignment score
             new_score = np.mean([self.partial_FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
 
             #See if the extra connections helped
             if new_score < current_score or len(hold_out_anchors) < 1:
+
                 if self.verbose > 0:
                     print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
 
-                #Reset all the class variables. We don't worry about the projection matricies until the last time.
+                #Reset all the class variables. We don't worry about the calculating the projection matricies until the last epoch.
                 self.similarity_matrix = new_similarity_matrix
                 self.sim_diffusion_matrix = new_sim_diffusion_matrix
 
@@ -641,11 +641,11 @@ class DIG: #Diffusion Integration with Graphs
                 self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = 1
                 self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = 1
 
-                #Set the other connections (taking values from the top left)
+                #Set the connections values to the top right block
                 self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
                 self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
 
-                #Take connection values from the bottom right 
+                #Set the connections values to the bottom left block
                 self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
                 self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
 
@@ -668,16 +668,20 @@ class DIG: #Diffusion Integration with Graphs
         return added_connections
 
     """PREDICTING FEATURE FUNCTIONS"""
-    def predict_feature(self, predict = "A"):
-        """Embedding should be the embedding wanted.
-        
-        predict should be which graph you want to use. 'A' for graph A. 
-        'B' to predict graph B features. """
+    def predict_feature(self, predict_with = "A"):
+        """
+        Predicts the the feature values from one domain to the other using the projection matricies. 
 
-        if predict == "A":
+        Arguments:
+        predict_with should be which graph data you want to use. 'A' for graph A and 'B' for graph B.
+        
+        Return the predicted features in an array
+        """
+
+        if predict_with == "A":
             known_features = self.dataA
             projection_matrix = self.projectionBA #Bottom Left
-        elif predict == "B":
+        elif predict_with == "B":
             known_features = self.dataB
             projection_matrix = self.projectionAB #Top Right
         else:
@@ -721,39 +725,58 @@ class DIG: #Diffusion Integration with Graphs
         plt.show()
 
     def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
+        """A useful visualization function to veiw the embedding.
+        
+        Arguments:
+            :labels: should be a flattened list of the labels for points in domain A and then domain B. 
+                If set to None, the cross embedding can not be calculated, and all points will be colored
+                the same. 
+            :n_comp: The amount of components or dimensions for the MDS function.
+            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
+                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
+            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
+                that is an anchor. 
+            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
+
         #Convert to a MDS
         mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-        self.emb = mds.fit_transform(self.sim_diffusion_matrix) #Later we should implent this to just be the block
+        self.emb = mds.fit_transform(self.sim_diffusion_matrix)
 
-        #Stress is a value of how well the emd did. Lower the better.
-        print(f"Model Stress: {mds.stress_}")
-
+        #Check to make sure we have labels
         if type(labels)!= type(None):
-            #Print the evaluation metrics as well
+            #Seperate the labels into their respective domains
             first_labels = labels[:self.len_A]
             second_labels = labels[self.len_A:]
-            try: #Will fail if the domains shapes aren't equal
+
+            #Calculate Cross Embedding Score
+            try: #Will fail if the domain shapes aren't equal
                 print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
             except:
-                print("Can't calculate the Cross embedding")
+                print("Can't calculate the Cross Embedding score")
         else:
             #Set all labels to be the same
             labels = np.ones(shape = (len(self.emb)))
 
+        #Calculate FOSCTTM score
         try:    
             print(f"FOSCTTM: {self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
 
-        #Veiw the manifold. Those shown as Triangles are from GX
-        styles = ['graph 1' if i < self.len_A else 'graph 2' for i in range(len(self.emb[:]))]
+        #Set the styles to show if a point comes from the first domain or the second domain
+        styles = ['Domain A' if i < self.len_A else 'Domain B' for i in range(len(self.emb[:]))]
+
+        #Create the figure
         plt.figure(figsize=(14, 8))
 
         #Now plot the points
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
         #To plot line connections
         if show_lines:
+            
+            #Loop through points to draw the line between it and its counterpart in the other domain
             for i in range(self.len_B):
                 ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'lightgrey', alpha = .5)
 
