@@ -11,94 +11,78 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD:
-  def __init__(self, dataA, dataB, known_anchors, knn = 5, decay = 40, operation = "average", verbose = 0):
+  def __init__(self, knn = 5, operation = "normalize", verbose = 0, **kwargs):
+        '''
+        Creates a class object. 
+        
+        Arguments:
+          :Knn: states how many nearest neighbors we want to use in the graph construction. If
+            Knn is set to "connect" then it will ensure connection in the graph.
+
+          :Operation: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
+            It can be 'sqrt', 'log', any float, or 'None'.
+            If 'sqrt', it applies a square root function, and then transposes it to start at 0.
+            If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
+            If 'float', it multiplies the off-diagonal block by the float value. 
+            If 'None', it applies no additional transformation besides normalizing the values between 0 and 1. 
+            
+          :verbose: can be any float or integer. Determines what is printed as output as the function runs.
+
+          :**kwargs: key word values for the graphtools.Graph function. 
+          '''
+
+        #Set the values
+        self.verbose = verbose
+        self.knn = knn
+        self.operation = operation
+        self.kwargs = **kwargs
+
+  def fit(self, dataA, dataB, known_anchors):
         '''dataA and dataB should simply just be the data. We will convert it
         to Igraph. Same as nama or mali
 
         Known Anchors should be in an array shape (n, 2), where n is the number of
         corresponding points and index [n, 0] is the node in dataA that corresponds to [n, 1]
-        which is the node found in dataB
+        which is the node found in dataB.
+        '''
 
-        Knn states how many nearest neighbors we want to use in the graph. If
-        Knn is set to "connect" then it will ensure connection in the graph.
+        #Check to make sure that the domains are the same size
+        if self.operation == "abs" and len(dataA) != len(dataB):
+            raise AssertionError('The operation abs only works with a one-to-one correspondence.')
 
-        Operation is the way we want to calculate to the distances: can do
-        average or abs (for the distance between the two nodes)
-
-        Show is a boolean value. Set to True if you want to see the distance
-        matrix.'''
-
-        #Set the values
-        self.decay = decay
-        self.operation = operation
-        self.verbose = verbose
+        #Save the distances in domains
+        self.distsA = self.get_SGDM(dataA)
+        self.distsB = self.get_SGDM(dataB)
 
         #Create Igraphs from the input.
-        if knn == "connect": #TODO: implement the similarity function
-          self.graphA = self.construct_connected_graph(dataA)
-          self.graphB = self.construct_connected_graph(dataB)
-
-        else:
-          Ga = graphtools.Graph(dataA, knn = knn, decay = self.decay, knn_max= knn) 
-          Gb = graphtools.Graph(dataB, knn = knn, decay = self.decay, knn_max= knn)
-
-          #Create the igraph distances
-          self.graphA = Ga.to_igraph()
-          self.graphB = Gb.to_igraph()
+        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() #precomputed='affinity'
+        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() #precomputed='affinity'
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
         self.len_B = self.graphB.vcount()
 
-        #Create Same Graph Distance Matricies by direct connections
-        self.matrix_A = self.get_SGDM(dataA)
-        self.matrix_B = self.get_SGDM(dataB)
-
         #Making our known Anchors
         self.known_anchors = np.array(known_anchors)
 
-        #Create node paths and edge paths
-        self.node_paths_A = self.make_node_paths(self.graphA, self.known_anchors.T[0])
-        self.node_paths_B = self.make_node_paths(self.graphB, self.known_anchors.T[1])
+        #Merge the graphs 
+        self.graphAB = self.merge_graphs()
 
-        #Get the off-diagonal blocks
-        self.matrix_AB = self.normalize_0_to_1(self.get_DGDM())
-
-        #Finally, get the block matrix
-        self.block = np.block([[self.matrix_A, self.matrix_AB], [self.matrix_AB.T, self.matrix_B]])
+        #Get the distances
+        self.block = self.get_block(self.graphAB)
 
   """HELPER FUNCTIONS"""
   def normalize_0_to_1(self, value):
-    """Normalizes the value to be between 0 and 1"""
+    """Normalizes the value to be between 0 and 1 and resets infinite values"""
 
     #Scale it and check to ensure no devision by 0
     if np.max(value[~np.isinf(value)]) != 0:
-      value = (value - value.min()) / (value[~np.isinf(value)].max() - value.min())
+      value = (value - value.min()) / (value[~np.isinf(value)].max() - value.min()) 
 
     #Reset inf values
     value[np.isinf(value)] = 1
 
     return value
-
-  def construct_connected_graph(self, graphData, initial_knn=2):
-    """This function is called forces the graph to be fully connected"""
-    connected = False
-    while not connected:
-        # Construct a k-nearest neighbor graph
-        G = graphtools.Graph(graphData, knn = initial_knn, decay = self.decay, knn_max = initial_knn)
-
-        # Convert it to to an igraph graph
-        g = G.to_igraph()
-
-        # Check if the graph is connected
-        connected = g.is_connected()
-
-        if not connected:
-            initial_knn += 1  # Increase knn for the next iteration
-        else:
-            print(f"Graph is connected with knn={initial_knn}.")
-
-    return g
 
   def get_SGDM(self, data):
     """SGDM - Same Graph Distance Matrix.
@@ -109,18 +93,6 @@ class SPUD:
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
 
-  def make_node_paths(self, graph, anchors):
-    """Will return all the node paths in a list"""
-
-    #Create a blank list to append to the master one
-    node_paths = []
-
-    #For each node in graph get the shortest path
-    for i in range(graph.vcount()):
-      node_paths.append(graph.get_shortest_paths(i, to=anchors, algorithm = "dijkstra", weights=None, output="vpath"))
-
-    return node_paths
-  
   """EVALUATION FUNCTIONS"""
   def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
       (y1, y2) = Y
@@ -171,85 +143,70 @@ class SPUD:
         return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
   
   """THE PRIMARY FUNCTIONS""" 
-  def get_shortest_paths(self, nodePaths, pureDistanceMatrix): #NOTE: This is currently finding the path to its nearest anchor, and not necessarily the right anchor to connect with the other graph
-    """Get Same Graph Distance Matrix by going through each node path and adding each distance.
-    It returns a matrix of every node and the distances to their anchors"""
+  def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
+        """Creates a new graph from A and B using the known_anchors
+        and by merging them together"""
 
-    #Create an empty list to return
-    node_distance_matrix = []
+        #Change known_anchors to correspond to off diagonal matricies
+        known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
-    #Loop through Node paths
-    for node in nodePaths:
-      node_distance_to_anchors = []
-      #Loop through each path
-      for path in node: #We could just select the one that has the least connections to save time and computing power -- it will be close to the actuall but not the same
-        #Check to make sure the path isn't empty
-        if len(path) > 0:
-          #Add all the paths together at once
-          distances = pureDistanceMatrix[path[:-1], path[1:]].sum()
+        #Merge the two graphs together
+        merged = self.graphA.disjoint_union(self.graphB) #Note: The distances between graphs may not be the same. It this is the case, would we want to scale the data first?
 
-          #We want to use the shortest one
-          node_distance_to_anchors.append(distances)
-        else: #Path size is infintie
-          node_distance_to_anchors.append(np.inf)
+        #Now add the edges between anchors
+        merged.add_edges(list(zip(known_anchors_adjusted[:, 0], known_anchors_adjusted[:, 1])))
+        merged.es[-len(known_anchors_adjusted):]["weight"] = np.repeat(1, len(known_anchors_adjusted))
 
-      node_distance_matrix.append(node_distance_to_anchors)
-
-    #Convert to an array
-    node_distance_matrix = np.array(node_distance_matrix) #Question: code might run faster if we start it as an array
-
-    return self.normalize_0_to_1(node_distance_matrix)
-  
-  def get_DGDM(self):
-    """DGDM - Different Graphs Distance Matrix
-    Finds the value of the off-diagonal blocks by traversing from graph through the anchor point to the other graph"""
-
-    #Create the nodes to anchor distances for each graph
-    self.all_dist_to_anchors_A = self.get_shortest_paths(self.node_paths_A, self.matrix_A) #Shaped (length of matrix, length of known anchors)
-    self.all_dist_to_anchors_B = self.get_shortest_paths(self.node_paths_B, self.matrix_B)
-
-    #Add each value together
-    if self.operation == "average": #NOTE: this is techniqually a misnomer -> this gets the mininum
-      all_anchors = (self.all_dist_to_anchors_A[:, np.newaxis, :] + self.all_dist_to_anchors_B[np.newaxis, :, :]) #/2 - It seems to work better without deviding
-      return all_anchors.min(axis=2) #use the smallest distance
-
-    elif self.operation == "abs":
-      #return (np.abs(self.all_dist_to_anchors_A[:, np.newaxis, :] - self.all_dist_to_anchors_B[np.newaxis, :, :])).min(axis=2)
-
-      #Because we don't want to go through two far away nodes... so just do the closest one... if not we can just do this line: return np.abs(self.all_dist_to_anchors_A[:, np.newaxis, :] - self.all_dist_to_anchors_B[np.newaxis, :, :])
-      A_smallest_index = self.all_dist_to_anchors_A.argmin(axis=1)
-      B_smallest_index = self.all_dist_to_anchors_B.argmin(axis=1)
-
-      #We want it to be in shape 150 by 150
-      A_smallest_index = np.tile(A_smallest_index, (self.len_A, 1))
-      B_smallest_index = np.tile(B_smallest_index, (self.len_B, 1)).T
-
-      #Now do the actuall math and absolute value part. If we want to use all anchors, we can simply return this line.
-      all_anchors = np.abs(self.all_dist_to_anchors_A[:, np.newaxis, :] - self.all_dist_to_anchors_B[np.newaxis, :, :])
-
-      # Generate row and column index grids
-      row_indices, col_indices = np.meshgrid(np.arange(self.len_A), np.arange(self.len_B), indexing='ij') #This might error if b != a
-
-      #This line creates a third matrix with shape (150, 150) with the smallest of the two arrays
-      return np.minimum(all_anchors[row_indices, col_indices, A_smallest_index], all_anchors[row_indices, col_indices, B_smallest_index])
+        #Return the Igraph object
+        return merged
     
-    else:
-       raise RuntimeError('Operation not understood. Please use "average" or "abs"')
+  def get_block(self, graph):
+    """Returns a transformed and normalized block"""
+
+    #Get the vertices to find the distances between
+    verticesA = np.array(range(self.len_A))
+    verticesB = np.array(range(self.len_B))
+
+    #Get the off-diagonal block by using the distance method
+    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
+
+    #Apply modifications to operation differences
+    if type(self.operation) == float:
+      off_diagonal *= self.operation
+
+    if self.operation == "sqrt":
+      off_diagonal = np.sqrt(off_diagonal + 1)
+      off_diagonal = off_diagonal - off_diagonal.min()
+
+    if self.operation == "log":
+      if len(verticesA) != len(verticesB):
+        print("Cannot compute the log modification due to different domain sizes. Proceeding with no modification.")
+
+      else:
+        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
+
+    #Create the block
+    block = np.block([[self.distsA, off_diagonal],
+                      [off_diagonal.T, self.distsB]])
+
+    return block
 
   """VISUALIZATION FUNCTIONS"""
   def plot_graphs(self):
     #Plot the graph connections
-    fig, axes = plt.subplots(1, 2, figsize = (10, 5))
+    fig, axes = plt.subplots(1, 3, figsize = (19, 12))
     ig.plot(self.graphA, vertex_color=['green'], target=axes[0], vertex_label= list(range(self.len_A)))
     ig.plot(self.graphB, vertex_color=['cyan'], target=axes[1], vertex_label= list(range(self.len_B)))
+    ig.plot(self.graphAB, vertex_color=['orange'], target=axes[2], vertex_label= list(range(self.len_A + self.len_B)))
     axes[0].set_title("Graph A")
     axes[1].set_title("Graph B")
+    axes[2].set_title("Graph AB")
     plt.show()
   
   def plot_heat_map(self):
     #Plot the block matrix
     plt.figure(figsize=(8, 6))
-    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 4))
+    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 50))
     plt.title('Block Matrix')
     plt.xlabel('Graph A Vertex')
     plt.ylabel('Graph B Vertex')
@@ -289,6 +246,7 @@ class SPUD:
         #Now plot the points
         import pandas as pd
         ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax.set_title("SPUD")
 
         #To plot line connections
         if show_lines:
