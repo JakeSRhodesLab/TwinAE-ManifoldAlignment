@@ -223,32 +223,52 @@ class SPUD:
     axes[0].set_title("Graph A")
     axes[1].set_title("Graph B")
     axes[2].set_title("Graph AB")
-    
+
     plt.show()
   
   def plot_heat_map(self):
-    #Plot the block matrix
+    """
+    Plots the heat map for the manifold alignment. 
+    """
+    #Create the figure
     plt.figure(figsize=(8, 6))
+    
+    #Plot the heat map
     sns.heatmap(self.block, cmap='viridis', mask = (self.block > 50))
+
+    #Add title and labels
     plt.title('Block Matrix')
     plt.xlabel('Graph A Vertex')
     plt.ylabel('Graph B Vertex')
+
     plt.show()
 
   def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
-        """Creates and plots the embedding for ease"""
+        """A useful visualization function to veiw the embedding.
+        
+        Arguments:
+            :labels: should be a flattened list of the labels for points in domain A and then domain B. 
+                If set to None, the cross embedding can not be calculated, and all points will be colored
+                the same. 
+            :n_comp: The amount of components or dimensions for the MDS function.
+            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
+                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
+            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
+                that is an anchor. 
+            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
 
-        #Convert to a MDS
+        #Create the mds object and then the embedding
         mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-        self.emb = mds.fit_transform(self.block) #Later we should implent this to just be the block
+        self.emb = mds.fit_transform(self.block) 
 
-        #Stress is a value of how well the emd did. Lower the better.
-        print(f"Model Stress: {mds.stress_}")
-
+        #Check to make sure we have labels
         if type(labels)!= type(None):
-            #Print the evaluation metrics as well
+            #Seperate the labels into their respective domains
             first_labels = labels[:self.len_A]
             second_labels = labels[self.len_A:]
+
+            #Calculate Cross Embedding Score
             try: #Will fail if the domains shapes aren't equal
                 print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
             except:
@@ -257,18 +277,23 @@ class SPUD:
             #Set all labels to be the same
             labels = np.ones(shape = (len(self.emb)))
 
+        #Calculate FOSCTTM Scores
         try:    
             print(f"FOSCTTM: {self.FOSCTTM(self.block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
 
-        #Veiw the manifold. Those shown as Triangles are from GX
+        #Create styles to change the points from graph 1 to be triangles and circles from graph 2
         styles = ['graph 1' if i < self.len_A else 'graph 2' for i in range(len(self.emb[:]))]
+
+        #Create the figure
         plt.figure(figsize=(14, 8))
 
+        #Imporrt pandas for the categorical function
+        from pandas import Categorical
+
         #Now plot the points
-        import pandas as pd
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
         ax.set_title("SPUD")
 
         #To plot line connections
