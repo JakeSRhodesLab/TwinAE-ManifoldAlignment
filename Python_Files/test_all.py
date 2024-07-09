@@ -52,21 +52,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407,
                             run_PCR = False,
                             run_CSPUD = True,
                             run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
-
-#Skewed
-tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969, 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
-                            split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = False, page_ranks = ["None"], predict = True, #DIG key arguments
-                            run_CwDIG=False, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
-                            run_DTA = False,
-                            run_NAMA = False,
-                            run_SSMA = False,
-                            run_MAGAN= False,
-                            run_JLMA = False,
-                            run_KNN_Tests=False,
-                            run_PCR = False,
-                            run_CSPUD = True,
-                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
+"""
 
 #Random
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
@@ -99,11 +85,26 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 9515], #General f
                             run_PCR = False,
                             run_CSPUD = True,
                             run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
-"""
+
 
 #distort
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
+                            run_DIG = False, page_ranks = ["None"], predict = True, #DIG key arguments
+                            run_CwDIG=False, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
+                            run_DTA = False,
+                            run_NAMA = False,
+                            run_SSMA = False,
+                            run_MAGAN= False,
+                            run_JLMA = False,
+                            run_KNN_Tests=False,
+                            run_PCR = False,
+                            run_CSPUD = True,
+                            run_SPUD = False, operations = (0.5,  "sqrt", "log", "none")) #SPUD key arguments
+
+#Skewed
+tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969, 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+                            split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
                             run_DIG = False, page_ranks = ["None"], predict = True, #DIG key arguments
                             run_CwDIG=False, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = False,

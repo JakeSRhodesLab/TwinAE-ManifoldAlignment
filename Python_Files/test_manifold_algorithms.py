@@ -2,6 +2,7 @@
 
 """
 Questions:
+#The Stat RM room seems off - Collings never says it has anything running, although ti definitely does
 
 Changes Log:
 1. Updated the veiwing function -> you can just veiw some of the methods at the same time
@@ -13,7 +14,8 @@ Changes Log:
 6. Added functionality to plot the ranks
 7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
 8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful. It is incredibly fast too working with subsetted Data (or sparse Data)
-9. Created a new file called DIG_final. Its DIG functionally, but reformatted SK-learn style, and beter comments
+9. Created a new file called DIG_final. Its DIG functionally, but reformatted SK-learn style, and beter comments. Should be ready for submission
+10. Changed Spud to be SPUD_final --> Same idea as DIG
 
 
 FUTURE IDEAS:
@@ -38,9 +40,10 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (10 day -- cleaning up all the skewed files)
-29. even on Cox (4 day after Crash due to excessive memory -- cleaning up all even files)
-30-35: All of the CSPUD across different files. Running 2 day
+28. skew on hilton (12 day -- cleaning up all the skewed files)
+29. even on Cox (6 day after Crash due to excessive memory -- cleaning up all even files)
+30-35: All of the CSPUD across different files. Running 4 day
+36. Spud All on Collings (2 day)
 
 """
 
