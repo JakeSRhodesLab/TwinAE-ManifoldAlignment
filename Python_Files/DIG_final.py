@@ -98,7 +98,7 @@ class DIG: #Diffusion Integration with Graphs
         self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
     """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
-    def FOSCTTM(self, Wxy): 
+    def FOSCTTM(self, off_diagonal): 
         """
         FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
         
@@ -106,14 +106,14 @@ class DIG: #Diffusion Integration with Graphs
         to each other through the alignment process. If a method perfectly aligns all corresponding 
         points, the average FOSCTTM score would be 0. 
 
-        Wxy should be either off-diagonal portion (that represents mapping from one domain to the other)
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
         of the block matrix. 
         """
-        n1, n2 = np.shape(Wxy)
+        n1, n2 = np.shape(off_diagonal)
         if n1 != n2:
             raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
 
-        dists = Wxy
+        dists = off_diagonal
 
         nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
         nn.fit(dists)
@@ -122,20 +122,20 @@ class DIG: #Diffusion Integration with Graphs
 
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
     
-    def partial_FOSCTTM(self, Wxy, anchors): #Wxy should be just the parrallel matrix
+    def partial_FOSCTTM(self, off_diagonal, anchors):
         """Follows the smae format as FOSCTTM.
         
-        Wxy should be either off-diagonal portion (that represents mapping from one domain to the other)
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
         of the block matrix. 
         
         This calculates only a subset of points. It is intended to be used with hold-out anchors to help 
         us gauge whether new connections yielded in a better alignment."""
 
-        n1, n2 = np.shape(Wxy)
+        n1, n2 = np.shape(off_diagonal)
         if n1 != n2:
             raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
 
-        dists = Wxy
+        dists = off_diagonal
 
         nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
         nn.fit(dists)
@@ -705,7 +705,11 @@ class DIG: #Diffusion Integration with Graphs
         return completeData
 
     """VISUALIZE AND TEST FUNCTIONS"""
-    def plot_graphs(self):
+    def plot_heat_maps(self):
+        """
+        Plots and shows the heat maps for the similarity matrix, powered diffusion opperator,
+        and projection matrix.
+        """
         fig, axes = plt.subplots(1, 3, figsize = (13, 9))
 
         #Similarity matrix

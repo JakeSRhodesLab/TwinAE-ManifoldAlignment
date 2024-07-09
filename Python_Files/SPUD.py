@@ -124,7 +124,7 @@ class SPUD:
       knn.fit(embedding[n1:, :], labels2)
       return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
       
-  def FOSCTTM(self, Wxy): 
+  def FOSCTTM(self, off_diagonal): 
         """
         FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
         
@@ -132,14 +132,14 @@ class SPUD:
         to each other through the alignment process. If a method perfectly aligns all corresponding 
         points, the average FOSCTTM score would be 0. 
 
-        Wxy should be either off-diagonal portion (that represents mapping from one domain to the other)
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
         of the block matrix. 
         """
-        n1, n2 = np.shape(Wxy)
+        n1, n2 = np.shape(off_diagonal)
         if n1 != n2:
             raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
 
-        dists = Wxy
+        dists = off_diagonal
 
         nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
         nn.fit(dists)
@@ -149,17 +149,19 @@ class SPUD:
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
   
   """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
-  def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
-        """Creates a new graph from A and B using the known_anchors
-        and by merging them together"""
+  def merge_graphs(self):
+        """
+        Creates a new graph from graphs A and B creating edges between corresponding points
+        using the known anchors.
+        """
 
         #Change known_anchors to correspond to off diagonal matricies
         known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Merge the two graphs together
-        merged = self.graphA.disjoint_union(self.graphB) #Note: The distances between graphs may not be the same. It this is the case, would we want to scale the data first?
+        merged = self.graphA.disjoint_union(self.graphB)
 
-        #Now add the edges between anchors
+        #Now add the edges between anchors and set their  weight to 1
         merged.add_edges(list(zip(known_anchors_adjusted[:, 0], known_anchors_adjusted[:, 1])))
         merged.es[-len(known_anchors_adjusted):]["weight"] = np.repeat(1, len(known_anchors_adjusted))
 
@@ -167,21 +169,28 @@ class SPUD:
         return merged
     
   def get_block(self, graph):
-    """Returns a transformed and normalized block"""
+    """
+    Returns a transformed and normalized block.
+    
+    Parameters:
+      :graph: should be a graph that has merged together domains A and B.
+    """
 
-    #Get the vertices to find the distances between
+    #Get the vertices to find the distances between graphs. This helps when len_A != len_B
     verticesA = np.array(range(self.len_A))
     verticesB = np.array(range(self.len_B))
 
-    #Get the off-diagonal block by using the distance method
+    #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
     off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
 
-    #Apply modifications to operation differences
+    #Apply operation modifications
     if type(self.operation) == float:
       off_diagonal *= self.operation
 
     if self.operation == "sqrt":
-      off_diagonal = np.sqrt(off_diagonal + 1)
+      off_diagonal = np.sqrt(off_diagonal + 1) #We have found that adding one helps
+
+      #And so the distances are correct, we lower it so the scale is closer to 0 to 1
       off_diagonal = off_diagonal - off_diagonal.min()
 
     if self.operation == "log":
@@ -189,7 +198,7 @@ class SPUD:
         print("Cannot compute the log modification due to different domain sizes. Proceeding with no modification.")
 
       else:
-        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
+        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #QUESTION for PROF -> Is using Squareform here cheating? 
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
@@ -199,14 +208,22 @@ class SPUD:
 
   """VISUALIZATION FUNCTIONS"""
   def plot_graphs(self):
-    #Plot the graph connections
+    """
+    Using the Igraph plot function to plot graphs A, B, and AB. 
+    """
+    #Create figure
     fig, axes = plt.subplots(1, 3, figsize = (19, 12))
+
+    #Plot each of the plots
     ig.plot(self.graphA, vertex_color=['green'], target=axes[0], vertex_label= list(range(self.len_A)))
     ig.plot(self.graphB, vertex_color=['cyan'], target=axes[1], vertex_label= list(range(self.len_B)))
     ig.plot(self.graphAB, vertex_color=['orange'], target=axes[2], vertex_label= list(range(self.len_A + self.len_B)))
+
+    #Create the titles
     axes[0].set_title("Graph A")
     axes[1].set_title("Graph B")
     axes[2].set_title("Graph AB")
+    
     plt.show()
   
   def plot_heat_map(self):
