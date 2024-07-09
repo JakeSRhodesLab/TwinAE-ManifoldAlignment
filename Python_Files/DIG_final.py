@@ -99,7 +99,8 @@ class DIG: #Diffusion Integration with Graphs
 
     """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def FOSCTTM(self, Wxy): 
-        """FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
+        """
+        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
         
         Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
         to each other through the alignment process. If a method perfectly aligns all corresponding 

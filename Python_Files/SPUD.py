@@ -35,34 +35,38 @@ class SPUD:
         self.verbose = verbose
         self.knn = knn
         self.operation = operation
-        self.kwargs = **kwargs
+        self.kwargs = kwargs
 
   def fit(self, dataA, dataB, known_anchors):
-        '''dataA and dataB should simply just be the data. We will convert it
-        to Igraph. Same as nama or mali
-
-        Known Anchors should be in an array shape (n, 2), where n is the number of
-        corresponding points and index [n, 0] is the node in dataA that corresponds to [n, 1]
-        which is the node found in dataB.
+        '''
+        Does the work to compute the manifold alignment using shortest path distances. 
+        
+        Parameters:
+          :dataA: the data for domain A. 
+          :dataB: the data for domain B. 
+          :known_anchors: this represents the points in domain A that correlate to domain B. Should be in a list
+            formated like (n, 2), where n is the number of points that correspond. For any nth position, the 0th 
+            place represents the point in domain A and the 1st position represents the point in domain B. Thus
+            [[1,1], [4,3], [7,6]] would be appropiate.
         '''
 
-        #Check to make sure that the domains are the same size
-        if self.operation == "abs" and len(dataA) != len(dataB):
-            raise AssertionError('The operation abs only works with a one-to-one correspondence.')
+        #Check to make sure that the domains are the same size if we are using abs or log
+        if (self.operation == "abs" or self.operation == "log") and len(dataA) != len(dataB):
+            raise AssertionError('The operation "abs" and log "only" works with a one-to-one correspondence.')
 
-        #Save the distances in domains
+        #For each domain, calculate the distances within their own domain
         self.distsA = self.get_SGDM(dataA)
         self.distsB = self.get_SGDM(dataB)
 
         #Create Igraphs from the input.
-        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() #precomputed='affinity'
-        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() #precomputed='affinity'
+        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() 
+        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
         self.len_B = self.graphB.vcount()
 
-        #Making our known Anchors
+        #Save the known Anchors
         self.known_anchors = np.array(known_anchors)
 
         #Merge the graphs 
@@ -71,9 +75,9 @@ class SPUD:
         #Get the distances
         self.block = self.get_block(self.graphAB)
 
-  """HELPER FUNCTIONS"""
+  """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def normalize_0_to_1(self, value):
-    """Normalizes the value to be between 0 and 1 and resets infinite values"""
+    """Normalizes the value to be between 0 and 1 and resets infinite values."""
 
     #Scale it and check to ensure no devision by 0
     if np.max(value[~np.isinf(value)]) != 0:
@@ -86,49 +90,51 @@ class SPUD:
 
   def get_SGDM(self, data):
     """SGDM - Same Graph Distance Matrix.
-    This returns the normalized distances within each domain"""
+    This returns the normalized distances within each domain."""
+
     #Just using a normal distance matrix without Igraph
     dists = squareform(pdist(data))
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
 
-  """EVALUATION FUNCTIONS"""
-  def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
-      (y1, y2) = Y
+  """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+      """
+      Returns the classification score by training on one domain and predicting on the the other.
+      This will test on both domains, and return the average score.
+      
+      Parameters:
+        :embedding: the manifold alignment embedding. 
+        :Labels: a concatenated list of labels for domain A and labels for domain B
+        :knn_args: the key word arguments for the KNeighborsClassifier."""
 
-      n1, n2 = len(y1), len(y2)
+      (labels1, labels2) = Labels
 
+      n1 = len(labels1)
+
+      #initialize the model
       knn = KNeighborsClassifier(**knn_args)
 
-      if other_side:
-          knn.fit(embedding[:n1, :], y1)
+      #Fit and score predicting from domain A to domain B
+      knn.fit(embedding[:n1, :], labels1)
+      score1 =  knn.score(embedding[n1:, :], labels2)
 
-          return knn.score(embedding[n1:, :], y2)
-
-      else:
-          #Train on other domain, predict on other domain ---- TODO
-          knn.fit(embedding[n1:, :], y2)
-
-          return knn.score(embedding[:n1, :], y1)
+      #Fit and score predicting from domain B to domain A, and then return the average value
+      knn.fit(embedding[n1:, :], labels2)
+      return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
       
-  def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
-      n1, n2 = np.shape(Wxy)
-      if n1 != n2:
-          raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+  def FOSCTTM(self, Wxy): 
+        """
+        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
+        
+        Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
+        to each other through the alignment process. If a method perfectly aligns all corresponding 
+        points, the average FOSCTTM score would be 0. 
 
-      dists = Wxy
-
-      nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
-      nn.fit(dists)
-
-      _, kneighbors = nn.kneighbors(dists)
-
-      return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
-  
-  def partial_FOSCTTM(self, Wxy, anchors): #Wxy should be just the parrallel matrix
-        """This uses only the provided known connections"""
-
+        Wxy should be either off-diagonal portion (that represents mapping from one domain to the other)
+        of the block matrix. 
+        """
         n1, n2 = np.shape(Wxy)
         if n1 != n2:
             raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
@@ -140,9 +146,9 @@ class SPUD:
 
         _, kneighbors = nn.kneighbors(dists)
 
-        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
+        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
   
-  """THE PRIMARY FUNCTIONS""" 
+  """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
         """Creates a new graph from A and B using the known_anchors
         and by merging them together"""
