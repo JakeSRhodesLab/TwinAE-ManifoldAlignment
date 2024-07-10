@@ -3,6 +3,7 @@
 """
 Questions:
 #The Stat RM room seems off - Collings never says it has anything running, although ti definitely does
+#Check the new methods to ensure we are not cheating
 
 Changes Log:
 1. Updated the veiwing function -> you can just veiw some of the methods at the same time
@@ -13,9 +14,11 @@ Changes Log:
 5. Added a new ranking style (as we talked about) that compared from the maximum
 6. Added functionality to plot the ranks
 7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
+7.5. Added SQRT and LOG functions to SPUD_copy. They are great! (And the log function may be cheating)
 8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful. It is incredibly fast too working with subsetted Data (or sparse Data)
 9. Created a new file called DIG_final. Its DIG functionally, but reformatted SK-learn style, and beter comments. Should be ready for submission
 10. Changed Spud to be SPUD_final --> Same idea as DIG
+11. Tests to SPUD_final
 
 
 FUTURE IDEAS:
