@@ -397,7 +397,7 @@ class DIG: #Diffusion Integration with Graphs
                 print("Unable to compute hellinger or kl because datasets are not the same size.")
 
             #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
-            diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
+            diffused = (squareform(pdist((-np.log(0.00001 + diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
     
             #Normalize the matrix
             diffused = self.normalize_0_to_1(diffused)

@@ -251,7 +251,10 @@ class SPUD_Copy:
 
         #Put black dots on the Anchors
         if show_anchors:
-            ax.scatter(self.emb[self.known_anchors, 0], self.emb[self.known_anchors, 1], s = 10, color = 'black', marker="s")
-        
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]), y = np.array(self.emb[self.known_anchors, 1]), s = 10, edgecolor = "black", marker="^", target = ax)
+
+            #In the other domain
+            #sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0] + self.len_A), y = np.array(self.emb[self.known_anchors, 1] + self.len_A), s = 10, edgecolor = "black",  marker="o", target = ax)
+            
         #Show plot
         plt.show()
