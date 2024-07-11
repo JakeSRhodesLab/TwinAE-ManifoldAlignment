@@ -2,31 +2,24 @@
 
 """
 Questions:
-#The Stat RM room seems off - Collings never says it has anything running, although ti definitely does
-#Check the new methods to ensure we are not cheating
+
 
 Changes Log:
-1. Updated the veiwing function -> you can just veiw some of the methods at the same time
-2. Seperated out SPUD into the two SPUD_D and SPUD_M (where SPUD_D is the original and SPUD_M is the merged approach)
 3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
     a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
-4. Fixed Feature splits - > With Skewed and Even (due to the random nature of the seeds)
-5. Added a new ranking style (as we talked about) that compared from the maximum
-6. Added functionality to plot the ranks
-7. Added new functionality to Spud_copy to choose the float value to rescale the resulting off-diagonal matricies. Also made it faster and tried to improve results
-7.5. Added SQRT and LOG functions to SPUD_copy. They are great! (And the log function may be cheating)
-8. Compared new Spud copy against other methods -> it is the best. Also found that the Spud's connection algorithm proves to be unhelpful. It is incredibly fast too working with subsetted Data (or sparse Data)
-9. Created a new file called DIG_final. Its DIG functionally, but reformatted SK-learn style, and beter comments. Should be ready for submission
-10. Changed Spud to be SPUD_final --> Same idea as DIG
-11. Tests to SPUD_final
+
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Finish running SPUD_M tests
-2. Finish running CwDIG tests
+1. Once other tests are done, run all the tests again just to make sure we have fair data. 
+2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual)
+3. Look at the split classification
+4. Will DIG work better if we use 1 + the negative log?
+5. Finish updating SPUD and running tests. Better way to compute the sqrt? Would Hellinger work, since we are only doing it to the off-diagonal?
+
 
 FINAL TASKS: (When we are at last preparing the code for use)
 1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
@@ -54,7 +47,7 @@ Tmux Zombies
 import glob
 from ma_procrustes import MAprocr
 from DIG import DIG
-from SPUD import SPUD
+#from SPUD import SPUD
 from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
@@ -390,8 +383,9 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    def run_SPUD_tests(self, operations = ("average", "abs")): #NOTE: Running SPUD_copy data currently
-        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+    """
+    def run_SPUD_tests(self, operations = ("average", "abs")): 
+        '''Operations should be a tuple of the different operations wanted to run. All are included by default. '''
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
@@ -449,6 +443,7 @@ class test_manifold_algorithms():
 
         #Run successful
         return True
+    """
 
     def run_CSPUD_tests(self, operations = ("average", "abs")): #NOTE: Running SPUD_copy data currently
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
@@ -1705,7 +1700,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_SPUD = True, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1780,7 +1775,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=-1)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
-    if run_SPUD:
+    """if run_SPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
         filtered_kwargs = {}
         if "operations" in kwargs:
@@ -1789,7 +1784,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-3)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-3)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())"""
 
     if run_CSPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed

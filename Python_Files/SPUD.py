@@ -21,7 +21,7 @@ class SPUD:
 
           :Operation: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
             It can be 'sqrt', 'log', any float, or 'None'.
-            If 'sqrt', it applies a square root function, and then transposes it to start at 0.
+            If 'sqrt', it applies a square root function, and then transposes it to start at 0. Best for when domains aren't the same shape.
             If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
             If 'float', it multiplies the off-diagonal block by the float value. 
             If 'None', it applies no additional transformation besides normalizing the values between 0 and 1. 
@@ -178,7 +178,7 @@ class SPUD:
 
     #Get the vertices to find the distances between graphs. This helps when len_A != len_B
     verticesA = np.array(range(self.len_A))
-    verticesB = np.array(range(self.len_B))
+    verticesB = np.array(range(self.len_B)) + self.len_A
 
     #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
     off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
@@ -194,11 +194,8 @@ class SPUD:
       off_diagonal = off_diagonal - off_diagonal.min()
 
     if self.operation == "log":
-      if len(verticesA) != len(verticesB):
-        print("Cannot compute the log modification due to different domain sizes. Proceeding with no modification.")
-
-      else:
-        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #QUESTION for PROF -> Is using Squareform here cheating? 
+        #Apply the negative log, pdist, and squareform
+        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
