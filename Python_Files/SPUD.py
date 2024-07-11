@@ -51,7 +51,7 @@ class SPUD:
         '''
 
         #Check to make sure that the domains are the same size if we are using abs or log
-        if (self.operation == "abs" or self.operation == "log") and len(dataA) != len(dataB):
+        if self.operation == "log" and len(dataA) != len(dataB):
             raise AssertionError('The operation "abs" and log "only" works with a one-to-one correspondence.')
 
         #For each domain, calculate the distances within their own domain

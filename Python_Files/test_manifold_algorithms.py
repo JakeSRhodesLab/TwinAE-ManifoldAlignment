@@ -8,6 +8,7 @@ Changes Log:
 3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
     a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
 
+1. Found the SPUD bug and fixed it
 
 
 FUTURE IDEAS:

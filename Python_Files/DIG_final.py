@@ -840,5 +840,3 @@ class DIG: #Diffusion Integration with Graphs
         self.t = int(t_str)
 
         print(f"The best T value is {(F_scores.argmin() +1) * rate} with a FOSCTTM of {(F_scores.min()):.4g}")
-
-

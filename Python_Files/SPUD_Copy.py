@@ -81,25 +81,32 @@ class SPUD_Copy:
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
-
+  
   """EVALUATION FUNCTIONS"""
-  def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
-      (y1, y2) = Y
+  def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+      """
+      Returns the classification score by training on one domain and predicting on the the other.
+      This will test on both domains, and return the average score.
+      
+      Parameters:
+        :embedding: the manifold alignment embedding. 
+        :Labels: a concatenated list of labels for domain A and labels for domain B
+        :knn_args: the key word arguments for the KNeighborsClassifier."""
 
-      n1, n2 = len(y1), len(y2)
+      (labels1, labels2) = Labels
 
+      n1 = len(labels1)
+
+      #initialize the model
       knn = KNeighborsClassifier(**knn_args)
 
-      if other_side:
-          knn.fit(embedding[:n1, :], y1)
+      #Fit and score predicting from domain A to domain B
+      knn.fit(embedding[:n1, :], labels1)
+      score1 =  knn.score(embedding[n1:, :], labels2)
 
-          return knn.score(embedding[n1:, :], y2)
-
-      else:
-          #Train on other domain, predict on other domain ---- TODO
-          knn.fit(embedding[n1:, :], y2)
-
-          return knn.score(embedding[:n1, :], y1)
+      #Fit and score predicting from domain B to domain A, and then return the average value
+      knn.fit(embedding[n1:, :], labels2)
+      return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
       
   def FOSCTTM(self, Wxy): #Wxy should be just the parrallel matrix
       n1, n2 = np.shape(Wxy)
@@ -154,7 +161,7 @@ class SPUD_Copy:
 
     #Get the vertices to find the distances between
     verticesA = np.array(range(self.len_A))
-    verticesB = np.array(range(self.len_B))
+    verticesB = np.array(range(self.len_B)) + self.len_A
 
     #Get the off-diagonal block by using the distance method
     off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
@@ -195,7 +202,7 @@ class SPUD_Copy:
   def plot_heat_map(self):
     #Plot the block matrix
     plt.figure(figsize=(8, 6))
-    sns.heatmap(self.block, cmap='viridis', mask = (self.block > 50))
+    sns.heatmap(self.block, cmap='viridis')
     plt.title('Block Matrix')
     plt.xlabel('Graph A Vertex')
     plt.ylabel('Graph B Vertex')
