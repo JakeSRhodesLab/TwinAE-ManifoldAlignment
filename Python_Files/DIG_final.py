@@ -67,8 +67,8 @@ class DIG: #Diffusion Integration with Graphs
             self.kernalsB = self.get_SGDM(dataB)
 
             #Create Graphs using our precomputed kernals
-            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = "distance", **self.kwargs)
-            self.graph_b  = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = "distance", **self.kwargs)
+            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.graph_b  = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
 
         else:
             #Create Graphs and allow it to use the normal data
