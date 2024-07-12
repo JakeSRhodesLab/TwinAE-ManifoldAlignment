@@ -14,7 +14,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 
 class DIG: #Diffusion Integration with Graphs
-    def __init__(self, t = -1, knn = 5, page_rank = "None", precompute = True, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
+    def __init__(self, t = -1, knn = 5, page_rank = "None", precompute = False, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
@@ -72,8 +72,8 @@ class DIG: #Diffusion Integration with Graphs
 
         else:
             #Create Graphs and allow it to use the normal data
-            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = None, **self.kwargs)
-            self.graph_b  = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, precomputed = None, **self.kwargs)
+            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.graph_b  = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
 
             #Get the Kernal Data from the graphs
             self.kernalsA  = np.array(self.graph_a.K.toarray())

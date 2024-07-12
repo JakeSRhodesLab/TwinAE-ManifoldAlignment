@@ -237,11 +237,11 @@ class SPUD_Copy:
 
         #Veiw the manifold. Those shown as Triangles are from GX
         styles = ['graph 1' if i < self.len_A else 'graph 2' for i in range(len(self.emb[:]))]
-        plt.figure(figsize=(14, 8))
+        fig, ax = plt.subplots(figsize=(14, 8))
 
         #Now plot the points
         import pandas as pd
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax.scatter(self.emb[:, 0], self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
         ax.set_title("SPUD")
 
         #To plot line connections
@@ -251,10 +251,10 @@ class SPUD_Copy:
 
         #Put black dots on the Anchors
         if show_anchors:
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]), y = np.array(self.emb[self.known_anchors, 1]), s = 10, edgecolor = "black", marker="^", target = ax)
+            ax.scatter(self.emb[self.known_anchors, 0], self.emb[self.known_anchors, 1], s = 10, color = "black", marker="^")
 
             #In the other domain
-            #sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0] + self.len_A), y = np.array(self.emb[self.known_anchors, 1] + self.len_A), s = 10, edgecolor = "black",  marker="o", target = ax)
+            ax.scatter(self.emb[self.known_anchors + self.len_A, 0], self.emb[self.known_anchors + self.len_A, 1], s = 10, color = "black", marker="o")
             
         #Show plot
         plt.show()
