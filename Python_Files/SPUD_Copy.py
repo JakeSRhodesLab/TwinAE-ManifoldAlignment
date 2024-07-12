@@ -237,24 +237,29 @@ class SPUD_Copy:
 
         #Veiw the manifold. Those shown as Triangles are from GX
         styles = ['graph 1' if i < self.len_A else 'graph 2' for i in range(len(self.emb[:]))]
-        fig, ax = plt.subplots(figsize=(14, 8))
+        plt.figure(figsize=(14, 8))
 
-        #Now plot the points
+        #Create plot 
         import pandas as pd
-        ax.scatter(self.emb[:, 0], self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        ax =  sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+           
         ax.set_title("SPUD")
 
         #To plot line connections
         if show_lines:
             for i in range(self.len_B):
-                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'lightgrey', alpha = .5)
+                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
 
         #Put black dots on the Anchors
         if show_anchors:
-            ax.scatter(self.emb[self.known_anchors, 0], self.emb[self.known_anchors, 1], s = 10, color = "black", marker="^")
+            for i in self.known_anchors[:, 0]:
+              ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'grey') #alpha = .5
+
+            
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]).flatten(), y = np.array(self.emb[self.known_anchors, 1]).flatten(), s = 30, color = "black", marker="^")
 
             #In the other domain
-            ax.scatter(self.emb[self.known_anchors + self.len_A, 0], self.emb[self.known_anchors + self.len_A, 1], s = 10, color = "black", marker="o")
-            
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors + self.len_A, 0]).flatten(), y= np.array(self.emb[self.known_anchors + self.len_A, 1]).flatten(),  s = 30, color='black', marker="o")
+           
         #Show plot
         plt.show()

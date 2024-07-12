@@ -295,12 +295,24 @@ class SPUD:
 
         #To plot line connections
         if show_lines:
+            
+            #Loop through points to draw the line between it and its counterpart in the other domain
             for i in range(self.len_B):
-                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'lightgrey', alpha = .5)
+                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'lightgrey', alpha = .65)
 
         #Put black dots on the Anchors
         if show_anchors:
-            ax.scatter(self.emb[self.known_anchors, 0], self.emb[self.known_anchors, 1], s = 10, color = 'black', marker="s")
-        
+            
+            #We want to plot darker lines between the anchors to show where they connect
+            for i in self.known_anchors[:, 0]:
+              ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'grey') #alpha = .5
+
+            #Plot black dots on the anchors in Domain A
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]).flatten(), y = np.array(self.emb[self.known_anchors, 1]).flatten(), s = 30, color = "black", marker="^")
+
+            #Plot black dots on the anchors in Domain B
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors + self.len_A, 0]).flatten(), y= np.array(self.emb[self.known_anchors + self.len_A, 1]).flatten(),  s = 30, color='black', marker="o")
+           
+               
         #Show plot
         plt.show()
