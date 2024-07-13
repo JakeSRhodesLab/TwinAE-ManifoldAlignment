@@ -9,6 +9,7 @@ Changes Log:
     a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
 
 1. Found the SPUD bug and fixed it
+2. Added Plotting to veiw the predicted labels
 
 
 FUTURE IDEAS:

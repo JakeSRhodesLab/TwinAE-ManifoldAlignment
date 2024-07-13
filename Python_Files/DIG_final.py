@@ -726,7 +726,7 @@ class DIG: #Diffusion Integration with Graphs
 
         plt.show()
 
-    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, **kwargs): 
+    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
         Arguments:
@@ -801,6 +801,29 @@ class DIG: #Diffusion Integration with Graphs
         
         #Show plot
         plt.show()
+
+        #Show the predicted points
+        if show_pred and type(labels) != type(None):
+
+            #Instantial model, fit on domain A, and predict for domain B
+            knn_model = KNeighborsClassifier(n_neighbors=4)
+            knn_model.fit(self.emb[:self.len_A, :], first_labels)
+            second_pred = knn_model.predict(self.emb[self.len_A:, :])
+
+            #Fit on domain A, and predict for domain B
+            knn_model.fit(self.emb[self.len_A:, :], second_labels)
+            first_pred = knn_model.predict(self.emb[:self.len_A, :])
+            
+            #Create the figure
+            plt.figure(figsize=(14, 8))
+
+            #Now plot the points
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(np.concatenate([first_pred, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+
+            #Set the title
+            ax.set_title("Predicted Labels")
+
+            plt.show()
 
     def plot_t_grid(self, rate = 3):
         """Plots the powered diffusion operator many times each with a different t value. Also plots
