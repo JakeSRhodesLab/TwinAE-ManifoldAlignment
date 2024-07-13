@@ -16,7 +16,7 @@ FUTURE IDEAS:
 TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
 2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual) DONE
-3. Look at the split classification
+3. Look at the split classification Done
 4. Will DIG work better if we use 1 + the negative log?
 5. Finish updating SPUD and running tests. Better way to compute the sqrt? Would Hellinger work, since we are only doing it to the off-diagonal?
 6. Update Plotting to work with off_diagonal's that are different sizes
