@@ -34,7 +34,7 @@ class SPUD_Copy:
         self.verbose = verbose
 
         #Check to make sure that the domains are the same size
-        if operation == "abs" and len(dataA) != len(dataB):
+        if operation == "log" and len(dataA) != len(dataB):
             raise AssertionError('The operation abs only works with a one-to-one correspondence.')
         
         self.operation = operation

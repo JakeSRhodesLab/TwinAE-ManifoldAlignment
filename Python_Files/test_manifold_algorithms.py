@@ -5,22 +5,21 @@ Questions:
 
 
 Changes Log:
-3. Added functionality to test DIG with in a precomputed way --> Currently testing to see if that helps overall. My guess is that the precomputed will work better when we are trying to add new connections, but worse otherwise
-    a. It seems to be very promising with the new connections! (although its fifty-fifty if its better without it)
-
 1. Found the SPUD bug and fixed it
 2. Added Plotting to veiw the predicted labels
+3. Previously, we were showing what each split would predict from data on itself, and we used those as the baselines. We updated it to be trained from one domain to the other. 
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Once other tests are done, run all the tests again just to make sure we have fair data. 
-2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual)
+1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
+2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual) DONE
 3. Look at the split classification
 4. Will DIG work better if we use 1 + the negative log?
 5. Finish updating SPUD and running tests. Better way to compute the sqrt? Would Hellinger work, since we are only doing it to the off-diagonal?
+6. Update Plotting to work with off_diagonal's that are different sizes
 
 
 FINAL TASKS: (When we are at last preparing the code for use)
@@ -447,7 +446,7 @@ class test_manifold_algorithms():
         return True
     """
 
-    def run_CSPUD_tests(self, operations = ("average", "abs")): #NOTE: Running SPUD_copy data currently
+    def run_CSPUD_tests(self, operations = ["log"]): #NOTE: Running SPUD_copy data currently
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -1080,6 +1079,12 @@ class test_manifold_algorithms():
 
         #Create file name
         filename, AP_values = self.create_filename("Base_Line_Scores")
+        from sklearn.decomposition import PCA
+
+        #Prepare Baseline Data
+        pca = PCA(n_components=min(len(self.split_A[1]), len(self.split_B[1])))
+        A_emb = pca.fit_transform(self.split_A)
+        B_emb = pca.fit_transform(self.split_B)
 
         #If file aready exists, then we are done :)
         if os.path.exists(filename):
@@ -1096,26 +1101,25 @@ class test_manifold_algorithms():
 
             #Initilize model
             model = KNeighborsClassifier(n_neighbors = knn)
+
             
             #Split data and train for split A
             try:
-                X_train, X_test, y_train, y_test = train_test_split(self.split_A, self.labels, test_size=0.3, random_state=self.random_state)
-                model.fit(X_train, y_train)
-                scores[i, 0] = model.score(X_test, y_test)
-                print(f"    Classification Score A {scores[i, 0]}")
+                model.fit(A_emb, self.labels)
+                scores[i, 0] = model.score(B_emb, self.labels)
+                print(f"    Classification Score trained on A {scores[i, 0]}")
             except:
                 scores[i, 0] = np.NaN
-                print(f"    Classification Score A Failed")
+                print(f"    Classification Score trained on A Failed")
 
             #Split data and train for split B
             try:
-                X_train, X_test, y_train, y_test = train_test_split(self.split_B, self.labels, test_size=0.3, random_state=self.random_state)
-                model.fit(X_train, y_train)
-                scores[i, 1] = model.score(X_test, y_test)
-                print(f"    Classification Score B {scores[i, 1]}")
+                model.fit(B_emb, self.labels)
+                scores[i, 1] = model.score(A_emb, self.labels)
+                print(f"    Classification Score trained on B {scores[i, 1]}")
             except:
                 scores[1, 1] = np.NaN
-                print(f"    Classification Score B Failed")
+                print(f"    Classification Score trained on B Failed")
 
         #Save the numpy array
         np.save(filename, scores)
