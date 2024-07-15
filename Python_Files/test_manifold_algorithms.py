@@ -11,13 +11,13 @@ Changes Log:
     3a. The split scores remain similar, even with the Skewed. This is likely because the permuation importance often ranks each feature as importance of 0 in many datasets. 
 4. Updated SPUD to calculate using -log across the full thing if not the same dimensions
 5. Finish SPUD tests, and running all tests currently. 
+6. Made the plotting functions work if the domains are not equal for plotting anchors
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
-6. Update Plotting to work with off_diagonal's that are different sizes
 7. Work on Marshall's problem
 8. Overleaf paper
 
