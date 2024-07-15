@@ -33,10 +33,6 @@ class SPUD_Copy:
         self.decay = decay
         self.verbose = verbose
 
-        #Check to make sure that the domains are the same size
-        if operation == "log" and len(dataA) != len(dataB):
-            raise AssertionError('The operation abs only works with a one-to-one correspondence.')
-        
         self.operation = operation
 
         #Save the distances in domains
@@ -174,16 +170,19 @@ class SPUD_Copy:
       off_diagonal = np.sqrt(off_diagonal + 1)
       off_diagonal = off_diagonal - off_diagonal.min()
 
-    if self.operation == "log":
-      if len(verticesA) != len(verticesB):
-        print("Cannot compute the log modification due to different domain sizes. Proceeding with no modification.")
-
-      else:
-        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal)))))) #NOTE: adding one seems to work the best
+    #If it is log, we check to to see if the domains match. If they do, we just apply the algorithm to the off-diagonal, which yeilds better results
+    if self.operation == "log" and self.len_A == self.len_B:
+        #Apply the negative log, pdist, and squareform
+        off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
                       [off_diagonal.T, self.distsB]])
+    
+    #If the operation is log, and the domain shapes don't match, we have to apply the process to the block. 
+    if self.operation == "log" and self.len_A != self.len_B:
+      #Apply the negative log, pdist, and squareform
+      block = (squareform(pdist((-np.log(1+block)))))
 
     return block
 

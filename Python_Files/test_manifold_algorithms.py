@@ -8,7 +8,8 @@ Changes Log:
 1. Found the SPUD bug and fixed it
 2. Added Plotting to veiw the predicted labels
 3. Previously, we were showing what each split would predict from data on itself, and we used those as the baselines. We updated it to be trained from one domain to the other. 
-
+4. Updated SPUD to calculate using -log across the full thing if not the same dimensions
+5. Finish SPUD tests, and running all tests currently. 
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -17,9 +18,9 @@ TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
 2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual) DONE
 3. Look at the split classification Done
-4. Will DIG work better if we use 1 + the negative log?
-5. Finish updating SPUD and running tests. Better way to compute the sqrt? Would Hellinger work, since we are only doing it to the off-diagonal?
 6. Update Plotting to work with off_diagonal's that are different sizes
+7. Work on Marshall's problem
+8. Overleaf paper
 
 
 FINAL TASKS: (When we are at last preparing the code for use)
@@ -1184,7 +1185,7 @@ class test_manifold_algorithms():
 
         #Create a task list to parrelel function all of the embeddings
         tasks = [
-            (SPUD, SPUD_kwargs),
+            (SPUD_Copy, SPUD_kwargs),
             (DIG, DIG_kwargs),
             (MAGAN.run_MAGAN, {"xb1": self.split_A, "xb2": self.split_B, "anchors": self.anchors[:int(len(self.anchors)*anchor_percent)]}),
             (NAMA.fit, {"self": nama, "known_anchors": self.anchors[:int(len(self.anchors)*anchor_percent)], "x": self.split_A, "y": self.split_B}),

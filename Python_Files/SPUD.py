@@ -50,10 +50,6 @@ class SPUD:
             [[1,1], [4,3], [7,6]] would be appropiate.
         '''
 
-        #Check to make sure that the domains are the same size if we are using abs or log
-        if self.operation == "log" and len(dataA) != len(dataB):
-          raise AssertionError('The operation "abs" and log "only" works with a one-to-one correspondence.')
-
         #For each domain, calculate the distances within their own domain
         self.distsA = self.get_SGDM(dataA)
         self.distsB = self.get_SGDM(dataB)
@@ -187,19 +183,25 @@ class SPUD:
     if type(self.operation) == float:
       off_diagonal *= self.operation
 
-    if self.operation == "sqrt":
+    elif self.operation == "sqrt":
       off_diagonal = np.sqrt(off_diagonal + 1) #We have found that adding one helps
 
       #And so the distances are correct, we lower it so the scale is closer to 0 to 1
       off_diagonal = off_diagonal - off_diagonal.min()
 
-    if self.operation == "log":
+    #If it is log, we check to to see if the domains match. If they do, we just apply the algorithm to the off-diagonal, which yeilds better results
+    elif self.operation == "log" and self.len_A == self.len_B:
         #Apply the negative log, pdist, and squareform
         off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
     #Create the block
     block = np.block([[self.distsA, off_diagonal],
                       [off_diagonal.T, self.distsB]])
+    
+    #If the operation is log, and the domain shapes don't match, we have to apply the process to the block. 
+    if self.operation == "log" and self.len_A != self.len_B:
+      #Apply the negative log, pdist, and squareform
+      block = self.normalize_0_to_1((squareform(pdist((-np.log(1+block))))))
 
     return block
 

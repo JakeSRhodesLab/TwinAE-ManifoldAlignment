@@ -94,8 +94,8 @@ class DIG: #Diffusion Integration with Graphs
         #Get Similarity matrix and distance matricies
         self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
 
-        #Get Diffusion Matrix
-        self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+        #Get Diffusion Matrix. int_diff_dist stands for the integrated diffusion distance.
+        self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
     """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def FOSCTTM(self, off_diagonal): 
@@ -312,8 +312,8 @@ class DIG: #Diffusion Integration with Graphs
             print(f"Total number of Known_connections: {np.sum(known_connections)}")
 
         
-        #This is made into an array to ensure the self.sim_diffusion_matrix is not changed
-        array = np.array(self.sim_diffusion_matrix)
+        #This is made into an array to ensure the self.int_diff_dist is not changed
+        array = np.array(self.int_diff_dist)
 
         #Set our Known-connections to inf values so they are not found and changed
         array[known_connections] = np.inf
@@ -519,14 +519,14 @@ class DIG: #Diffusion Integration with Graphs
 
         if threshold == "auto":
             #Set the threshold to be the 10% limit of the connections
-            threshold = np.sort(self.sim_diffusion_matrix.flatten())[:int(len(self.sim_diffusion_matrix.flatten()) * .1)][-1]
+            threshold = np.sort(self.int_diff_dist.flatten())[:int(len(self.int_diff_dist.flatten()) * .1)][-1]
 
         if connection_limit == "auto":
             #Set the connection limit to be 10x the shape (while not always the best value, its consistently good and much faster due to the need of using less epochs)
             connection_limit = 10 * self.len_A
 
         #Get the current score of the alignment, by calculating the FOSCTTM scores that correlate with the hold_out_anchors
-        current_score = np.mean([self.partial_FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(self.sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
+        current_score = np.mean([self.partial_FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:], hold_out_anchors)])
 
         #Find the Max value for new connections to be set to
         max_weight = np.median(self.similarity_matrix[self.similarity_matrix != 0])
@@ -571,7 +571,7 @@ class DIG: #Diffusion Integration with Graphs
                     self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
 
                     #Reset the Diffusion Matrix
-                    self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+                    self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
                     #Add in the hold out anchors to the known_anchors
                     self.known_anchors += hold_out_anchors
@@ -596,10 +596,10 @@ class DIG: #Diffusion Integration with Graphs
                 plt.show()
 
             #Get new Diffusion Matrix
-            new_sim_diffusion_matrix = self.get_diffusion(new_similarity_matrix, return_projection = False)
+            new_int_diff_dist = self.get_diffusion(new_similarity_matrix, return_projection = False)
 
             #Get the new alignment score
-            new_score = np.mean([self.partial_FOSCTTM(new_sim_diffusion_matrix[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(new_sim_diffusion_matrix[:self.len_A, self.len_A:], hold_out_anchors)])
+            new_score = np.mean([self.partial_FOSCTTM(new_int_diff_dist[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(new_int_diff_dist[:self.len_A, self.len_A:], hold_out_anchors)])
 
             #See if the extra connections helped
             if new_score < current_score or len(hold_out_anchors) < 1:
@@ -609,7 +609,7 @@ class DIG: #Diffusion Integration with Graphs
 
                 #Reset all the class variables. We don't worry about the calculating the projection matricies until the last epoch.
                 self.similarity_matrix = new_similarity_matrix
-                self.sim_diffusion_matrix = new_sim_diffusion_matrix
+                self.int_diff_dist = new_int_diff_dist
 
                 #Reset the score
                 current_score = new_score
@@ -648,7 +648,7 @@ class DIG: #Diffusion Integration with Graphs
                 self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
 
             #Recalculate diffusion matrix
-            self.sim_diffusion_matrix, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+            self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
             #Show the final connections
             if self.verbose > 1:
@@ -721,7 +721,7 @@ class DIG: #Diffusion Integration with Graphs
         axes[2].set_title("Projection AB")
 
         #Diffusion matrix
-        axes[1].imshow(self.sim_diffusion_matrix)
+        axes[1].imshow(self.int_diff_dist)
         axes[1].set_title("Similarities Diffusion Matrix")
 
         plt.show()
@@ -743,7 +743,7 @@ class DIG: #Diffusion Integration with Graphs
 
         #Convert to a MDS
         mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-        self.emb = mds.fit_transform(self.sim_diffusion_matrix)
+        self.emb = mds.fit_transform(self.int_diff_dist)
 
         #Check to make sure we have labels
         if type(labels)!= type(None):
@@ -762,7 +762,7 @@ class DIG: #Diffusion Integration with Graphs
 
         #Calculate FOSCTTM score
         try:    
-            print(f"FOSCTTM: {self.FOSCTTM(self.sim_diffusion_matrix[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
+            print(f"FOSCTTM: {self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
 
