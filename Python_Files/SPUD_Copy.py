@@ -140,14 +140,14 @@ class SPUD_Copy:
         and by merging them together"""
 
         #Change known_anchors to correspond to off diagonal matricies
-        known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+        self.known_anchors_adjusted = self.known_anchors + np.array([0, self.len_A])
 
         #Merge the two graphs together
         merged = self.graphA.disjoint_union(self.graphB) #Note: The distances between graphs may not be the same. It this is the case, would we want to scale the data first?
 
         #Now add the edges between anchors
-        merged.add_edges(list(zip(known_anchors_adjusted[:, 0], known_anchors_adjusted[:, 1])))
-        merged.es[-len(known_anchors_adjusted):]["weight"] = np.repeat(1, len(known_anchors_adjusted))
+        merged.add_edges(list(zip(self.known_anchors_adjusted[:, 0], self.known_anchors_adjusted[:, 1])))
+        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(1, len(self.known_anchors_adjusted))
 
         #Return the Igraph object
         return merged
@@ -246,19 +246,19 @@ class SPUD_Copy:
 
         #To plot line connections
         if show_lines:
-            for i in range(self.len_B):
-                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
+            if self.len_A == self.len_B:
+              for i in range(self.len_B):
+                  ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
+            else:
+               raise AssertionError("To show the lines, domain A and domain B must be the same size.")
 
         #Put black dots on the Anchors
         if show_anchors:
-            for i in self.known_anchors[:, 0]:
-              ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'grey') #alpha = .5
-
+            for i in self.known_anchors_adjusted:
+              ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey') #alpha = .5
             
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]).flatten(), y = np.array(self.emb[self.known_anchors, 1]).flatten(), s = 30, color = "black", marker="^")
+            styles2 = ['graph 1' if i % 2 == 0 else 'graph 2' for i in range(len(self.known_anchors)*2)]
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"graph 1": "^", "graph 2" : "o"}, s = 30, color = "black")
 
-            #In the other domain
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors + self.len_A, 0]).flatten(), y= np.array(self.emb[self.known_anchors + self.len_A, 1]).flatten(),  s = 30, color='black', marker="o")
-           
         #Show plot
         plt.show()

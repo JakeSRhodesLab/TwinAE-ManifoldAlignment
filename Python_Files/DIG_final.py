@@ -3,7 +3,7 @@
 #Import the needed libraries
 import graphtools
 import numpy as np
-import pandas as pd
+from pandas import Categorical
 import seaborn as sns
 from vne import find_optimal_t
 from itertools import takewhile
@@ -773,7 +773,7 @@ class DIG: #Diffusion Integration with Graphs
         plt.figure(figsize=(14, 8))
 
         #Now plot the points
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
         #Set the title
         ax.set_title("DIG")
@@ -781,23 +781,25 @@ class DIG: #Diffusion Integration with Graphs
         #To plot line connections
         if show_lines:
             
-            #Loop through points to draw the line between it and its counterpart in the other domain
-            for i in range(self.len_B):
-                ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'lightgrey', alpha = .65)
-
+            #Since this assumes 1 to 1 correpsondence, we must chech that the domains sizes are the same
+            if self.len_A == self.len_B:
+              for i in range(self.len_B):
+                  ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
+            else:
+               raise AssertionError("To show the lines, domain A and domain B must be the same size.")
+             
         #Put black dots on the Anchors
         if show_anchors:
             
-            #We want to plot darker lines between the anchors to show where they connect
-            for i in self.known_anchors[:, 0]:
-              ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], color = 'grey') #alpha = .5
+            #For each anchor set, plot lines between them
+            for i in self.known_anchors_adjusted:
+              ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
+            
+            #Create a new style guide so every other point is a triangle or circle
+            styles2 = ['graph 1' if i % 2 == 0 else 'graph 2' for i in range(len(self.known_anchors)*2)]
 
-            #Plot black dots on the anchors in Domain A
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors, 0]).flatten(), y = np.array(self.emb[self.known_anchors, 1]).flatten(), s = 30, color = "black", marker="^")
-
-            #Plot black dots on the anchors in Domain B
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors + self.len_A, 0]).flatten(), y= np.array(self.emb[self.known_anchors + self.len_A, 1]).flatten(),  s = 30, color='black', marker="o")
-           
+            #Plot the black triangles or circles on the correct points
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"graph 1": "^", "graph 2" : "o"}, s = 30, color = "black")
         
         #Show plot
         plt.show()
@@ -818,7 +820,7 @@ class DIG: #Diffusion Integration with Graphs
             plt.figure(figsize=(14, 8))
 
             #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = pd.Categorical(np.concatenate([first_pred, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_pred, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
             #Set the title
             ax.set_title("Predicted Labels")

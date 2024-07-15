@@ -8,6 +8,7 @@ Changes Log:
 1. Found the SPUD bug and fixed it
 2. Added Plotting to veiw the predicted labels
 3. Previously, we were showing what each split would predict from data on itself, and we used those as the baselines. We updated it to be trained from one domain to the other. 
+    3a. The split scores remain similar, even with the Skewed. This is likely because the permuation importance often ranks each feature as importance of 0 in many datasets. 
 4. Updated SPUD to calculate using -log across the full thing if not the same dimensions
 5. Finish SPUD tests, and running all tests currently. 
 
@@ -16,8 +17,6 @@ FUTURE IDEAS:
 
 TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
-2. Create figure that show the label prediction - Have them be gray, and then show the labels colors (the predicted, and not the actual) DONE
-3. Look at the split classification Done
 6. Update Plotting to work with off_diagonal's that are different sizes
 7. Work on Marshall's problem
 8. Overleaf paper
@@ -38,10 +37,11 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-28. skew on hilton (12 day -- cleaning up all the skewed files)
-29. even on Cox (6 day after Crash due to excessive memory -- cleaning up all even files)
-30-35: All of the CSPUD across different files. Running 4 day
-36. Spud All on Collings (2 day)
+42. 0 on Hilton
+43. Tspud on Carter
+44. 0 on Collings
+
+We should nearly be finished
 
 """
 
