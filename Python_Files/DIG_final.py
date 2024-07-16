@@ -722,7 +722,7 @@ class DIG: #Diffusion Integration with Graphs
 
         #Diffusion matrix
         axes[1].imshow(self.int_diff_dist)
-        axes[1].set_title("Similarities Diffusion Matrix")
+        axes[1].set_title("Integrated Diffusion Distance Matricies")
 
         plt.show()
 

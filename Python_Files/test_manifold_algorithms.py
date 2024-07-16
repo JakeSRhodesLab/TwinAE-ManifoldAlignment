@@ -12,13 +12,13 @@ Changes Log:
 4. Updated SPUD to calculate using -log across the full thing if not the same dimensions
 5. Finish SPUD tests, and running all tests currently. 
 6. Made the plotting functions work if the domains are not equal for plotting anchors
+7. Ran demonstration tests -- seems unhelpful. 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
-7. Work on Marshall's problem
 8. Overleaf paper
 
 
