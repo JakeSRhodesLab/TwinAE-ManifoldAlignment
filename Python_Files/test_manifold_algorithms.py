@@ -5,12 +5,6 @@ Questions:
 
 
 Changes Log:
-1. Found the SPUD bug and fixed it
-2. Added Plotting to veiw the predicted labels
-3. Previously, we were showing what each split would predict from data on itself, and we used those as the baselines. We updated it to be trained from one domain to the other. 
-    3a. The split scores remain similar, even with the Skewed. This is likely because the permuation importance often ranks each feature as importance of 0 in many datasets. 
-4. Updated SPUD to calculate using -log across the full thing if not the same dimensions
-5. Finish SPUD tests, and running all tests currently. 
 6. Made the plotting functions work if the domains are not equal for plotting anchors
 7. Ran demonstration tests -- seems unhelpful. 
 
@@ -21,6 +15,13 @@ TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
 8. Overleaf paper
 
+1. Rename DIG to be MAD
+2. Coloring with Dark2 -- use Seaborn 
+3. Prediction plotting -> first plot make them grey -> use the sparse data
+
+If time things:
+1. Parameter adjustment heat-map for supplemental information
+2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
 
 FINAL TASKS: (When we are at last preparing the code for use)
 1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
