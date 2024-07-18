@@ -1,4 +1,4 @@
-#MAD (Manifold Alignment with Diffusion)
+#MASH (Manifold Alignment with Diffusion)
 
 #Import the needed libraries
 import graphtools
@@ -13,12 +13,12 @@ from scipy.spatial.distance import pdist, squareform
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 
-class MAD: #Manifold Alignment with Diffusion
+class MASH: #Manifold Alignment with Diffusion
     def __init__(self, t = -1, knn = 5, page_rank = "None", precompute = False, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
-                negative 1 or any string, MAD will find the optimal t value.
+                negative 1 or any string, MASH will find the optimal t value.
 
             :KNN: should be an integer. Represents the amount of nearest neighbors to 
                 construct the graphs.
@@ -786,7 +786,7 @@ class MAD: #Manifold Alignment with Diffusion
             ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
         #Set the title and plot Legend
-        ax.set_title("MAD")
+        ax.set_title("MASH")
         plt.legend()
 
         #To plot line connections
