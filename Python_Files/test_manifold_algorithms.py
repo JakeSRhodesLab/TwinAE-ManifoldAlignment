@@ -5,8 +5,9 @@ Questions:
 
 
 Changes Log:
-6. Made the plotting functions work if the domains are not equal for plotting anchors
-7. Ran demonstration tests -- seems unhelpful. 
+1. DIG final became MAD
+2. Updated plotting function to show ranking
+3. Redid colors
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -15,7 +16,6 @@ TASKS:
 1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
 8. Overleaf paper
 
-1. Rename DIG to be MAD
 2. Coloring with Dark2 -- use Seaborn 
 3. Prediction plotting -> first plot make them grey -> use the sparse data
 

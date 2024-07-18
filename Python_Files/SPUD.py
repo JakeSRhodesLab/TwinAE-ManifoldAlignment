@@ -37,6 +37,9 @@ class SPUD:
         self.operation = operation
         self.kwargs = kwargs
 
+        #Set self.emb to be None
+        self.emb = None
+
   def fit(self, dataA, dataB, known_anchors):
         '''
         Does the work to compute the manifold alignment using shortest path distances. 
@@ -152,14 +155,14 @@ class SPUD:
         """
 
         #Change known_anchors to correspond to off diagonal matricies
-        known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Merge the two graphs together
         merged = self.graphA.disjoint_union(self.graphB)
 
         #Now add the edges between anchors and set their  weight to 1
-        merged.add_edges(list(zip(known_anchors_adjusted[:, 0], known_anchors_adjusted[:, 1])))
-        merged.es[-len(known_anchors_adjusted):]["weight"] = np.repeat(1, len(known_anchors_adjusted))
+        merged.add_edges(list(zip(self.known_anchors_adjusted[:, 0], self.known_anchors_adjusted[:, 1])))
+        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(1, len(self.known_anchors_adjusted))
 
         #Return the Igraph object
         return merged
@@ -257,9 +260,11 @@ class SPUD:
             :**kwargs: additional key word arguments for sns.scatterplot function.
         """
 
-        #Create the mds object and then the embedding
-        mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-        self.emb = mds.fit_transform(self.block) 
+        #Check to see if we already have created our embedding, else create the embedding.
+        if self.emb == None:
+          #Create the mds object and then the embedding
+          mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
+          self.emb = mds.fit_transform(self.block) 
 
         #Check to make sure we have labels
         if type(labels)!= type(None):
@@ -283,7 +288,7 @@ class SPUD:
             print("Can't compute FOSCTTM with different domain shapes.")
 
         #Create styles to change the points from graph 1 to be triangles and circles from graph 2
-        styles = ['graph 1' if i < self.len_A else 'graph 2' for i in range(len(self.emb[:]))]
+        styles = ['Domain A' if i < self.len_A else 'Domain B' for i in range(len(self.emb[:]))]
 
         #Create the figure
         plt.figure(figsize=(14, 8))
@@ -291,9 +296,17 @@ class SPUD:
         #Imporrt pandas for the categorical function
         from pandas import Categorical
 
-        #Now plot the points
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"graph 1": "^", "graph 2" : "o"}, **kwargs)
+        #If show_pred is chosen, we want to show labels in Domain B as muted
+        if show_pred:
+            ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=80, marker= "o", **kwargs)
+            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=80, marker= "^", **kwargs)
+        
+        else:
+            #Now plot the points with correct lables
+          ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+
         ax.set_title("SPUD")
+        plt.legend()
 
         #To plot line connections
         if show_lines:
@@ -313,10 +326,10 @@ class SPUD:
               ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
             
             #Create a new style guide so every other point is a triangle or circle
-            styles2 = ['graph 1' if i % 2 == 0 else 'graph 2' for i in range(len(self.known_anchors)*2)]
+            styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
             #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"graph 1": "^", "graph 2" : "o"}, s = 30, color = "black")
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"Domain A": "^", "Domain B" : "o"}, s = 20, color = "black")
 
         #Show plot
         plt.show()
@@ -328,16 +341,12 @@ class SPUD:
             knn_model = KNeighborsClassifier(n_neighbors=4)
             knn_model.fit(self.emb[:self.len_A, :], first_labels)
             second_pred = knn_model.predict(self.emb[self.len_A:, :])
-
-            #Fit on domain A, and predict for domain B
-            knn_model.fit(self.emb[self.len_A:, :], second_labels)
-            first_pred = knn_model.predict(self.emb[:self.len_A, :])
             
             #Create the figure
             plt.figure(figsize=(14, 8))
 
             #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_pred, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
             #Set the title
             ax.set_title("Predicted Labels")

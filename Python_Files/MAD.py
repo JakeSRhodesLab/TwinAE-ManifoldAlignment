@@ -44,6 +44,9 @@ class MAD: #Manifold Alignment with Diffusion
         self.precompute = precompute
         self.verbose = verbose
         self.kwargs = kwargs
+
+        #Set self.emb to be None
+        self.emb = None
     
     def fit(self, dataA, dataB, known_anchors):
         """
@@ -741,9 +744,11 @@ class MAD: #Manifold Alignment with Diffusion
             :**kwargs: additional key word arguments for sns.scatterplot function.
         """
 
-        #Convert to a MDS
-        mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-        self.emb = mds.fit_transform(self.int_diff_dist)
+        #Check to see if we already have created our embedding, else create the embedding.
+        if self.emb == None:
+            #Convert to a MDS
+            mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
+            self.emb = mds.fit_transform(self.int_diff_dist)
 
         #Check to make sure we have labels
         if type(labels)!= type(None):
@@ -772,11 +777,17 @@ class MAD: #Manifold Alignment with Diffusion
         #Create the figure
         plt.figure(figsize=(14, 8))
 
-        #Now plot the points
-        ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+        #If show_pred is chosen, we want to show labels in Domain B as muted
+        if show_pred:
+            ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=80, marker= "o", **kwargs)
+            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=80, marker= "^", **kwargs)
+        else:
+            #Now plot the points with correct lables
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
-        #Set the title
+        #Set the title and plot Legend
         ax.set_title("MAD")
+        plt.legend()
 
         #To plot line connections
         if show_lines:
@@ -796,10 +807,10 @@ class MAD: #Manifold Alignment with Diffusion
               ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
             
             #Create a new style guide so every other point is a triangle or circle
-            styles2 = ['graph 1' if i % 2 == 0 else 'graph 2' for i in range(len(self.known_anchors)*2)]
+            styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
             #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"graph 1": "^", "graph 2" : "o"}, s = 30, color = "black")
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"Domain A": "^", "Domain B" : "o"}, s = 20, color = "black")
         
         #Show plot
         plt.show()
@@ -812,15 +823,11 @@ class MAD: #Manifold Alignment with Diffusion
             knn_model.fit(self.emb[:self.len_A, :], first_labels)
             second_pred = knn_model.predict(self.emb[self.len_A:, :])
 
-            #Fit on domain A, and predict for domain B
-            knn_model.fit(self.emb[self.len_A:, :], second_labels)
-            first_pred = knn_model.predict(self.emb[:self.len_A, :])
-            
             #Create the figure
             plt.figure(figsize=(14, 8))
 
             #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_pred, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
             #Set the title
             ax.set_title("Predicted Labels")
