@@ -25,9 +25,6 @@ If time things:
 1. Parameter adjustment heat-map for supplemental information
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
 
-FINAL TASKS: (When we are at last preparing the code for use)
-1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
-
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
@@ -42,8 +39,6 @@ https://gist.github.com/andreyvit/2921703
 Tmux Zombies
 43. Tspud on Carter
 44. 0 on Collings
-
-We should nearly be finished - > Wrappin' up final files 
 
 """
 
