@@ -173,6 +173,7 @@ class SPUD:
     
     Parameters:
       :graph: should be a graph that has merged together domains A and B.
+      
     """
 
     #Get the vertices to find the distances between graphs. This helps when len_A != len_B

@@ -8,6 +8,8 @@ Changes Log:
 1. DIG final became MAD
 2. Updated plotting function to show ranking
 3. Redid colors
+4. Error plot charting
+5. Addinf effecting FOSCTTM Plotting
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -17,7 +19,7 @@ TASKS:
 8. Overleaf paper
 
 2. Coloring with Dark2 -- use Seaborn 
-3. Prediction plotting -> first plot make them grey -> use the sparse data
+3. Prediction plotting -> first plot make them grey -> use the sparse data DONE
 
 If time things:
 1. Parameter adjustment heat-map for supplemental information
@@ -38,11 +40,10 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-42. 0 on Hilton
 43. Tspud on Carter
 44. 0 on Collings
 
-We should nearly be finished
+We should nearly be finished - > Wrappin' up final files 
 
 """
 
@@ -89,7 +90,7 @@ MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
 #Create function to do everything
 class test_manifold_algorithms():
-    def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
+    def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5],  verbose = 0, random_state = 42):
         """csv_file should be the name of the csv file. If set to 'S-curve' or "blobs", it will create a toy data set. 
         
         split can be 'skewed' (for the features to be split by more important and less important),
