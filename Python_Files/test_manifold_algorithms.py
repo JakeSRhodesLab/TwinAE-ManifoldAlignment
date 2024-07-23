@@ -5,25 +5,23 @@ Questions:
 
 
 Changes Log:
-1. DIG final became MAD
-2. Updated plotting function to show ranking
-3. Redid colors
-4. Error plot charting
-5. Addinf effecting FOSCTTM Plotting
+0. Update label position
+1. Add dots --> add errorbar potentially
+
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
-8. Overleaf paper
-
-2. Coloring with Dark2 -- use Seaborn 
-3. Prediction plotting -> first plot make them grey -> use the sparse data DONE
 
 If time things:
 1. Parameter adjustment heat-map for supplemental information
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
+
+Ideas:
+-> Think about how we can add new points without rerunning the embedding -- Nystrom method
+-> RF proximity measures (its a similarity measure)
+-> Multiple Domains 
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
