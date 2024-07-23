@@ -729,7 +729,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         plt.show()
 
-    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, **kwargs): 
+    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
         Arguments:
@@ -786,8 +786,10 @@ class MASH: #Manifold Alignment with Diffusion
             ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
         #Set the title and plot Legend
-        ax.set_title("MASH")
-        plt.legend()
+        ax.set_title("MASH", fontsize = 25)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
+        plt.legend(show_legend = show_legend)
 
         #To plot line connections
         if show_lines:

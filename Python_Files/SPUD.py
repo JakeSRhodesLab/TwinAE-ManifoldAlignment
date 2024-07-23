@@ -246,7 +246,7 @@ class SPUD:
 
     plt.show()
 
-  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, **kwargs): 
+  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
         Arguments:
@@ -306,8 +306,13 @@ class SPUD:
             #Now plot the points with correct lables
           ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
-        ax.set_title("SPUD")
-        plt.legend()
+        #Set the title and plot Legend
+        ax.set_title("SPUD", fontsize = 25)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
+        
+        if show_legend:
+            plt.legend()
 
         #To plot line connections
         if show_lines:
