@@ -7,6 +7,7 @@ Questions:
 Changes Log:
 0. Update label position
 1. Add dots --> add errorbar potentially
+2. Added IDC for user control
 
 
 FUTURE IDEAS:

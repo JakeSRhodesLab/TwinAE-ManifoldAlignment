@@ -11,7 +11,7 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 class SPUD:
-  def __init__(self, knn = 5, operation = "normalize", verbose = 0, **kwargs):
+  def __init__(self, knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
@@ -25,6 +25,11 @@ class SPUD:
             If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
             If 'float', it multiplies the off-diagonal block by the float value. 
             If 'None', it applies no additional transformation besides normalizing the values between 0 and 1. 
+
+          :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
+            to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
+            representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
+            deemed too strong, the user may choose to assign the IDC < 1.
             
           :verbose: can be any float or integer. Determines what is printed as output as the function runs.
 
@@ -36,6 +41,7 @@ class SPUD:
         self.knn = knn
         self.operation = operation
         self.kwargs = kwargs
+        self.IDC = IDC
 
         #Set self.emb to be None
         self.emb = None
@@ -162,7 +168,7 @@ class SPUD:
 
         #Now add the edges between anchors and set their  weight to 1
         merged.add_edges(list(zip(self.known_anchors_adjusted[:, 0], self.known_anchors_adjusted[:, 1])))
-        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(1, len(self.known_anchors_adjusted))
+        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(self.IDC, len(self.known_anchors_adjusted))
 
         #Return the Igraph object
         return merged

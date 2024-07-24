@@ -14,7 +14,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, page_rank = "None", precompute = False, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
+    def __init__(self, t = -1, knn = 5, page_rank = "None", IDC = 1, precompute = False, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
@@ -26,6 +26,11 @@ class MASH: #Manifold Alignment with Diffusion
             :page_rank: Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
                 want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
                 mean we want to apply the page ranking algorithm across the entire block matrix.
+
+            :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
+                to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
+                representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
+                deemed too strong, the user may choose to assign the IDC < 1.
 
             :density_normalization: A boolean value. If set to true, it will apply a density
                 normalization to the joined domains. 
@@ -44,6 +49,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.precompute = precompute
         self.verbose = verbose
         self.kwargs = kwargs
+        self.IDC = IDC
 
         #Set self.emb to be None
         self.emb = None
@@ -385,9 +391,9 @@ class MASH: #Manifold Alignment with Diffusion
             #Add the weights
             merged.es[-len(weights_to_add):]["weight"] = weights_to_add
 
-        #Now add the edges between anchors
+        #Now add the edges between anchors. We do this last so if we don't override an anchor in the previous step if multiple points in a domain correlate to a single point in the other domain.
         merged.add_edges(list(zip(self.known_anchors_adjusted[:, 0], self.known_anchors_adjusted[:, 1])))
-        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(1, len(self.known_anchors_adjusted))
+        merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(self.IDC, len(self.known_anchors_adjusted))
 
         #Convert back to graphtools
         merged_graphtools = graphtools.api.from_igraph(merged)
@@ -561,10 +567,6 @@ class MASH: #Manifold Alignment with Diffusion
                     #Cached info 
                     adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
 
-                    #Set the anchors
-                    self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = 1
-                    self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = 1
-
                     #Set the connections values to the top right block
                     self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
                     self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
@@ -572,6 +574,10 @@ class MASH: #Manifold Alignment with Diffusion
                     #Set the connection values to the bottom left block
                     self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
                     self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+                    #Set the anchors
+                    self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = self.IDC
+                    self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
 
                     #Reset the Diffusion Matrix
                     self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
@@ -638,10 +644,6 @@ class MASH: #Manifold Alignment with Diffusion
                 #Cached info 
                 adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
 
-                #Set the anchors
-                self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = 1
-                self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = 1
-
                 #Set the connections values to the top right block
                 self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
                 self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
@@ -649,6 +651,10 @@ class MASH: #Manifold Alignment with Diffusion
                 #Set the connections values to the bottom left block
                 self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
                 self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+                #Set the anchors
+                self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = self.IDC
+                self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
 
             #Recalculate diffusion matrix
             self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
