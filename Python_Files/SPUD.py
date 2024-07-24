@@ -173,6 +173,7 @@ class SPUD:
     
     Parameters:
       :graph: should be a graph that has merged together domains A and B.
+      
     """
 
     #Get the vertices to find the distances between graphs. This helps when len_A != len_B
@@ -245,7 +246,7 @@ class SPUD:
 
     plt.show()
 
-  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, **kwargs): 
+  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
         Arguments:
@@ -298,15 +299,20 @@ class SPUD:
 
         #If show_pred is chosen, we want to show labels in Domain B as muted
         if show_pred:
-            ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=80, marker= "o", **kwargs)
-            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=80, marker= "^", **kwargs)
+            ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=120, marker= "o", **kwargs)
+            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=120, marker= "^", **kwargs)
         
         else:
             #Now plot the points with correct lables
-          ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+          ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
-        ax.set_title("SPUD")
-        plt.legend()
+        #Set the title and plot Legend
+        ax.set_title("SPUD", fontsize = 25)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
+        
+        if show_legend:
+            plt.legend()
 
         #To plot line connections
         if show_lines:
@@ -329,7 +335,7 @@ class SPUD:
             styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
             #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, markers= {"Domain A": "^", "Domain B" : "o"}, s = 20, color = "black")
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2,  linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
 
         #Show plot
         plt.show()
@@ -346,7 +352,7 @@ class SPUD:
             plt.figure(figsize=(14, 8))
 
             #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=80, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
             #Set the title
             ax.set_title("Predicted Labels")

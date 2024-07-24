@@ -5,26 +5,23 @@ Questions:
 
 
 Changes Log:
-1. DIG final became MAD
-2. Updated plotting function to show ranking
-3. Redid colors
+0. Update label position
+1. Add dots --> add errorbar potentially
+
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Once other tests are done, run all the tests again just to make sure we have fair data. IN PROCESS
-8. Overleaf paper
-
-2. Coloring with Dark2 -- use Seaborn 
-3. Prediction plotting -> first plot make them grey -> use the sparse data
 
 If time things:
 1. Parameter adjustment heat-map for supplemental information
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
 
-FINAL TASKS: (When we are at last preparing the code for use)
-1. Update the methods to be standard SK-learn use (meaning they have the fit function and the like)
+Ideas:
+-> Think about how we can add new points without rerunning the embedding -- Nystrom method
+-> RF proximity measures (its a similarity measure)
+-> Multiple Domains 
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -38,11 +35,8 @@ Tmux Cheatsheat:
 https://gist.github.com/andreyvit/2921703
 
 Tmux Zombies
-42. 0 on Hilton
 43. Tspud on Carter
 44. 0 on Collings
-
-We should nearly be finished
 
 """
 
@@ -89,7 +83,7 @@ MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
 #Create function to do everything
 class test_manifold_algorithms():
-    def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3],  verbose = 0, random_state = 42):
+    def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5],  verbose = 0, random_state = 42):
         """csv_file should be the name of the csv file. If set to 'S-curve' or "blobs", it will create a toy data set. 
         
         split can be 'skewed' (for the features to be split by more important and less important),
