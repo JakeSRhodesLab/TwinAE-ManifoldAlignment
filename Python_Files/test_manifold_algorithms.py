@@ -11,6 +11,7 @@ Changes Log:
 3. Fixed a case where Mash wrongly assigns anchors to be less than one if the methods have more than one connection from domain to the other
 4. Created A parameter Grid
 5. Functionalized the grid creation, and upgraded it to be pretty!
+6. Parameter adjustment heat-map for supplemental information
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -18,7 +19,6 @@ FUTURE IDEAS:
 TASKS:
 
 If time things:
-1. Parameter adjustment heat-map for supplemental information
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
 
 Ideas:
@@ -30,6 +30,8 @@ Ideas:
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 
+Running Zombies
+Carter - SPUD: running all spud combinations. 
 
 """
 
@@ -435,7 +437,7 @@ class test_manifold_algorithms():
         return True
     """
 
-    def run_CSPUD_tests(self, operations = ["log"]): #NOTE: Running SPUD_copy data currently
+    def run_CSPUD_tests(self, operations = ["log"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -444,7 +446,7 @@ class test_manifold_algorithms():
             print(f"Operation {operation}")
 
             #Create files and store data
-            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "merge") # When we are ready to test the Spud copy, we can swicth this to "merge"
+            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "merge") 
 
             #If file aready exists, then we are done :)
             if os.path.exists(filename) or len(AP_values) < 1:
@@ -1858,109 +1860,3 @@ def upload_to_DataFrame():
         merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
 
     return merged_df#.drop_duplicates()
-
-def change_old_files_to_new():
-    """Goes through all files and changes them to be consistent with the new file formatting"""
-    #Loop through each directory to get all the file names
-    files = []
-    for directory in os.listdir(MANIFOLD_DATA_DIR):
-        if os.path.isdir(MANIFOLD_DATA_DIR + directory): #Check to make sure its a directory
-            files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
-    #Create DataFrame
-    df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", "Percent_of_Anchors", 
-                                "FOSCTTM", "Cross_Embedding_KNN", "Page_Rank", "Predicted_Feature_MAE",
-                                "Operation", "SPUDS_Algorithm"])
-    #Sort through the Numpy arrays to get the data out
-    for file in files:
-
-        #Check to make sure we can load the file
-        try:
-            data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
-        except Exception as e:
-            print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing Loop without uploading file\n-------------------------------------------------------------------------------------------------------")
-            continue
-
-        #Get the name of the csv_file and then cut the csv file out of the name
-        csv_file_index = file.find('/')
-
-        #Get the method out of the file
-        method_index = file.find('(')
-        method = file[csv_file_index + 1 : method_index]
-        
-        #Split based on method
-        if method == "DIG":
-
-            #Get Page Rank indicies
-            PageRank_index = file.find('_PR(')
-            end_PageRank_index = PageRank_index + file[PageRank_index:].find(')') + 1
-
-            #Check to see if file is not already correct
-            if PageRank_index == -1:
-                #File is already new
-                continue
-
-            #Loop through each Page Rank Argument in order and add the values to corresponding list
-            for i, link in enumerate(find_words_order(file, ("None", "off-diagonal", "full"))):
-                if link == "None":
-                    P_file = file[:PageRank_index] + '_Pag(None)' + file[end_PageRank_index:]
-                elif link == "off-diagonal":
-                    P_file = file[:PageRank_index] + '_Pag(off-diagonal)' + file[end_PageRank_index:]
-                else: #Then it is full
-                    P_file = file[:PageRank_index] + '_Pag(full)' + file[end_PageRank_index:]
-
-                #If file aready exists, then we are done :)
-                P_file = MANIFOLD_DATA_DIR + P_file
-                if os.path.exists(P_file):
-                    continue
-                else:
-                    #Save the numpy array
-                    np.save(P_file, data[i])
-
-            #Delete original file
-            os.remove(MANIFOLD_DATA_DIR + file)
-
-        #Method SPUD
-        elif method == "SPUD":
-
-            #Get operation indicies
-            O_index = file.find('_O(')
-            end_O_index = O_index + file[O_index:].find(')') + 1
-
-            #Check to see if file is not already correct
-            if O_index == -1:
-                #File is already new
-                continue
-
-            #Loop through each word in order and add the values to corresponding list
-            for i, operation in enumerate(find_words_order(file, ("average", "abs"))):
-                if operation == "average":
-                    O_file = file[:O_index] + '_Ope(average)' + file[end_O_index:]
-                else: 
-                    O_file = file[:O_index] + '_Ope(abs)' + file[end_O_index:]
-
-                #Get Kind indicies
-                K_index = O_file.find('_K(')
-                end_K_index = K_index + O_file[K_index:].find(')') + 1
-
-                #Loop through each kind
-                for j, kind in enumerate(find_words_order(file, (("distance", "pure", "similarity")))):
-                    if kind == "distance":
-                        K_file = O_file[:K_index] + '_Kin(distance)' + O_file[end_K_index:]
-                    elif kind == "pure": #We should touch up on the SPUD algorithm for this
-                       K_file = O_file[:K_index] + '_Kin(pure)' + O_file[end_K_index:]
-                    else:
-                        K_file = O_file[:K_index] + '_Kin(similarity)' + O_file[end_K_index:]
-
-                    #If file aready exists, then we are done :)
-                    K_file = MANIFOLD_DATA_DIR + K_file
-                    if os.path.exists(K_file):
-                        continue
-                    else:
-                        #Save the numpy array
-                        np.save(K_file, data[i, j])
-            
-            #Delete original filw
-            os.remove(MANIFOLD_DATA_DIR + file)
-    
-    print("<><><><><><><><><><><><><><><><><><><><><><><>     Updates completed     <><><><><><><><><><><><><><><><><><><><><><><>")
-    return True
