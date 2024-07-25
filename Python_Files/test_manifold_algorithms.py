@@ -8,7 +8,9 @@ Changes Log:
 0. Update label position
 1. Add dots --> add errorbar potentially
 2. Added IDC for user control
-
+3. Fixed a case where Mash wrongly assigns anchors to be less than one if the methods have more than one connection from domain to the other
+4. Created A parameter Grid
+5. Functionalized the grid creation, and upgraded it to be pretty!
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -28,16 +30,6 @@ Ideas:
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 
-To Set up Git:
-  git config --global user.email "rustadadam@gmail.com"
-  git config --global user.name "rustadadam"
-
-Tmux Cheatsheat:
-https://gist.github.com/andreyvit/2921703
-
-Tmux Zombies
-43. Tspud on Carter
-44. 0 on Collings
 
 """
 
