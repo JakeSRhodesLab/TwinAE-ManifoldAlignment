@@ -751,7 +751,7 @@ class MASH: #Manifold Alignment with Diffusion
         """
 
         #Check to see if we already have created our embedding, else create the embedding.
-        if self.emb == None:
+        if type(self.emb) == type(None):
             #Convert to a MDS
             mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
             self.emb = mds.fit_transform(self.int_diff_dist)

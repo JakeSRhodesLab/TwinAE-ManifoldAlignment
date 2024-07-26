@@ -14,12 +14,15 @@ Changes Log:
 6. Parameter adjustment heat-map for supplemental information
 7. Remade DIG tests functions to be significantly faster so we can run tests for the t parameter
 8. Running tests for all t parameters across one random iteration
+9. Updated Upload file for putting "like values" into buckets
+10. Check to make sure the files are saving correctly for Mash
+
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-1. Check to make sure the files are saving correctly for Mash
+2. Apply RF_GAP
 
 If time things:
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
@@ -1472,6 +1475,9 @@ def clear_directory(text_curater = "all", not_text = None):
     else: 
         print("<><> Cancelling Process <><>")
         return False
+    
+def is_even(num):
+    return num & 1 == 0
 
 def _upload_file(file):
     #Simply for error finding
@@ -1556,10 +1562,14 @@ def _upload_file(file):
             #Add the right t value
             if "_t(" in file:
                 t_index = file.find("_t(")
-                data_dict["t_value"] = file[t_index+3 : t_index + file[t_index:].find(")")]
-            
+                even = is_even(int(file[t_index+3 : t_index + file[t_index:].find(")")][-1]))
+
+                if even:
+                    data_dict["t_value"] = float(file[t_index+3 : t_index + file[t_index:].find(")")])
+                else:
+                    data_dict["t_value"] = np.round(float(file[t_index+3 : t_index + file[t_index:].find(")")]) + 0.01, decimals=2)
             else:
-                data_dict["t_value"] = "-1"
+                data_dict["t_value"] = -1.0
 
             #Loop through each Knn
             for j in range(0, 10):
@@ -1600,10 +1610,14 @@ def _upload_file(file):
             #Add the right t value
             if "_t(" in file:
                 t_index = file.find("_t(")
-                data_dict["t_value"] = file[t_index+3 : t_index + file[t_index:].find(")")]
-            
+                even = is_even(int(file[t_index+3 : t_index + file[t_index:].find(")")][-1]))
+
+                if even:
+                    data_dict["t_value"] = float(file[t_index+3 : t_index + file[t_index:].find(")")])
+                else:
+                    data_dict["t_value"] = np.round(float(file[t_index+3 : t_index + file[t_index:].find(")")]) + 0.01, decimals=2)
             else:
-                data_dict["t_value"] = "-1"
+                data_dict["t_value"] = -1.0
 
             #Get the Connection value
             con_index = file.find('_Con(')

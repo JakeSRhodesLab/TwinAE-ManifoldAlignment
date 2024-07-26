@@ -36,7 +36,7 @@ class SPUD_Copy:
         self.operation = operation
 
         #Save the distances in domains
-        self.distsA = self.get_SGDM(dataA)
+        self.distsA = self.get_SGDM(dataA) #Are we recalculating these distances twice then?
         self.distsB = self.get_SGDM(dataB)
 
         #Create Igraphs from the input.

@@ -9,13 +9,19 @@ import igraph as ig
 from sklearn.manifold import MDS
 import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from rfgap import RFGAP
 
 class SPUD:
-  def __init__(self, knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
+  def __init__(self, distance_measure = "euclidian", knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
         Arguments:
+          :distance_measure: Either a function or the strings: "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+            be formated like my_func(data) and returns a distance measure between points.
+            If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
+            function uses Euclidian distance, but this may manually changed through kwargs assignment.
+
           :Knn: states how many nearest neighbors we want to use in the graph construction. If
             Knn is set to "connect" then it will ensure connection in the graph.
 
@@ -37,6 +43,7 @@ class SPUD:
           '''
 
         #Set the values
+        self.distance_measure = distance_measure
         self.verbose = verbose
         self.knn = knn
         self.operation = operation
@@ -64,7 +71,7 @@ class SPUD:
         self.distsB = self.get_SGDM(dataB)
 
         #Create Igraphs from the input.
-        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph() 
+        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
         self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
 
         #Cache these values for fast lookup
@@ -97,8 +104,25 @@ class SPUD:
     """SGDM - Same Graph Distance Matrix.
     This returns the normalized distances within each domain."""
 
-    #Just using a normal distance matrix without Igraph
-    dists = squareform(pdist(data))
+    #Check to see if it is a function
+    if callable(self.distance_measure):
+      return self.distance_measure(data)
+
+    #If the distances are precomputed, return the data. 
+    elif self.distance_measure.lower() == "precomputed":
+      return data
+    
+    #Euclidian
+    elif self.distance_measure.lower() == "euclidian":
+      #Just using a normal distance matrix without Igraph
+      dists = squareform(pdist(data))
+
+    elif self.distance_measure.lower() == "rfgap":
+      ### Currently not operating ###
+      dists = squareform(pdist(data))
+
+    else:
+      raise RuntimeError("Did not understand {self.distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
@@ -268,7 +292,7 @@ class SPUD:
         """
 
         #Check to see if we already have created our embedding, else create the embedding.
-        if self.emb == None:
+        if type(self.emb) == type(None):
           #Create the mds object and then the embedding
           mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
           self.emb = mds.fit_transform(self.block) 
