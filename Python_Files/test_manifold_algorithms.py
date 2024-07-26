@@ -12,11 +12,14 @@ Changes Log:
 4. Created A parameter Grid
 5. Functionalized the grid creation, and upgraded it to be pretty!
 6. Parameter adjustment heat-map for supplemental information
+7. Remade DIG tests functions to be significantly faster so we can run tests for the t parameter
+8. Running tests for all t parameters across one random iteration
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
+1. Check to make sure the files are saving correctly for Mash
 
 If time things:
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
@@ -32,6 +35,7 @@ Resource Monitor Websitee: http://statrm.byu.edu/
 
 Running Zombies
 Carter - SPUD: running all spud combinations. 
+COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th
 
 """
 
@@ -497,83 +501,192 @@ class test_manifold_algorithms():
         #Run successful
         return True
     #We can add t as a parameter, and run tests on that as well, but I feel like the auto is good enough for now
-    def run_DIG_tests(self, page_ranks = ("None", "off-diagonal", "full"), predict = False):  #TODO: Add a predict features evaluation 
+    def run_DIG_tests(self, page_ranks = ("None", "off-diagonal", "full"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
-        NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same"""
+        NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+        
+        t is the percent of values you want covered by that many steps"""
 
         #Run through the tests with every variatioin
         print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for link in page_ranks:
             print(f"Page rank applied: {link}")
 
-            #Create the filename
-            filename, AP_values = self.create_filename("DIG", PageRanks = link)
+            for t in np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
+                print(f"    T value {t}")
 
-            #If file aready exists, then we are done :)
-            if os.path.exists(filename) or len(AP_values) < 1:
-                print(f"    <><><><><>    File {filename} already exists   <><><><><>")
-                return True
-            
-            #Store the data in a numpy array
-            DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
+                #Create the filename
+                if t == -1:
+                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link) #T is not included it is assumed to be -1
+                else:
+                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link, t = np.round(t/len(self.split_A), decimals=2))
 
-            for j, knn in enumerate(self.knn_range):
-                print(f"    KNN {knn}")
-                for k, anchor_percent in enumerate(AP_values):
-                    print(f"        Percent of Anchors {anchor_percent}")
+                #set a varaible to Save Mash
+                saveMASH = True
 
-                    try:
-                        #Create our class to run the tests
-                        DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = -1, knn = knn, link = link)
-                    except Exception as e:
-                        print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
-                        DIG_scores[j, k, 0] = np.NaN
-                        DIG_scores[j, k, 1] = np.NaN
+                #If file aready exists, then we are done :)
+                if os.path.exists(filename_minus) or len(AP_values) < 1:
+                    print(f"    <><><><><>    File {filename_minus} already exists for MASH-. Will not save again   <><><><><>")
+                    saveMASH = False
 
-                        #If we are using predict, this must also be NaN
-                        if predict:
-                            DIG_scores[j, k, 2] = np.NaN
-                        continue
+                #Loop through the connections
+                for connection in connection_limit:
+                    print(f"        Connection Limit: {connection}")
 
-                    #FOSCTTM Evaluation Metrics
-                    try:
-                        DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
-                        print(f"            FOSCTTM: {DIG_FOSCTTM}")
+                    #Create the filename
+                    if t == -1:
+                        filename, AP_values = self.create_filename("CwDIG", PageRanks = link, Connection_limit = str(connection)) #T is not included it is assumed to be -1
+                    else:
+                        filename, AP_values = self.create_filename("CwDIG", PageRanks = link, t = np.round(t/len(self.split_A), decimals=2), Connection_limit = str(connection))
 
-                    except Exception as e:
-                        print(f"            FOSCTTM exception occured: {e}")
-                        DIG_FOSCTTM = np.NaN
+                    save_connections = True
+                    #If file aready exists, then we are done :)
+                    if os.path.exists(filename) or len(AP_values) < 1:
+                        print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                        
+                        #set a varaible to Save Mash
+                        save_connections = False
 
-                    DIG_scores[j, k, 0] = DIG_FOSCTTM
+                        if not saveMASH:
+                            continue
 
-                    #Cross Embedding Evaluation Metric
-                    try:
-                        emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                    #Store the data in a numpy array
+                    DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
+                    CwDIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
 
-                        DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                        print(f"            CE Score: {DIG_CE}")
 
-                    except Exception as e:
-                        print(f"            Cross Embedding exception occured: {e}")
-                        DIG_CE = np.NaN
+                    for j, knn in enumerate(self.knn_range):
+                        print(f"            KNN {knn}")
+                        for k, anchor_percent in enumerate(AP_values):
+                            print(f"                Percent of Anchors {anchor_percent}")
 
-                    DIG_scores[j, k, 1] = DIG_CE
+                            #Cache this information so it is faster
+                            anchor_amount = int((len(self.anchors) * anchor_percent)/2)
+                            
+                            try:
+                                #Create our class to run the tests
+                                DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = t, knn = knn, link = link)
 
-                    #Predict features test
-                    if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
-                        #Testing the PREDICT labels features
-                        features_pred_B = DIG_class.predict_feature(predict="B")
-                        features_pred_A = DIG_class.predict_feature(predict="A")
+                            except Exception as e:
+                                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                                DIG_scores[j, k, 0] = np.NaN
+                                DIG_scores[j, k, 1] = np.NaN
 
-                        #Get the MAE for each set and average them
-                        DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                        DIG_scores[j, k, 2] = DIG_MAE
-                        print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+                                #If we are using predict, this must also be NaN
+                                if predict:
+                                    DIG_scores[j, k, 2] = np.NaN
 
-                #Save the numpy array
-                np.save(filename, DIG_scores)
+                                CwDIG_scores[j, k, 0] = np.NaN
+                                CwDIG_scores[j, k, 1] = np.NaN
+
+                                #If we are using predict, this must also be NaN
+                                if predict:
+                                    CwDIG_scores[j, k, 2] = np.NaN
+
+                                continue
+
+                            if saveMASH:
+                                #FOSCTTM Evaluation Metrics
+                                try:
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
+
+                                except Exception as e:
+                                    print(f"                    FOSCTTM exception occured: {e}")
+                                    DIG_FOSCTTM = np.NaN
+
+                                DIG_scores[j, k, 0] = DIG_FOSCTTM
+
+                                #Cross Embedding Evaluation Metric
+                                try:
+                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                                    print(f"                    CE Score: {DIG_CE}")
+
+                                except Exception as e:
+                                    print(f"                    Cross Embedding exception occured: {e}")
+                                    DIG_CE = np.NaN
+
+                                DIG_scores[j, k, 1] = DIG_CE
+
+                                #Predict features test
+                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                                    #Testing the PREDICT labels features
+                                    features_pred_B = DIG_class.predict_feature(predict="B")
+                                    features_pred_A = DIG_class.predict_feature(predict="A")
+
+                                    #Get the MAE for each set and average them
+                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                                    DIG_scores[j, k, 2] = DIG_MAE
+                                    print(f"                    Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+                            #<><><><><><><><><><><><><><><><><>     Now Repeat all of that!      <><><><><><><><><><><><><><><><><>
+                            #Make the connection limit value
+                            if save_connections:
+                                try:
+                                    #Make the connection limit value
+                                    if connection != None:
+                                        connection = int(DIG_class.len_A * connection)
+
+                                    #Boost the Algorithm
+                                    DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
+
+                                except Exception as e:
+                                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                                    CwDIG_scores[j, k, 0] = np.NaN
+                                    CwDIG_scores[j, k, 1] = np.NaN
+
+                                    #If we are using predict, this must also be NaN
+                                    if predict:
+                                        CwDIG_scores[j, k, 2] = np.NaN
+                                    continue
+
+                                #FOSCTTM Evaluation Metrics
+                                try:
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
+
+                                except Exception as e:
+                                    print(f"                FOSCTTM exception occured: {e}")
+                                    DIG_FOSCTTM = np.NaN
+
+                                CwDIG_scores[j, k, 0] = DIG_FOSCTTM
+
+                                #Cross Embedding Evaluation Metric
+                                try:
+                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                                    print(f"                    CE Score: {DIG_CE}")
+
+                                except Exception as e:
+                                    print(f"                    Cross Embedding exception occured: {e}")
+                                    DIG_CE = np.NaN
+
+                                CwDIG_scores[j, k, 1] = DIG_CE
+
+                                #Predict features test
+                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                                    #Testing the PREDICT labels features
+                                    features_pred_B = DIG_class.predict_feature(predict="B")
+                                    features_pred_A = DIG_class.predict_feature(predict="A")
+
+                                    #Get the MAE for each set and average them
+                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                                    CwDIG_scores[j, k, 2] = DIG_MAE
+                                    print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+
+                    #Save the numpy array
+                    if saveMASH:
+                        np.save(filename_minus, DIG_scores)
+
+                    #Save all connections
+                    if save_connections:
+                        np.save(filename, CwDIG_scores)
 
         #Run successful
         return True
@@ -1366,7 +1479,7 @@ def _upload_file(file):
     #Create DataFrame
     df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
                                 "Percent_of_KNN", "Percent_of_Anchors", 
-                                "Page_Rank", "Predicted_Feature_MAE",
+                                "Page_Rank", "t_value", "Predicted_Feature_MAE",
                                 "Operation", "SPUDS_Algorithm", 
                                 "FOSCTTM", "Cross_Embedding_KNN"])
     
@@ -1439,6 +1552,14 @@ def _upload_file(file):
             else: #Then it is full
                 data_dict["Page_Rank"] = "full"
 
+            #Add the right t value
+            if "_t(" in file:
+                t_index = file.find("_t(")
+                data_dict["t_value"] = file[t_index+3 : t_index + file[t_index:].find(")")]
+            
+            else:
+                data_dict["t_value"] = "-1"
+
             #Loop through each Knn
             for j in range(0, 10):
                 knn = (j*knn_increment) + 2
@@ -1474,6 +1595,14 @@ def _upload_file(file):
                 data_dict["Page_Rank"] = "off-diagonal"
             else: #Then it is None
                 data_dict["Page_Rank"] = "None"
+
+            #Add the right t value
+            if "_t(" in file:
+                t_index = file.find("_t(")
+                data_dict["t_value"] = file[t_index+3 : t_index + file[t_index:].find(")")]
+            
+            else:
+                data_dict["t_value"] = "-1"
 
             #Get the Connection value
             con_index = file.find('_Con(')
