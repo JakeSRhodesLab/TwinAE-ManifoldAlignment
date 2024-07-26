@@ -23,6 +23,7 @@ TASKS:
 
 If time things:
 2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
+3. Find where the program takes the most time -> Graph creation
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
@@ -1641,12 +1642,12 @@ def _upload_file(file):
                 data_dict["Operation"] = "abs"
             elif "sqrt" in file:
                 data_dict["Operation"] = "sqrt"
-            elif "none" in file:
-                data_dict["Operation"] = "normalize"
+            elif "average" in file:
+                data_dict["Operation"] = "average"
             elif "log" in file:
                 data_dict["Operation"] = "log"
             else: 
-                data_dict["Operation"] = "average" #There might be a more intuitive name for this 
+                data_dict["Operation"] = "normalize"
 
             #Assign its Kind
             if "distance" in file:
