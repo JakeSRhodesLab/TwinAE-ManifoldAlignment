@@ -16,6 +16,8 @@ Changes Log:
 8. Running tests for all t parameters across one random iteration
 9. Updated Upload file for putting "like values" into buckets
 10. Check to make sure the files are saving correctly for Mash
+11. Created function choosing for SPUD for SGDM
+12. Created rfGap predictions
 
 
 FUTURE IDEAS:
