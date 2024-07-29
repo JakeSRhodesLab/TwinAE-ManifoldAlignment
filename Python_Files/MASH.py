@@ -14,7 +14,7 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, page_rank = "None", IDC = 1, precompute = False, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
+    def __init__(self, t = -1, knn = 5, distance_measure = "default", page_rank = "None", IDC = 1, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
@@ -22,6 +22,12 @@ class MASH: #Manifold Alignment with Diffusion
 
             :KNN: should be an integer. Represents the amount of nearest neighbors to 
                 construct the graphs.
+
+            :distance_measure: Either a function or the strings: "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+                be formated like my_func(data) and returns a distance measure between points.
+                If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
+                function uses Euclidian distance, but this may manually changed through kwargs assignment.
+                If set to "default" it will use the graph created kernals. 
 
             :page_rank: Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
                 want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
@@ -46,7 +52,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.page_rank = page_rank
         self.normalize_density = density_normalization
         self.DTM = DTM.lower()
-        self.precompute = precompute
+        self.distance_measure = distance_measure
         self.verbose = verbose
         self.kwargs = kwargs
         self.IDC = IDC
@@ -69,7 +75,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.dataB = self.normalize_0_to_1(dataB)
 
         #Check to see if we want to create graphs with a precomputed Pdist algorithm or simply graphtools dijkstra'a algorithm
-        if self.precompute:
+        if self.distance_measure != "default":
 
             #Create kernals
             self.kernalsA = self.get_SGDM(dataA)
@@ -174,15 +180,30 @@ class MASH: #Manifold Alignment with Diffusion
     
     def get_SGDM(self, data):
         """SGDM - Same Graph Distance Matrix.
-        This returns the normalized distances within the domain.
+        This returns the normalized distances within each domain."""
+
+        #Check to see if it is a function
+        if callable(self.distance_measure):
+            return self.distance_measure(data)
+
+        #If the distances are precomputed, return the data. 
+        elif self.distance_measure.lower() == "precomputed":
+            return data
         
-        Data should be the data of that makes up the domain."""
-        
-        #Get the distance measures for each data point and squareform it.
-        data = squareform(pdist(data))
+        #Euclidian
+        elif self.distance_measure.lower() == "euclidian":
+            #Just using a normal distance matrix without Igraph
+            dists = squareform(pdist(data))
+
+        elif self.distance_measure.lower() == "rfgap":
+            ### Currently not operating ###
+            dists = squareform(pdist(data))
+
+        else:
+            raise RuntimeError("Did not understand {self.distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
 
         #Normalize it and return the data
-        return self.normalize_0_to_1(data)
+        return self.normalize_0_to_1(dists)
     
     def row_normalize_matrix(self, matrix):
         """Returns a row normalized matrix"""

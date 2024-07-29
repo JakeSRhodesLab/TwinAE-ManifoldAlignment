@@ -18,16 +18,17 @@ Changes Log:
 10. Check to make sure the files are saving correctly for Mash
 11. Created function choosing for SPUD for SGDM
 12. Created rfGap predictions
+13. Updataed MASH to have custom function creations for determining distances. 
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
+4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
 2. Apply RF_GAP
 
 If time things:
-2. Find the important variables for Adnii -- Make sure to drop NaN's -- labels is the diagonosis
 3. Find where the program takes the most time -> Graph creation
 
 Ideas:
