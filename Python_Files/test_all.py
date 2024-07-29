@@ -49,7 +49,7 @@ state = False
 #Random
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 1825, 2830, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "random", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_DIG = True, page_ranks = ["off-diagonal", "full"], predict = False, #DIG key arguments
                             run_CwDIG= state, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
@@ -65,7 +65,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 1825, 2830, 34
 
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "turn", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_DIG = True, page_ranks = ["off-diagonal", "full"], predict = False, #DIG key arguments
                             run_CwDIG= state, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
@@ -80,7 +80,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 9515], #Genera
 #distort
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_DIG = True, page_ranks = ["off-diagonal", "full"], predict = False, #DIG key arguments
                             run_CwDIG= state, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
@@ -94,7 +94,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667, 95
 #Skewed
 tma.run_all_tests(csv_files = csv_files, test_random =  [1825],#, 2830, 2969, 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_DIG = True, page_ranks = ["off-diagonal", "full"], predict = False, #DIG key arguments
                             run_CwDIG= state, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
@@ -108,7 +108,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1825],#, 2830, 2969, 34
 #Even
 tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 1825, 2830]#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5], #Init Key arguments
-                            run_DIG = True, page_ranks = ["None"], predict = False, #DIG key arguments
+                            run_DIG = True, page_ranks = ["off-diagonal", "full"], predict = False, #DIG key arguments
                             run_CwDIG=state, connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,

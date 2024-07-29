@@ -30,6 +30,7 @@ TASKS:
 
 If time things:
 3. Find where the program takes the most time -> Graph creation
+4. Rewrite Test manifold algorithms to cache splits
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
@@ -212,7 +213,15 @@ class test_manifold_algorithms():
             #Add noise to split B
             split_b = features + np.random.normal(scale = 0.05, size = np.shape(features))
 
-        else:
+        else: 
+            """EDIT THIS TO CACHE SPLITS"""
+            #Step 1. Check if a file exists already
+            #Step 2a. if not, Do the methodology we have before
+            #Step 2b. If so, simply load the files into split A and split B
+            #Step 3. If not, upload to file. CSV file name and split. 
+
+
+
             # Splitting the dataset into training and testing sets
             X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
