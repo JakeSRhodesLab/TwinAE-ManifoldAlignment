@@ -11,6 +11,9 @@ import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from rfgap import RFGAP
 
+#Not necessary libraries, but helpful
+from time import time
+
 class SPUD:
   def __init__(self, distance_measure = "euclidian", knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
         '''
@@ -67,12 +70,16 @@ class SPUD:
         '''
 
         #For each domain, calculate the distances within their own domain
+        self.print_time()
         self.distsA = self.get_SGDM(dataA)
         self.distsB = self.get_SGDM(dataB)
+        self.print_time(" Time it took to compute SGDM:")
 
         #Create Igraphs from the input.
+        self.print_time()
         self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
         self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
+        self.print_time(" Time it took to the graphtools.Graph function:")
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
@@ -88,6 +95,37 @@ class SPUD:
         self.block = self.get_block(self.graphAB)
 
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  def print_time(self, print_statement =  ""):
+    """A function that times the algorithms and returns a string of how
+    long the function was last called."""
+
+    #Only do this if the verbose is higher than 4
+    if self.verbose < 4:
+      pass
+
+    #Start time. 
+    if not hasattr(self, 'start_time'):
+      self.start_time = time()
+
+    #Check to see if it equals None
+    elif self.start_time == None:
+      self.start_time = time()
+
+    else:
+      #We need to end the time
+      end_time = time()
+
+      #Create a string to return
+      time_string = str(end_time - self.start_time)
+
+      #Reset the start time
+      self.start_time = None
+
+      print(print_statement + time_string)
+
+
+    
+
   def normalize_0_to_1(self, value):
     """Normalizes the value to be between 0 and 1 and resets infinite values."""
 

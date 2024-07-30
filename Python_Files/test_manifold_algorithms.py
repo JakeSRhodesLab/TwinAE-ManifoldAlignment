@@ -19,6 +19,7 @@ Changes Log:
 11. Created function choosing for SPUD for SGDM
 12. Created rfGap predictions
 13. Updataed MASH to have custom function creations for determining distances. 
+14. Adding timing fucntions to SPUD
 
 
 FUTURE IDEAS:
