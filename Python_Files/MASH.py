@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from time import time
 
 
 class MASH: #Manifold Alignment with Diffusion
@@ -70,6 +71,10 @@ class MASH: #Manifold Alignment with Diffusion
                 that corresponds to DataB
         """
 
+        #Print timing data
+        if self.verbose > 3:
+           print("Time Data Below")
+
         #Scale the data
         self.dataA = self.normalize_0_to_1(dataA)
         self.dataB = self.normalize_0_to_1(dataB)
@@ -78,21 +83,31 @@ class MASH: #Manifold Alignment with Diffusion
         if self.distance_measure != "default":
 
             #Create kernals
+            self.print_time()
             self.kernalsA = self.get_SGDM(dataA)
             self.kernalsB = self.get_SGDM(dataB)
+            self.print_time(" Time it took to execute SGDM functions:  ")
 
             #Create Graphs using our precomputed kernals
+            self.print_time()
             self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
             self.graph_b  = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute Graph functions:  ")
 
         else:
             #Create Graphs and allow it to use the normal data
+            self.print_time()
             self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
             self.graph_b  = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute Graph functions:  ")
 
             #Get the Kernal Data from the graphs
+            self.print_time()
             self.kernalsA  = np.array(self.graph_a.K.toarray())
             self.kernalsB = np.array(self.graph_b.K.toarray())
+            self.print_time(" Time it took to compute kernals:  ")
+        
+        
 
         self.known_anchors = known_anchors
             
@@ -104,13 +119,19 @@ class MASH: #Manifold Alignment with Diffusion
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         #Connect the graphs
+        self.print_time()
         self.graphAB = self.merge_graphs()
+        self.print_time(" Time it took to compute merge_graphs function:  ")
         
         #Get Similarity matrix and distance matricies
+        self.print_time()
         self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
+        self.print_time(" Time it took to compute similarity_matrix function:  ")
 
         #Get Diffusion Matrix. int_diff_dist stands for the integrated diffusion distance.
+        self.print_time()
         self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+        self.print_time(" Time it took to compute diffusion process:  ")
 
     """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def FOSCTTM(self, off_diagonal): 
@@ -175,6 +196,33 @@ class MASH: #Manifold Alignment with Diffusion
         return knn.score(embedding[n1:, :], labels2)
 
     """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+    def print_time(self, print_statement =  ""):
+        """A function that times the algorithms and returns a string of how
+        long the function was last called."""
+
+        #Only do this if the verbose is higher than 4
+        if self.verbose > 3:
+
+            #Start time. 
+            if not hasattr(self, 'start_time'):
+                self.start_time = time()
+
+            #Check to see if it equals None
+            elif self.start_time == None:
+                self.start_time = time()
+
+            else:
+                #We need to end the time
+                end_time = time()
+
+                #Create a string to return
+                time_string = str(round(end_time - self.start_time, 5))
+
+                #Reset the start time
+                self.start_time = None
+
+                print(print_statement + time_string)
+    
     def normalize_0_to_1(self, value):
         return (value - value.min()) / (value.max() - value.min())
     

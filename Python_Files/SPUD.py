@@ -123,7 +123,7 @@ class SPUD:
         end_time = time()
 
         #Create a string to return
-        time_string = str(round(end_time - self.start_time, 5))
+        time_string = str(round(end_time - self.start_time, 2))
 
         #Reset the start time
         self.start_time = None
