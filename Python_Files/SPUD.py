@@ -69,17 +69,21 @@ class SPUD:
             [[1,1], [4,3], [7,6]] would be appropiate.
         '''
 
+        #Print timing data
+        if self.verbose > 3:
+           print("Time Data Below")
+
         #For each domain, calculate the distances within their own domain
         self.print_time()
         self.distsA = self.get_SGDM(dataA)
         self.distsB = self.get_SGDM(dataB)
-        self.print_time(" Time it took to compute SGDM:")
+        self.print_time(" Time it took to compute SGDM:  ")
 
         #Create Igraphs from the input.
         self.print_time()
         self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
         self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
-        self.print_time(" Time it took to the graphtools.Graph function:")
+        self.print_time(" Time it took to execute graphtools.Graph functions:  ")
 
         #Cache these values for fast lookup
         self.len_A = self.graphA.vcount()
@@ -89,10 +93,14 @@ class SPUD:
         self.known_anchors = np.array(known_anchors)
 
         #Merge the graphs 
+        self.print_time()
         self.graphAB = self.merge_graphs()
+        self.print_time(" Time it took to execute merge_graphs function:  ")
 
         #Get the distances
+        self.print_time()
         self.block = self.get_block(self.graphAB)
+        self.print_time(" Time it took to execute get_block function:  ")
 
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def print_time(self, print_statement =  ""):
@@ -100,31 +108,27 @@ class SPUD:
     long the function was last called."""
 
     #Only do this if the verbose is higher than 4
-    if self.verbose < 4:
-      pass
+    if self.verbose > 3:
 
-    #Start time. 
-    if not hasattr(self, 'start_time'):
-      self.start_time = time()
+      #Start time. 
+      if not hasattr(self, 'start_time'):
+        self.start_time = time()
 
-    #Check to see if it equals None
-    elif self.start_time == None:
-      self.start_time = time()
+      #Check to see if it equals None
+      elif self.start_time == None:
+        self.start_time = time()
 
-    else:
-      #We need to end the time
-      end_time = time()
+      else:
+        #We need to end the time
+        end_time = time()
 
-      #Create a string to return
-      time_string = str(end_time - self.start_time)
+        #Create a string to return
+        time_string = str(round(end_time - self.start_time, 5))
 
-      #Reset the start time
-      self.start_time = None
+        #Reset the start time
+        self.start_time = None
 
-      print(print_statement + time_string)
-
-
-    
+        print(print_statement + time_string)
 
   def normalize_0_to_1(self, value):
     """Normalizes the value to be between 0 and 1 and resets infinite values."""
