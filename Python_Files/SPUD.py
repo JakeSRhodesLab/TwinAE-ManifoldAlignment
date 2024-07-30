@@ -15,12 +15,17 @@ from rfgap import RFGAP
 from time import time
 
 class SPUD:
-  def __init__(self, distance_measure = "euclidian", knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
+  def __init__(self, distance_measure_A = "euclidian", distance_measure_B = "euclidian", knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
         Arguments:
-          :distance_measure: Either a function or the strings: "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+          :distance_measure_A: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain A. If it is a function, then it should
+            be formated like my_func(data) and returns a distance measure between points.
+            If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
+            function uses Euclidian distance, but this may manually changed through kwargs assignment.
+
+          :distance_measure_A: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain A. If it is a function, then it should
             be formated like my_func(data) and returns a distance measure between points.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
@@ -46,7 +51,8 @@ class SPUD:
           '''
 
         #Set the values
-        self.distance_measure = distance_measure
+        self.distance_measure_A = distance_measure_A
+        self.distance_measure_B = distance_measure_B
         self.verbose = verbose
         self.knn = knn
         self.operation = operation
@@ -75,8 +81,8 @@ class SPUD:
 
         #For each domain, calculate the distances within their own domain
         self.print_time()
-        self.distsA = self.get_SGDM(dataA)
-        self.distsB = self.get_SGDM(dataB)
+        self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
+        self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
         self.print_time(" Time it took to compute SGDM:  ")
 
         #Create Igraphs from the input.
@@ -142,29 +148,29 @@ class SPUD:
 
     return value
 
-  def get_SGDM(self, data):
+  def get_SGDM(self, data, distance_measure):
     """SGDM - Same Graph Distance Matrix.
     This returns the normalized distances within each domain."""
 
     #Check to see if it is a function
-    if callable(self.distance_measure):
-      return self.distance_measure(data)
+    if callable(distance_measure):
+      return distance_measure(data)
 
     #If the distances are precomputed, return the data. 
-    elif self.distance_measure.lower() == "precomputed":
+    elif distance_measure.lower() == "precomputed":
       return data
     
     #Euclidian
-    elif self.distance_measure.lower() == "euclidian":
+    elif distance_measure.lower() == "euclidian":
       #Just using a normal distance matrix without Igraph
       dists = squareform(pdist(data))
 
-    elif self.distance_measure.lower() == "rfgap":
+    elif distance_measure.lower() == "rfgap":
       ### Currently not operating ###
       dists = squareform(pdist(data))
 
     else:
-      raise RuntimeError("Did not understand {self.distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
+      raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)

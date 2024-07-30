@@ -21,6 +21,7 @@ Changes Log:
 13. Updataed MASH to have custom function creations for determining distances. 
 14. Adding timing fucntions to SPUD
 15. Added Timing functions to MASH
+16. Added seperate Distance measures for both Domain a and B
 
 
 FUTURE IDEAS:
