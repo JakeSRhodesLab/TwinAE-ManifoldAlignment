@@ -1,16 +1,16 @@
 """This is a function for calculating the difference between time series data using cross correlation"""
-
+#%%
 import numpy as np
 import pandas as pd
 from tslearn.metrics import dtw_path
 from dtaidistance import dtw
 
-
-df = pd.read_excel("C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Visit Variables 2024-07-11.xlsx", index_col=[0,1])
+#%%
+df = pd.read_excel(r"C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Visit Variables 2024-07-11.xlsx", index_col=[0,1])
 #df.reset_index(inplace=True)
 
 # Get all of the temporal sequences in step
-
+#%%
 patients = df.index.get_level_values('RID').unique()
 max_months = df.index.get_level_values("VISMONTH").max()
 months = np.arange(0, (max_months + 1), 6)
@@ -18,7 +18,7 @@ months = np.arange(0, (max_months + 1), 6)
 multi_index = pd.MultiIndex.from_product([patients, months], names=['RID', 'VISMONTH']) 
 # Reindex the DataFrame with all possible six month visits
 df = df.reindex(multi_index)
-
+#%%
 # Interpolate and remove any trailing visits for each person that have no information in them
 def fill_and_chop_nans(small_df): 
     something_in_row = small_df.notna().any(axis=1) #returns True or False to say if each index has any info at all
