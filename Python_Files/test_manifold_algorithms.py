@@ -79,7 +79,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # Suppress TensorFlow logging (level 2: warning, level 3: error)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
+#%%
 #Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
 if os.getcwd()[-12:] == "Python_Files":
     CURR_DIR = os.getcwd()[:-13]
@@ -87,7 +87,7 @@ else:
     CURR_DIR = os.getcwd()
 #Directory Constant
 MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
-
+#%%
 #Create function to do everything
 class test_manifold_algorithms():
     def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5],  verbose = 0, random_state = 42):
