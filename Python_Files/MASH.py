@@ -9,13 +9,15 @@ from vne import find_optimal_t
 from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from time import time
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", page_rank = "None", IDC = 1, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
+    def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", page_rank = "None",
+                 IDC = 1, density_normalization = False, DTM = "log", burn_in = 0,
+                 verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
@@ -24,13 +26,13 @@ class MASH: #Manifold Alignment with Diffusion
             :KNN: should be an integer. Represents the amount of nearest neighbors to 
                 construct the graphs.
 
-            :distance_measure_A: Either a function or the strings: "default", "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+            :distance_measure_A: Either a function, "default", "precomputed" or SciKit_learn metric strings for domain A. If it is a function, then it should
                 be formated like my_func(data) and returns a distance measure between points.
                 If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
                 function uses Euclidian distance, but this may manually changed through kwargs assignment.
                 If set to "default" it will use the graph created kernals. 
 
-            :distance_measure_B: Either a function or the strings: "default", "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+            :distance_measure_B: Either a function, "default", "precomputed" or SciKit_learn metric strings for domain B. If it is a function, then it should
                 be formated like my_func(data) and returns a distance measure between points.
                 If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
                 function uses Euclidian distance, but this may manually changed through kwargs assignment.
@@ -64,6 +66,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.verbose = verbose
         self.kwargs = kwargs
         self.IDC = IDC
+        self.burn_in = burn_in
 
         #Set self.emb to be None
         self.emb = None
@@ -103,7 +106,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.graphAB = self.merge_graphs()
         self.print_time(" Time it took to compute merge_graphs function:  ")
         
-        #Get Similarity matrix and distance matricies
+        #Get Similarity matri
         self.print_time()
         self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
         self.print_time(" Time it took to compute similarity_matrix function:  ")
@@ -217,7 +220,13 @@ class MASH: #Manifold Alignment with Diffusion
             #Create kernals
             self.print_time()
             self.kernalsA = self.get_SGDM(self.dataA, self.distance_measure_A)
-            self.dataA = self.normalize_0_to_1(self.dataA) #normalize data
+
+            """#Apply burn in if necessary
+            if self.burn_in > 0:
+                self.kernalsA = self.burn_in_domains(self.kernalsA)"""
+
+            #Normalize Data
+            self.dataA = self.normalize_0_to_1(self.dataA) 
             self.print_time(" Time it took to execute SGDM for domain A:  ")
 
             #Create Graphs using our precomputed kernals
@@ -243,7 +252,13 @@ class MASH: #Manifold Alignment with Diffusion
             #Create kernals
             self.print_time()
             self.kernalsB = self.get_SGDM(self.dataB, self.distance_measure_B)
-            self.dataB = self.normalize_0_to_1(self.dataB) #normalize data
+
+            """#Apply burn in if necessary
+            if self.burn_in > 0:
+                self.kernalsB = self.burn_in_domains(self.kernalsB)"""
+            
+            #Normalize the Data
+            self.dataB = self.normalize_0_to_1(self.dataB) 
             self.print_time(" Time it took to execute SGDM for domain B:  ")
 
             #Create Graphs using our precomputed kernals
@@ -263,6 +278,45 @@ class MASH: #Manifold Alignment with Diffusion
             self.kernalsB  = np.array(self.graph_b.K.toarray())
             self.print_time(" Time it took to compute kernal B:  ")
 
+    def burn_in_domains(self, kernal):
+        """Applies the diffusion just to domain A and B seperately to prepare for diffusion later on. Will return the kernal"""
+
+        # Row normalize the matrix
+        kernal = self.row_normalize_matrix(kernal)
+
+        #Raise the normalized matrix to the burn_in power
+        kernal = np.linalg.matrix_power(kernal, self.burn_in)
+
+        #Apply the aggregation function
+        #kernal = self.apply_aggregation(kernal)
+
+        #Convert it back to similarities
+        return self.normalize_0_to_1(kernal)
+    
+    def apply_aggregation(self, matrix):
+        """Apply the aggregation function to a powered diffusion operator"""
+        
+        #The Hellinger algorithm requires that the matricies have the same shape
+        if self.DTM == "hellinger" and self.len_A == self.len_B:
+            #Apply the hellinger process
+            agg_matix = self.hellinger_distance_matrix(matrix)
+
+        elif self.DTM == "kl" and self.len_A == self.len_B:
+            #Apply the hellinger process
+            agg_matix = self.kl_divergence_matrix(matrix)
+
+        else:
+            if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
+                print("Unable to compute hellinger or kl because datasets are not the same size.")
+
+            #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
+            agg_matix = (squareform(pdist((-np.log(0.00001+matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
+    
+            #Normalize the matrix
+            agg_matix = self.normalize_0_to_1(agg_matix)
+
+        return agg_matix
+
     def get_SGDM(self, data, distance_measure):
         """SGDM - Same Graph Distance Matrix.
         This returns the normalized distances within each domain."""
@@ -275,17 +329,13 @@ class MASH: #Manifold Alignment with Diffusion
         elif distance_measure.lower() == "precomputed":
             return data
         
-        #Euclidian
-        elif distance_measure.lower() == "euclidian":
+        #Scikit_learn metrics
+        elif distance_measure.lower() in _METRICS:
             #Just using a normal distance matrix without Igraph
-            dists = squareform(pdist(self.normalize_0_to_1(data)))
-
-        elif distance_measure.lower() == "rfgap":
-            ### Currently not operating ###
-            dists = squareform(pdist(self.normalize_0_to_1(data)))
+            dists = squareform(pdist(self.normalize_0_to_1(data), metric = distance_measure.lower()))
 
         else:
-            raise RuntimeError("Did not understand {self.distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
+            raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
 
         #Normalize it and return the data
         return self.normalize_0_to_1(dists)
@@ -519,6 +569,10 @@ class MASH: #Manifold Alignment with Diffusion
             #If we found a T
             if self.verbose > 0:
                 print(f"Using optimal t value of {self.t}")
+
+        if self.burn_in > 0:
+            matrix[self.len_A:, self.len_A:] = self.burn_in_domains(matrix[self.len_A:, self.len_A:])
+            matrix[:self.len_A, :self.len_A] = self.burn_in_domains(matrix[:self.len_A, :self.len_A])
                 
         # Row normalize the matrix
         normalized_matrix = self.row_normalize_matrix(matrix)
@@ -551,24 +605,8 @@ class MASH: #Manifold Alignment with Diffusion
             domainAB = self.row_normalize_matrix(domainAB)
             domainBA = self.row_normalize_matrix(domainBA)
         
-        #The Hellinger algorithm requires that the matricies have the same shape
-        if self.DTM == "hellinger" and self.len_A == self.len_B:
-            #Apply the hellinger process
-            diffused = self.hellinger_distance_matrix(diffusion_matrix)
-
-        elif self.DTM == "kl" and self.len_A == self.len_B:
-            #Apply the hellinger process
-            diffused = self.kl_divergence_matrix(diffusion_matrix)
-
-        else:
-            if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
-                print("Unable to compute hellinger or kl because datasets are not the same size.")
-
-            #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
-            diffused = (squareform(pdist((-np.log(0.00001+diffusion_matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
-    
-            #Normalize the matrix
-            diffused = self.normalize_0_to_1(diffused)
+        #Apply the aggregation function
+        diffused = self.apply_aggregation(diffusion_matrix)
         
         if return_projection:
             return diffused, domainAB, domainBA

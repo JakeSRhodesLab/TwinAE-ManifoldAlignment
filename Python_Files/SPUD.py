@@ -1,7 +1,7 @@
 #Shortest Path to Union Domains (SPUD)
 
 #Install the libraries
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, _METRICS
 import graphtools
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,17 +15,17 @@ from rfgap import RFGAP
 from time import time
 
 class SPUD:
-  def __init__(self, distance_measure_A = "euclidian", distance_measure_B = "euclidian", knn = 5, operation = "normalize", IDC = 1, verbose = 0, **kwargs):
+  def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5, operation = "normalize", IDC = 1, algorithm = "djikstra", verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
         Arguments:
-          :distance_measure_A: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain A. If it is a function, then it should
+          :distance_measure_A: Either a function, "precomputed" or SciKit_learn metric strings for domain A. If it is a function, then it should
             be formated like my_func(data) and returns a distance measure between points.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
 
-          :distance_measure_B: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain B. If it is a function, then it should
+          :distance_measure_B: Either a function, "precomputed" or SciKit_learn metric strings for domain B. If it is a function, then it should
             be formated like my_func(data) and returns a distance measure between points.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
@@ -58,6 +58,7 @@ class SPUD:
         self.operation = operation
         self.kwargs = kwargs
         self.IDC = IDC
+        self.algorithm = algorithm
 
         #Set self.emb to be None
         self.emb = None
@@ -161,16 +162,12 @@ class SPUD:
       return data
     
     #Euclidian
-    elif distance_measure.lower() == "euclidian":
+    elif distance_measure.lower() in _METRICS:
       #Just using a normal distance matrix without Igraph
-      dists = squareform(pdist(data)) #Add it here -> if its in already for additionally block
-
-    elif distance_measure.lower() == "rfgap":
-      ### Currently not operating ###
-      dists = squareform(pdist(data))
+      dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
 
     else:
-      raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")
+      raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
@@ -259,7 +256,7 @@ class SPUD:
     verticesB = np.array(range(self.len_B)) + self.len_A
 
     #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
-    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = "dijkstra")))
+    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = self.algorithm)))
 
     #Apply operation modifications
     if type(self.operation) == float:

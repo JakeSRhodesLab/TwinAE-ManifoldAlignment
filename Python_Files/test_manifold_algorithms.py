@@ -2,16 +2,19 @@
 
 """
 Questions:
+1. Djisktra's O(n *log n) algorithm actually doesn't garuntee the shortest path between all nodes. Floyd-Warshall O(n3) does, though it takes way to long. Johnson's method is faster, but running djikstra from each node is fastest... I think distances does this already 
 
 
 Changes Log:
+1. Updated both SPUD and DIG so any sk-learn method can be used as a distance choice
+2. Added apply_agregation function (is that the right terminology here?) to MASH
+3. Added in Burn_in functionality to MASH... >>> It seems not helpful. 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-1. Add in the ideas of euclidian, manhatten, etc
 2. Look at the graph tools to determine paths (DJIKSTRA)
 3. Add the burn-in period to MASH ( power by n < t on the domain A and B)
 4. Add MALI experiments
