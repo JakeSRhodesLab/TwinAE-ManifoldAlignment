@@ -15,7 +15,7 @@ from time import time
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, distance_measure = "default", page_rank = "None", IDC = 1, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
+    def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", page_rank = "None", IDC = 1, density_normalization = False, DTM = "log", verbose = 0, **kwargs):
         """
         Parameters:
             :t: the power to which we want to raise our diffusion matrix. If set to 
@@ -24,7 +24,13 @@ class MASH: #Manifold Alignment with Diffusion
             :KNN: should be an integer. Represents the amount of nearest neighbors to 
                 construct the graphs.
 
-            :distance_measure: Either a function or the strings: "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+            :distance_measure_A: Either a function or the strings: "default", "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
+                be formated like my_func(data) and returns a distance measure between points.
+                If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
+                function uses Euclidian distance, but this may manually changed through kwargs assignment.
+                If set to "default" it will use the graph created kernals. 
+
+            :distance_measure_B: Either a function or the strings: "default", "euclidian", "RFGAP", or "precomputed". If it is a function, then it should
                 be formated like my_func(data) and returns a distance measure between points.
                 If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
                 function uses Euclidian distance, but this may manually changed through kwargs assignment.
@@ -53,7 +59,8 @@ class MASH: #Manifold Alignment with Diffusion
         self.page_rank = page_rank
         self.normalize_density = density_normalization
         self.DTM = DTM.lower()
-        self.distance_measure = distance_measure
+        self.distance_measure_A = distance_measure_A
+        self.distance_measure_B = distance_measure_B
         self.verbose = verbose
         self.kwargs = kwargs
         self.IDC = IDC
@@ -75,39 +82,12 @@ class MASH: #Manifold Alignment with Diffusion
         if self.verbose > 3:
            print("Time Data Below")
 
-        #Scale the data
-        self.dataA = self.normalize_0_to_1(dataA)
-        self.dataB = self.normalize_0_to_1(dataB)
+        #Add the data. Note, it will later be normalized
+        self.dataA = dataA
+        self.dataB = dataB
 
-        #Check to see if we want to create graphs with a precomputed Pdist algorithm or simply graphtools dijkstra'a algorithm
-        if self.distance_measure != "default":
-
-            #Create kernals
-            self.print_time()
-            self.kernalsA = self.get_SGDM(dataA)
-            self.kernalsB = self.get_SGDM(dataB)
-            self.print_time(" Time it took to execute SGDM functions:  ")
-
-            #Create Graphs using our precomputed kernals
-            self.print_time()
-            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
-            self.graph_b  = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
-            self.print_time(" Time it took to execute Graph functions:  ")
-
-        else:
-            #Create Graphs and allow it to use the normal data
-            self.print_time()
-            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
-            self.graph_b  = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
-            self.print_time(" Time it took to execute Graph functions:  ")
-
-            #Get the Kernal Data from the graphs
-            self.print_time()
-            self.kernalsA  = np.array(self.graph_a.K.toarray())
-            self.kernalsB = np.array(self.graph_b.K.toarray())
-            self.print_time(" Time it took to compute kernals:  ")
-        
-        
+        #Build graphs and kernals
+        self.build_graphs()
 
         self.known_anchors = known_anchors
             
@@ -226,26 +206,83 @@ class MASH: #Manifold Alignment with Diffusion
     def normalize_0_to_1(self, value):
         return (value - value.min()) / (value.max() - value.min())
     
-    def get_SGDM(self, data):
+    def build_graphs(self):
+        """
+        Builds the graph objecy and kernal.
+        """
+
+        #------------------------    Build dependencies for domain A    ------------------------    
+        if self.distance_measure_A != "default":
+
+            #Create kernals
+            self.print_time()
+            self.kernalsA = self.get_SGDM(self.dataA, self.distance_measure_A)
+            self.dataA = self.normalize_0_to_1(self.dataA) #normalize data
+            self.print_time(" Time it took to execute SGDM for domain A:  ")
+
+            #Create Graphs using our precomputed kernals
+            self.print_time()
+            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute the graph for domain A:  ")
+
+        else:
+            #Create Graphs and allow it to use the normal data
+            self.print_time()
+            self.dataA = self.normalize_0_to_1(self.dataA)
+            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute the graph for domain A:  ")
+
+            #Get the Kernal Data from the graphs
+            self.print_time()
+            self.kernalsA  = np.array(self.graph_a.K.toarray())
+            self.print_time(" Time it took to compute kernal A:  ")
+
+        #------------------------    Build dependencies for domain B    ------------------------   
+        if self.distance_measure_B != "default":
+
+            #Create kernals
+            self.print_time()
+            self.kernalsB = self.get_SGDM(self.dataB, self.distance_measure_B)
+            self.dataB = self.normalize_0_to_1(self.dataB) #normalize data
+            self.print_time(" Time it took to execute SGDM for domain B:  ")
+
+            #Create Graphs using our precomputed kernals
+            self.print_time()
+            self.graph_b = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute the graph for domain B:  ")
+
+        else:
+            #Create Graphs and allow it to use the normal data
+            self.print_time()
+            self.dataB = self.normalize_0_to_1(self.dataB)
+            self.graph_b = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs)
+            self.print_time(" Time it took to execute the graph for domain B:  ")
+
+            #Get the Kernal Data from the graphs
+            self.print_time()
+            self.kernalsB  = np.array(self.graph_b.K.toarray())
+            self.print_time(" Time it took to compute kernal B:  ")
+
+    def get_SGDM(self, data, distance_measure):
         """SGDM - Same Graph Distance Matrix.
         This returns the normalized distances within each domain."""
 
         #Check to see if it is a function
-        if callable(self.distance_measure):
-            return self.distance_measure(data)
+        if callable(distance_measure):
+            return distance_measure(data)
 
         #If the distances are precomputed, return the data. 
-        elif self.distance_measure.lower() == "precomputed":
+        elif distance_measure.lower() == "precomputed":
             return data
         
         #Euclidian
-        elif self.distance_measure.lower() == "euclidian":
+        elif distance_measure.lower() == "euclidian":
             #Just using a normal distance matrix without Igraph
-            dists = squareform(pdist(data))
+            dists = squareform(pdist(self.normalize_0_to_1(data)))
 
-        elif self.distance_measure.lower() == "rfgap":
+        elif distance_measure.lower() == "rfgap":
             ### Currently not operating ###
-            dists = squareform(pdist(data))
+            dists = squareform(pdist(self.normalize_0_to_1(data)))
 
         else:
             raise RuntimeError("Did not understand {self.distance_measure}. Please provide a function, or use strings 'precomputed', 'euclidian', or 'rfgap'.")

@@ -5,35 +5,22 @@ Questions:
 
 
 Changes Log:
-0. Update label position
-1. Add dots --> add errorbar potentially
-2. Added IDC for user control
-3. Fixed a case where Mash wrongly assigns anchors to be less than one if the methods have more than one connection from domain to the other
-4. Created A parameter Grid
-5. Functionalized the grid creation, and upgraded it to be pretty!
-6. Parameter adjustment heat-map for supplemental information
-7. Remade DIG tests functions to be significantly faster so we can run tests for the t parameter
-8. Running tests for all t parameters across one random iteration
-9. Updated Upload file for putting "like values" into buckets
-10. Check to make sure the files are saving correctly for Mash
-11. Created function choosing for SPUD for SGDM
-12. Created rfGap predictions
-13. Updataed MASH to have custom function creations for determining distances. 
-14. Adding timing fucntions to SPUD
-15. Added Timing functions to MASH
-16. Added seperate Distance measures for both Domain a and B
-
 
 FUTURE IDEAS:
 3. Possible with n domains?
 4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-2. Apply RF_GAP
+1. Add in the ideas of euclidian, manhatten, etc
+2. Look at the graph tools to determine paths (DJIKSTRA)
+3. Add the burn-in period to MASH ( power by n < t on the domain A and B)
+4. Add MALI experiments
 
 If time things:
-3. Find where the program takes the most time -> Graph creation
-4. Rewrite Test manifold algorithms to cache splits
+1. Rewrite Test manifold algorithms to cache splits
+2. Test the Nystrom Methodology. Maybe apply the method to MASh first?
+3. Encode multiple Domain testing
+4. Reduce time complexity somehow by maximizing processes (For example, would it be faster to not even use the graphs function? We could similate it already just by adding edges for MASH)
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method

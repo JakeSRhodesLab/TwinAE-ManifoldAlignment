@@ -25,7 +25,7 @@ class SPUD:
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
 
-          :distance_measure_A: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain A. If it is a function, then it should
+          :distance_measure_B: Either a function or the strings: "euclidian", "RFGAP", or "precomputed" for domain B. If it is a function, then it should
             be formated like my_func(data) and returns a distance measure between points.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
@@ -163,7 +163,7 @@ class SPUD:
     #Euclidian
     elif distance_measure.lower() == "euclidian":
       #Just using a normal distance matrix without Igraph
-      dists = squareform(pdist(data))
+      dists = squareform(pdist(data)) #Add it here -> if its in already for additionally block
 
     elif distance_measure.lower() == "rfgap":
       ### Currently not operating ###
