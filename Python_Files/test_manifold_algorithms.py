@@ -9,15 +9,18 @@ Changes Log:
 1. Updated both SPUD and DIG so any sk-learn method can be used as a distance choice
 2. Added apply_agregation function (is that the right terminology here?) to MASH
 3. Added in Burn_in functionality to MASH... >>> It seems not helpful. 
+4. Added the abs methodology back to SPUD. Its called OD_method = "abs". However, it is optimized for speed, but will now easily overpass memory
+5. Changed operation parameter to agg_method for clarity in SPUD
+6. Add the flexibility to use kernals instead of pure distances for SPUD. It seems to be really helpful at times. 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-2. Look at the graph tools to determine paths (DJIKSTRA)
-3. Add the burn-in period to MASH ( power by n < t on the domain A and B)
+1. Fix memory demands for SPUD
 4. Add MALI experiments
+5. Spud should error when bad known anchors are given
 
 If time things:
 1. Rewrite Test manifold algorithms to cache splits

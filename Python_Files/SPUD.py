@@ -15,7 +15,7 @@ from rfgap import RFGAP
 from time import time
 
 class SPUD:
-  def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5, operation = "normalize", IDC = 1, algorithm = "djikstra", verbose = 0, **kwargs):
+  def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5, OD_method = "default", use_kernals = False, agg_method = "normalize", IDC = 1, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
@@ -33,7 +33,11 @@ class SPUD:
           :Knn: states how many nearest neighbors we want to use in the graph construction. If
             Knn is set to "connect" then it will ensure connection in the graph.
 
-          :Operation: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
+          :OD_method: stands for Off-diagonal method. Can be the strings "abs", "mean" or "default". "Abs" calculates the absolute distances between the
+            shortest paths to the same anchor, where as default calculates the shortest paths by traveling through an anchor. "Mean" calculates the average distance
+            by going through each anchor.
+
+          :agg_method: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
             It can be 'sqrt', 'log', any float, or 'None'.
             If 'sqrt', it applies a square root function, and then transposes it to start at 0. Best for when domains aren't the same shape.
             If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
@@ -55,10 +59,11 @@ class SPUD:
         self.distance_measure_B = distance_measure_B
         self.verbose = verbose
         self.knn = knn
-        self.operation = operation
+        self.agg_method = agg_method
         self.kwargs = kwargs
         self.IDC = IDC
-        self.algorithm = algorithm
+        self.OD_method = OD_method.lower()
+        self.use_kernals = use_kernals
 
         #Set self.emb to be None
         self.emb = None
@@ -86,10 +91,16 @@ class SPUD:
         self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
         self.print_time(" Time it took to compute SGDM:  ")
 
-        #Create Igraphs from the input.
+        #Create Igraphs and kernals from the input.
         self.print_time()
-        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
-        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs).to_igraph()
+        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs)
+        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs)
+
+        self.kernalsA = self.graphA.K.toarray()
+        self.kernalsB = self.graphB.K.toarray()
+
+        self.graphA = self.graphA.to_igraph()
+        self.graphB = self.graphB.to_igraph()
         self.print_time(" Time it took to execute graphtools.Graph functions:  ")
 
         #Cache these values for fast lookup
@@ -99,14 +110,15 @@ class SPUD:
         #Save the known Anchors
         self.known_anchors = np.array(known_anchors)
 
-        #Merge the graphs 
-        self.print_time()
-        self.graphAB = self.merge_graphs()
-        self.print_time(" Time it took to execute merge_graphs function:  ")
+        #Merge the graphs
+        if self.OD_method == "default":
+          self.print_time()
+          self.graphAB = self.merge_graphs()
+          self.print_time(" Time it took to execute merge_graphs function:  ")
 
         #Get the distances
         self.print_time()
-        self.block = self.get_block(self.graphAB)
+        self.block = self.get_block()
         self.print_time(" Time it took to execute get_block function:  ")
 
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
@@ -171,6 +183,58 @@ class SPUD:
 
     #Normalize it and return the data
     return self.normalize_0_to_1(dists)
+
+  def get_off_diagonal_distances(self):
+    """
+    Calculates the off-diagonal by finding the closest anchors to each other.
+    """
+
+    #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
+    if self.verbose > 2:
+       print(f"Preforming {self.OD_method} calculations. Setting the use of kernals to true.\n---------------------------------------------------------")
+    
+    self.use_kernals = True
+
+    anchor_dists_A = 1 - self.kernalsA[:, self.known_anchors[:, 0]]
+    anchor_dists_B = 1 - self.kernalsB[:, self.known_anchors[:, 1]]
+
+    if self.OD_method == "abs":
+      """
+      Excessive Memory Problem Solution: Batches
+
+      We normally hit the problem with the Anchor Dists (though it may be the closest anchor part too -- hopefully not)
+
+      Instead of selecting the anchor distances later we can apply it before via a loop (Maybe do bacthes of len_B/15?
+
+      Can we shrink the float size? 
+      
+      """
+
+
+      # Find the indices of the closest anchors for each node in both graphs
+      A_smallest_index = anchor_dists_A.argmin(axis=1)
+      B_smallest_index = anchor_dists_B.argmin(axis=1)
+
+      # Create the Cartesian product of the labels - We override labels here as much as possible to save memory
+      closest_anchor_array = np.vstack([np.repeat(A_smallest_index, self.len_B), np.tile(B_smallest_index, self.len_A)]).T
+
+      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
+      anchor_dists_A = np.repeat(anchor_dists_A, repeats=self.len_B, axis = 0)[np.arange(len(closest_anchor_array))[:, None], closest_anchor_array]
+      anchor_dists_B = np.tile(anchor_dists_B, (self.len_A, 1))[np.arange(len(closest_anchor_array))[:, None], closest_anchor_array]
+
+      #Perform the calculation
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).min(axis = 1), newshape=(self.len_A, self.len_B))
+
+    if self.OD_method == "mean":
+      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
+      anchor_dists_A = np.repeat(anchor_dists_A, repeats=self.len_B, axis = 0)
+      anchor_dists_B = np.tile(anchor_dists_B, (self.len_A, 1))
+
+      #Perform the calculation
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).mean(axis = 1), newshape=(self.len_A, self.len_B))
+       
+
+    return off_diagonal
 
   """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
@@ -242,7 +306,7 @@ class SPUD:
         #Return the Igraph object
         return merged
     
-  def get_block(self, graph):
+  def get_block(self):
     """
     Returns a transformed and normalized block.
     
@@ -251,34 +315,48 @@ class SPUD:
       
     """
 
-    #Get the vertices to find the distances between graphs. This helps when len_A != len_B
-    verticesA = np.array(range(self.len_A))
-    verticesB = np.array(range(self.len_B)) + self.len_A
+    #Find the off_diagonal block depending on our method
+    if self.OD_method != "default":
+       off_diagonal = self.get_off_diagonal_distances()
+    else:
+      #Get the vertices to find the distances between graphs. This helps when len_A != len_B
+      verticesA = np.array(range(self.len_A))
+      verticesB = np.array(range(self.len_B)) + self.len_A
 
-    #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
-    off_diagonal = self.normalize_0_to_1(np.array(graph.distances(source = verticesA, target = verticesB, weights = "weight", algorithm = self.algorithm)))
+      #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
+      off_diagonal = self.normalize_0_to_1(np.array(self.graphAB.distances(source = verticesA, target = verticesB, weights = "weight"))) # We could break this apart as another function to calculate the abs value in another way. This would reduce time complexity, though likely not be as accurate. 
 
-    #Apply operation modifications
-    if type(self.operation) == float:
-      off_diagonal *= self.operation
+    #Apply agg_method modifications
+    if type(self.agg_method) == float:
+      off_diagonal *= self.agg_method
 
-    elif self.operation == "sqrt":
+    elif self.agg_method == "abs":
+       pass
+
+    elif self.agg_method == "sqrt":
       off_diagonal = np.sqrt(off_diagonal + 1) #We have found that adding one helps
 
       #And so the distances are correct, we lower it so the scale is closer to 0 to 1
       off_diagonal = off_diagonal - off_diagonal.min()
 
     #If it is log, we check to to see if the domains match. If they do, we just apply the algorithm to the off-diagonal, which yeilds better results
-    elif self.operation == "log" and self.len_A == self.len_B:
+    elif self.agg_method == "log" and self.len_A == self.len_B:
         #Apply the negative log, pdist, and squareform
         off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
     #Create the block
-    block = np.block([[self.distsA, off_diagonal],
-                      [off_diagonal.T, self.distsB]])
+    if self.use_kernals:
+      block = np.block([[1 - self.kernalsA, off_diagonal],
+                        [off_diagonal.T, 1 - self.kernalsB]])
+    else:
+      block = np.block([[self.distsA, off_diagonal],
+                        [off_diagonal.T, self.distsB]])
     
-    #If the operation is log, and the domain shapes don't match, we have to apply the process to the block. 
-    if self.operation == "log" and self.len_A != self.len_B:
+    #If the agg_method is log, and the domain shapes don't match, we have to apply the process to the block. 
+    if self.agg_method == "log" and self.len_A != self.len_B:
+      if self.verbose > 0:
+         print("Domain sizes dont macth. Will apply the 'log' aggregation method against the whole block rather just the off_diagonal.")
+
       #Apply the negative log, pdist, and squareform
       block = self.normalize_0_to_1((squareform(pdist((-np.log(1+block))))))
 
