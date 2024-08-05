@@ -9,7 +9,7 @@ import igraph as ig
 from sklearn.manifold import MDS
 import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from rfgap import RFGAP
+from scipy.sparse import coo_matrix
 
 #Not necessary libraries, but helpful
 from time import time
@@ -96,8 +96,8 @@ class SPUD:
         self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs)
         self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs)
 
-        self.kernalsA = self.graphA.K.toarray()
-        self.kernalsB = self.graphB.K.toarray()
+        self.kernalsA = self.get_triu_sparse(self.graphA.K.toarray())
+        self.kernalsB = self.get_triu_sparse(self.graphB.K.toarray())
 
         self.graphA = self.graphA.to_igraph()
         self.graphB = self.graphB.to_igraph()
@@ -120,6 +120,9 @@ class SPUD:
         self.print_time()
         self.block = self.get_block()
         self.print_time(" Time it took to execute get_block function:  ")
+
+        if self.verbose > 0:
+           print("<><><><><><><><><><><><><>  Processed Finished  <><><><><><><><><><><><><>")
 
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def print_time(self, print_statement =  ""):
@@ -182,7 +185,7 @@ class SPUD:
       raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
 
     #Normalize it and return the data
-    return self.normalize_0_to_1(dists)
+    return self.get_triu_sparse(self.normalize_0_to_1(dists))
 
   def get_off_diagonal_distances(self):
     """
@@ -236,6 +239,36 @@ class SPUD:
 
     return off_diagonal
 
+
+  def get_triu_sparse(self, matrix, tol=1e-4):
+      """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
+      redundant. 
+      """
+      #Check if the matrix is symetric
+      if np.allclose(matrix, matrix.T, atol=tol):
+         
+        #Get the upper triangle rows and columns
+        rows, cols = np.triu_indices_from(matrix)
+        data = matrix[rows, cols]
+
+        #Convert to sparse matrix and return the data
+        return coo_matrix((data, (rows, cols)), shape=matrix.shape)
+      
+      else:
+        #Return the original matrix if the matrix is not symmetric
+        if self.verbose > 1:
+           print("  Matrix is not symmetric. Failed to create sparse matrix.")
+        return matrix
+         
+
+  def reconstruct_sparse_matrix(self, upper_half_sparse):
+      #First set the matrix to be dense
+      upper_half_dense = upper_half_sparse.toarray()
+
+      #Add the transpose and then subtract the diagonal (so we don't double those values)
+      return upper_half_dense + upper_half_dense.T - np.diag(np.diag(upper_half_dense))
+    
+  
   """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
@@ -324,6 +357,7 @@ class SPUD:
       verticesB = np.array(range(self.len_B)) + self.len_A
 
       #Get the off-diagonal block by using the distance method. This returns a distnace matrix.
+      #TODO: Think about how we neeed to reconstruct this
       off_diagonal = self.normalize_0_to_1(np.array(self.graphAB.distances(source = verticesA, target = verticesB, weights = "weight"))) # We could break this apart as another function to calculate the abs value in another way. This would reduce time complexity, though likely not be as accurate. 
 
     #Apply agg_method modifications
