@@ -1,5 +1,15 @@
 #Shortest Path to Union Domains (SPUD)
 
+"""
+Ideas to increase Computation:
+np.tri to get the indicies seems to take a long time. We likely use the same indicies, so maybe we could create a dictionary of size to indicies?
+
+Tasks: Go through code and check where we want to make things triangular, and where to test their speeds in computing. 
+2. Go through and change the data type to a smaller float
+3. Do I need the check for symmetric? IT always will be, unless given a precomputed data... ? No it will always be
+3. With the mean and abs value, would we want to change from using kernals to Jaccard similarities? Maybe we could cap it at 3 connections so its still fast -- or we could apply diffusion and then overlap that with the kernal?? 
+"""
+
 #Install the libraries
 from scipy.spatial.distance import pdist, squareform, _METRICS
 import graphtools
@@ -9,7 +19,6 @@ import igraph as ig
 from sklearn.manifold import MDS
 import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from scipy.sparse import coo_matrix
 
 #Not necessary libraries, but helpful
 from time import time
@@ -93,11 +102,11 @@ class SPUD:
 
         #Create Igraphs and kernals from the input.
         self.print_time()
-        self.graphA = graphtools.Graph(self.distsA, knn = self.knn, knn_max= self.knn, **self.kwargs)
-        self.graphB = graphtools.Graph(self.distsB, knn = self.knn, knn_max= self.knn, **self.kwargs)
+        self.graphA = graphtools.Graph(self.reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
+        self.graphB = graphtools.Graph(self.reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
 
-        self.kernalsA = self.get_triu_sparse(self.graphA.K.toarray())
-        self.kernalsB = self.get_triu_sparse(self.graphB.K.toarray())
+        self.kernalsA = self.get_triangular(self.graphA.K.toarray())
+        self.kernalsB = self.get_triangular(self.graphB.K.toarray())
 
         self.graphA = self.graphA.to_igraph()
         self.graphB = self.graphB.to_igraph()
@@ -185,7 +194,7 @@ class SPUD:
       raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
 
     #Normalize it and return the data
-    return self.get_triu_sparse(self.normalize_0_to_1(dists))
+    return self.get_triangular(self.normalize_0_to_1(dists))
 
   def get_off_diagonal_distances(self):
     """
@@ -194,12 +203,9 @@ class SPUD:
 
     #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
     if self.verbose > 2:
-       print(f"Preforming {self.OD_method} calculations. Setting the use of kernals to true.\n---------------------------------------------------------")
+       print(f"Preforming {self.OD_method} calculations. Setting the use of kernals to true.\n")
     
     self.use_kernals = True
-
-    anchor_dists_A = 1 - self.kernalsA[:, self.known_anchors[:, 0]]
-    anchor_dists_B = 1 - self.kernalsB[:, self.known_anchors[:, 1]]
 
     if self.OD_method == "abs":
       """
@@ -212,6 +218,9 @@ class SPUD:
       Can we shrink the float size? 
       
       """
+
+      anchor_dists_A = 1 - self.index_triangular(self.kernalsA, columns = self.known_anchors[:, 0])
+      anchor_dists_B = 1 - self.index_triangular(self.kernalsB, columns = self.known_anchors[:, 1])
 
 
       # Find the indices of the closest anchors for each node in both graphs
@@ -226,47 +235,130 @@ class SPUD:
       anchor_dists_B = np.tile(anchor_dists_B, (self.len_A, 1))[np.arange(len(closest_anchor_array))[:, None], closest_anchor_array]
 
       #Perform the calculation
-      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).min(axis = 1), newshape=(self.len_A, self.len_B))
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).min(axis = 1), newshape=(self.len_A, self.len_B)) #We would need to fix the new shape here
 
     if self.OD_method == "mean":
-      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(anchor_dists_A, repeats=self.len_B, axis = 0)
-      anchor_dists_B = np.tile(anchor_dists_B, (self.len_A, 1))
 
-      #Perform the calculation
-      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).mean(axis = 1), newshape=(self.len_A, self.len_B))
-       
+      #Take the mean of each one first, then select.
+      anchor_dists_A = 1 - self.get_triangular_mean(*self.index_triangular(self.kernalsA, columns = self.known_anchors[:, 0], return_indices=True)) 
+      anchor_dists_B = 1 - self.get_triangular_mean(*self.index_triangular(self.kernalsB, columns = self.known_anchors[:, 1], return_indices=True))
 
+      #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
+      anchor_dists_A = np.repeat(anchor_dists_A, repeats= self.len_B)
+      anchor_dists_B = np.tile(anchor_dists_B, self.len_A)
+      
+      #Convert it to the square matrix. NOTE: Do we want to convert it back into a triangular????? - Probably not.
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
+             
     return off_diagonal
 
-
-  def get_triu_sparse(self, matrix, tol=1e-4):
-      """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
-      redundant. 
-      """
-      #Check if the matrix is symetric
-      if np.allclose(matrix, matrix.T, atol=tol):
-         
-        #Get the upper triangle rows and columns
-        rows, cols = np.triu_indices_from(matrix)
-        data = matrix[rows, cols]
-
-        #Convert to sparse matrix and return the data
-        return coo_matrix((data, (rows, cols)), shape=matrix.shape)
+  def get_triangular(self, matrix, tol=1e-4):
+    """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
+    redundant. 
+    """
+    #Check if the matrix is symetric
+    if np.allclose(matrix, matrix.T, atol=tol):
       
-      else:
-        #Return the original matrix if the matrix is not symmetric
-        if self.verbose > 1:
-           print("  Matrix is not symmetric. Failed to create sparse matrix.")
-        return matrix
-         
+      #flatten the array and just take the upper triangular part
+      return matrix[np.triu_indices_from(matrix)]
+    
+    else:
+      #Return the original matrix if the matrix is not symmetric
+      if self.verbose > 1:
+          print("  Matrix is not symmetric. Failed to create sparse matrix.")
+      return matrix
 
-  def reconstruct_sparse_matrix(self, upper_half_sparse):
-      #First set the matrix to be dense
-      upper_half_dense = upper_half_sparse.toarray()
+  def index_triangular(self, upper_triangular, columns, return_indices=False):
+    """Indexes the triangular matrix. If rows or columns are set to None, it returns all of them.
+    If return_indices is True, it also returns the indices and the mask used for indexing."""
 
-      #Add the transpose and then subtract the diagonal (so we don't double those values)
-      return upper_half_dense + upper_half_dense.T - np.diag(np.diag(upper_half_dense))
+    # Check to see if the ndim = 1, else it's already built
+    if upper_triangular.ndim == 1:
+
+        # Get the size of the original matrix
+        size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
+        indices = np.triu_indices(size)
+
+        # Create the mask for the specified columns
+        col_mask = np.isin(indices[1], columns)
+
+        # Create the mask for the symmetric counterparts in the lower triangle
+        row_mask = np.isin(indices[0], columns)
+
+        # Combine the row_mask with the off_diagonal_mask
+        row_mask = row_mask & (indices[0] != indices[1])
+
+
+        # Apply the combined mask to indices
+        indices = np.concatenate((indices[0][col_mask], indices[1][row_mask]))
+        upper_triangular = np.concatenate((upper_triangular[col_mask], upper_triangular[row_mask]))
+
+        if return_indices:
+            # Return the matrix, its indices, and mask
+            return upper_triangular, indices
+        else:
+            # Just return the matrix
+            return upper_triangular
+        
+    else:
+
+        # If the input is already a matrix, apply the row and column selection directly
+        upper_triangular = upper_triangular[:, columns]
+
+        return upper_triangular
+    
+  def get_triangular_mean(self, upper_triangular, indices):
+    """Calculates the mean of the upper-triangle in a highly efficient and vectorized fashion. 
+      Column can be set to True to calculate the mean of the column or False for rows"""
+    
+    #Incase some indicies were skipped. TODO: upgrade this for when the labels aren't continuous
+    indices -= indices.min()
+
+    # Calculate the sums and counts for each index
+    sums = np.bincount(indices, weights=upper_triangular)
+    counts = np.bincount(indices)
+
+    return sums / counts
+  
+  def get_triangular_min(self, upper_triangle, indices):
+    """Upper_triangle is a subsetted and flattned upper_triangle of a matrix
+       Indicies tell us which values are kept and which values were subsetted out"""
+    
+    #Incase some indicies were skipped. TODO: upgrade this for when the labels aren't continuous
+    indices -= indices.min()
+
+    # For each row, return the argmin with the flattened upper triangle. 
+
+    #
+
+
+    return 
+
+  def reconstruct_symmetric(self, upper_triangular):
+    """Rebuilds the triangular to a symmetric graph"""
+
+    #Check to see if the ndim = 1, else its already built
+    if upper_triangular.ndim == 1:
+
+      #Cache size for faster processing
+      size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
+
+      #Create a matrix filled with zeros
+      matrix = np.zeros((size, size))
+
+      #Get the indicies for the upper trianglar
+      indices = np.triu_indices(size)
+
+      #Reset the matrix
+      matrix[indices] = upper_triangular
+
+      # Mirror the upper part to the lower part
+      matrix[(indices[1], indices[0])] = upper_triangular 
+
+      return matrix
+    
+    else:
+       return upper_triangular
     
   
   """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
@@ -367,6 +459,7 @@ class SPUD:
     elif self.agg_method == "abs":
        pass
 
+
     elif self.agg_method == "sqrt":
       off_diagonal = np.sqrt(off_diagonal + 1) #We have found that adding one helps
 
@@ -378,13 +471,16 @@ class SPUD:
         #Apply the negative log, pdist, and squareform
         off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
+    #Recreate the block matrix --> This may be faster?
+    off_diagonal = self.reconstruct_symmetric(off_diagonal)
+
     #Create the block
     if self.use_kernals:
-      block = np.block([[1 - self.kernalsA, off_diagonal],
-                        [off_diagonal.T, 1 - self.kernalsB]])
+      block = np.block([[self.reconstruct_symmetric(1 - self.kernalsA), off_diagonal],
+                        [off_diagonal.T, self.reconstruct_symmetric(1 - self.kernalsB)]])
     else:
-      block = np.block([[self.distsA, off_diagonal],
-                        [off_diagonal.T, self.distsB]])
+      block = np.block([[self.reconstruct_symmetric(self.distsA), off_diagonal],
+                        [off_diagonal.T, self.reconstruct_symmetric(self.distsB)]])
     
     #If the agg_method is log, and the domain shapes don't match, we have to apply the process to the block. 
     if self.agg_method == "log" and self.len_A != self.len_B:

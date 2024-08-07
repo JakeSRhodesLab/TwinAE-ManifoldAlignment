@@ -12,6 +12,7 @@ Changes Log:
 4. Added the abs methodology back to SPUD. Its called OD_method = "abs". However, it is optimized for speed, but will now easily overpass memory
 5. Changed operation parameter to agg_method for clarity in SPUD
 6. Add the flexibility to use kernals instead of pure distances for SPUD. It seems to be really helpful at times. 
+7. BIG KNEWS! Spent forever making "Triangular" processing. Speeds up get__block time to O(1) compared to O(n log n)
 
 FUTURE IDEAS:
 3. Possible with n domains?
