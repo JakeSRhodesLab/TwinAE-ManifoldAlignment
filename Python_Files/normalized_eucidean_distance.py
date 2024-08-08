@@ -1,16 +1,24 @@
-"""This is a function for calculating the difference between time series data using cross correlation"""
-#%%
+"""
+This is a function for calculating the difference between time series data using a variety of methods. This file is simply meant
+as a demonstration of the preparations for an execution of that. All functionality here will either end up in the Progression
+Varaible Merger file where the progressions will be prepared for analysis or the temporal_progression_comparision file which
+will house the different comparision methods that we're considering as importable functions into SPUD
+
+"""
+
 import numpy as np
 import pandas as pd
 from tslearn.metrics import dtw_path
 from dtaidistance import dtw
 
-#%%
+
 df = pd.read_excel(r"C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Visit Variables 2024-07-11.xlsx", index_col=[0,1])
+df2 = pd.read_excel(r"C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Visit Variables 2024-08-01.xlsx", index_col=[0,1])
+df3 = pd.read_excel(r"C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Progression Variables 2024-08-01.xlsx", index_col=[0,1])
 #df.reset_index(inplace=True)
 
 # Get all of the temporal sequences in step
-#%%
+
 patients = df.index.get_level_values('RID').unique()
 max_months = df.index.get_level_values("VISMONTH").max()
 months = np.arange(0, (max_months + 1), 6)
@@ -18,7 +26,7 @@ months = np.arange(0, (max_months + 1), 6)
 multi_index = pd.MultiIndex.from_product([patients, months], names=['RID', 'VISMONTH']) 
 # Reindex the DataFrame with all possible six month visits
 df = df.reindex(multi_index)
-#%%
+
 # Interpolate and remove any trailing visits for each person that have no information in them
 def fill_and_chop_nans(small_df): 
     something_in_row = small_df.notna().any(axis=1) #returns True or False to say if each index has any info at all
@@ -32,13 +40,18 @@ def fill_and_chop_nans(small_df):
 
 df = df.groupby("RID", group_keys = False).apply(fill_and_chop_nans)
 
-# Normalize the values for each variable so that smaller units don't lend an advantage
+checkpoint_last = df
 
+# Normalize the values for each variable so that smaller units don't lend an advantage
 def normalize_column(column):
     normalized_column = (column - np.mean(column)) / np.std(column)
     return normalized_column
 
 normalized_df = df.apply(normalize_column, axis=0)
+
+#TODO Everything above this is taken care of (integrated into the Progression Variable Merger)
+#Decide if we want to normalize it before or after we export it and integrate everything below this
+#point into SPUD!
 
 # Create a squareform array of the comparisons
 
