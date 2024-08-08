@@ -13,15 +13,25 @@ Changes Log:
 5. Changed operation parameter to agg_method for clarity in SPUD
 6. Add the flexibility to use kernals instead of pure distances for SPUD. It seems to be really helpful at times. 
 7. BIG KNEWS! Spent forever making "Triangular" processing. Speeds up get__block time to O(1) compared to O(n log n)
+    7a) Completed it for the means algorithm. (However, we may need to compute with jaccard's methodology)
+    7b) Completed it for abs algorithm. It doesn't preform as well as I feel it should
+
+8. Added whether or not you wish to include to use the kernal in determining off-diagonal and block rather than just the pdists. 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-1. Fix memory demands for SPUD
+1. Fix memory demands for SPUD -- > We can lower the dtype still 
+2. Allow for toggling whether we want trianglelization or not -- determine best places to use it
+3. Determine if we want to use Jaccard-similarity instead of just the kernals so we still use the shortest paths
+
 4. Add MALI experiments
 5. Spud should error when bad known anchors are given
+
+6. Add in the NaN calculations. 
+7. Add in the other way Marshall asked to be able to format anchors
 
 If time things:
 1. Rewrite Test manifold algorithms to cache splits

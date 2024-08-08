@@ -7,7 +7,7 @@ np.tri to get the indicies seems to take a long time. We likely use the same ind
 Tasks: Go through code and check where we want to make things triangular, and where to test their speeds in computing. 
 2. Go through and change the data type to a smaller float
 3. Do I need the check for symmetric? IT always will be, unless given a precomputed data... ? No it will always be
-3. With the mean and abs value, would we want to change from using kernals to Jaccard similarities? Maybe we could cap it at 3 connections so its still fast -- or we could apply diffusion and then overlap that with the kernal?? 
+3. With the mean and abs value, would we want to change from using kernals to Jaccard similarities? Maybe we could cap it at 3 connections so its still fast -- or we could apply diffusion and then overlap that with the kernal??  Or compute the kernal via numpy?
 """
 
 #Install the libraries
@@ -24,7 +24,9 @@ from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from time import time
 
 class SPUD:
-  def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5, OD_method = "default", use_kernals = False, agg_method = "normalize", IDC = 1, verbose = 0, **kwargs):
+  def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
+               OD_method = "default", use_kernals = False, agg_method = "normalize", IDC = 1, 
+               similarity_measure = "default", verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
@@ -57,6 +59,9 @@ class SPUD:
             to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
             representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
             deemed too strong, the user may choose to assign the IDC < 1.
+
+          :similarity_measure: Can be default or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
+            to the resulting graph. 
             
           :verbose: can be any float or integer. Determines what is printed as output as the function runs.
 
@@ -94,41 +99,51 @@ class SPUD:
         if self.verbose > 3:
            print("Time Data Below")
 
+        #Cache these values for fast lookup
+        self.len_A = len(dataA)
+        self.len_B = len(dataB)
+
         #For each domain, calculate the distances within their own domain
         self.print_time()
         self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
         self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
-        self.print_time(" Time it took to compute SGDM:  ")
+        self.print_time("Time it took to compute SGDM:  ")
 
-        #Create Igraphs and kernals from the input.
-        self.print_time()
-        self.graphA = graphtools.Graph(self.reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
-        self.graphB = graphtools.Graph(self.reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
+        #If these parameters are true, we can skip this all:
+        if self.OD_method != "default" and self.use_kernals == False:
+           if self.verbose > 0:
+              print("Skipping graph creating. Performing nearest anchor manifold alignment (NAMA) instead of SPUD.")
 
-        self.kernalsA = self.get_triangular(self.graphA.K.toarray())
-        self.kernalsB = self.get_triangular(self.graphB.K.toarray())
+        else:
+          #Create Igraphs and kernals from the input.
+          self.print_time()
+          self.graphA = graphtools.Graph(self.reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
+          self.graphB = graphtools.Graph(self.reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
 
-        self.graphA = self.graphA.to_igraph()
-        self.graphB = self.graphB.to_igraph()
-        self.print_time(" Time it took to execute graphtools.Graph functions:  ")
+          self.kernalsA = self.get_triangular(self.graphA.K.toarray())
+          self.kernalsB = self.get_triangular(self.graphB.K.toarray())
 
-        #Cache these values for fast lookup
-        self.len_A = self.graphA.vcount()
-        self.len_B = self.graphB.vcount()
+          self.graphA = self.graphA.to_igraph()
+          self.graphB = self.graphB.to_igraph()
+          self.print_time("Time it took to execute graphtools.Graph functions:  ")
 
         #Save the known Anchors
         self.known_anchors = np.array(known_anchors)
 
         #Merge the graphs
         if self.OD_method == "default":
+          if self.verbose > 0 and self.len_A > 1000:
+             print("  --> Warning: Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'abs' for faster computation time.")
+
+
           self.print_time()
           self.graphAB = self.merge_graphs()
-          self.print_time(" Time it took to execute merge_graphs function:  ")
+          self.print_time("Time it took to execute merge_graphs function:  ")
 
         #Get the distances
         self.print_time()
         self.block = self.get_block()
-        self.print_time(" Time it took to execute get_block function:  ")
+        self.print_time("Time it took to execute get_block function:  ")
 
         if self.verbose > 0:
            print("<><><><><><><><><><><><><>  Processed Finished  <><><><><><><><><><><><><>")
@@ -203,9 +218,14 @@ class SPUD:
 
     #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
     if self.verbose > 2:
-       print(f"Preforming {self.OD_method} calculations. Setting the use of kernals to true.\n")
+       print(f"Preforming {self.OD_method} calculations.\n")
     
-    self.use_kernals = True
+    if self.use_kernals == True:
+       matrixA = 1 - self.kernalsA
+       matrixB = 1 - self.kernalsB
+    else:
+       matrixA = self.distsA
+       matrixB = self.distsB
 
     if self.OD_method == "abs":
       """
@@ -219,29 +239,34 @@ class SPUD:
       
       """
 
-      anchor_dists_A = 1 - self.index_triangular(self.kernalsA, columns = self.known_anchors[:, 0])
-      anchor_dists_B = 1 - self.index_triangular(self.kernalsB, columns = self.known_anchors[:, 1])
-
+      #Subset A and B to only the columns so we only have the distances to the anchors
+      anchor_dists_A, indiciesA = self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
+      anchor_dists_B, indiciesB = self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
 
       # Find the indices of the closest anchors for each node in both graphs
-      A_smallest_index = anchor_dists_A.argmin(axis=1)
-      B_smallest_index = anchor_dists_B.argmin(axis=1)
-
-      # Create the Cartesian product of the labels - We override labels here as much as possible to save memory
-      closest_anchor_array = np.vstack([np.repeat(A_smallest_index, self.len_B), np.tile(B_smallest_index, self.len_A)]).T
+      A_smallest_index = self.min_bincount(indiciesA, anchor_dists_A)
+      B_smallest_index = self.min_bincount(indiciesB, anchor_dists_B)
 
       #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(anchor_dists_A, repeats=self.len_B, axis = 0)[np.arange(len(closest_anchor_array))[:, None], closest_anchor_array]
-      anchor_dists_B = np.tile(anchor_dists_B, (self.len_A, 1))[np.arange(len(closest_anchor_array))[:, None], closest_anchor_array]
+      anchor_dists_A = np.repeat(matrixA[A_smallest_index], repeats=self.len_B)
+      anchor_dists_B = np.tile(matrixB[A_smallest_index], self.len_A)
+
+      off_diagonal_using_A_anchors = np.abs(anchor_dists_A - anchor_dists_B)
+
+      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
+      anchor_dists_A = np.repeat(matrixA[B_smallest_index], repeats=self.len_B)
+      anchor_dists_B = np.tile(matrixB[B_smallest_index], self.len_A)
+
+      off_diagonal_using_B_anchors = np.abs(anchor_dists_A - anchor_dists_B)
 
       #Perform the calculation
-      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B).min(axis = 1), newshape=(self.len_A, self.len_B)) #We would need to fix the new shape here
+      off_diagonal = np.reshape(np.minimum(off_diagonal_using_A_anchors, off_diagonal_using_B_anchors), newshape=(self.len_A, self.len_B))
 
     if self.OD_method == "mean":
 
       #Take the mean of each one first, then select.
-      anchor_dists_A = 1 - self.get_triangular_mean(*self.index_triangular(self.kernalsA, columns = self.known_anchors[:, 0], return_indices=True)) 
-      anchor_dists_B = 1 - self.get_triangular_mean(*self.index_triangular(self.kernalsB, columns = self.known_anchors[:, 1], return_indices=True))
+      anchor_dists_A = self.get_triangular_mean(*self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
+      anchor_dists_B = self.get_triangular_mean(*self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
 
       #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
       anchor_dists_A = np.repeat(anchor_dists_A, repeats= self.len_B)
@@ -333,6 +358,28 @@ class SPUD:
 
 
     return 
+
+  def min_bincount(self, indices, values):
+    # Get the unique indices and their positions
+    unique_indices= np.unique(indices)
+    
+    # Initialize an array to store the minimum values and their positions
+    min_values = np.full(unique_indices.shape, np.inf)
+    
+    # Use np.minimum.at to update the min_values array
+    np.minimum.at(min_values, indices, values)
+
+    # Create a mask for the minimum values
+    min_pos = np.where((values == min_values[indices]))[0]
+
+    # Extract the relevant indices
+    list_thing = indices[min_pos]
+
+    # Use numpy's unique function to find duplicates
+    _, unique_indices = np.unique(list_thing, return_index=True)
+
+    # Remove duplicates by selecting only the unique indice
+    return min_pos[unique_indices]
 
   def reconstruct_symmetric(self, upper_triangular):
     """Rebuilds the triangular to a symmetric graph"""
