@@ -57,6 +57,8 @@ class SPUD:
         #Set the values
         self.distance_measure_A = distance_measure_A
         self.distance_measure_B = distance_measure_B
+        self.distance_measure_A = distance_measure_A
+        self.distance_measure_B = distance_measure_B
         self.verbose = verbose
         self.knn = knn
         self.agg_method = agg_method
@@ -85,7 +87,15 @@ class SPUD:
         if self.verbose > 3:
            print("Time Data Below")
 
+        #Print timing data
+        if self.verbose > 3:
+           print("Time Data Below")
+
         #For each domain, calculate the distances within their own domain
+        self.print_time()
+        self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
+        self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
+        self.print_time(" Time it took to compute SGDM:  ")
         self.print_time()
         self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
         self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
@@ -152,6 +162,33 @@ class SPUD:
 
         print(print_statement + time_string)
 
+  def print_time(self, print_statement =  ""):
+    """A function that times the algorithms and returns a string of how
+    long the function was last called."""
+
+    #Only do this if the verbose is higher than 4
+    if self.verbose > 3:
+
+      #Start time. 
+      if not hasattr(self, 'start_time'):
+        self.start_time = time()
+
+      #Check to see if it equals None
+      elif self.start_time == None:
+        self.start_time = time()
+
+      else:
+        #We need to end the time
+        end_time = time()
+
+        #Create a string to return
+        time_string = str(round(end_time - self.start_time, 2))
+
+        #Reset the start time
+        self.start_time = None
+
+        print(print_statement + time_string)
+
   def normalize_0_to_1(self, value):
     """Normalizes the value to be between 0 and 1 and resets infinite values."""
 
@@ -165,14 +202,18 @@ class SPUD:
     return value
 
   def get_SGDM(self, data, distance_measure):
+  def get_SGDM(self, data, distance_measure):
     """SGDM - Same Graph Distance Matrix.
     This returns the normalized distances within each domain."""
 
     #Check to see if it is a function
     if callable(distance_measure):
       return distance_measure(data)
+    if callable(distance_measure):
+      return distance_measure(data)
 
     #If the distances are precomputed, return the data. 
+    elif distance_measure.lower() == "precomputed":
     elif distance_measure.lower() == "precomputed":
       return data
     
