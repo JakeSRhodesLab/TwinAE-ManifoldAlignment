@@ -71,8 +71,6 @@ class SPUD:
         #Set the values
         self.distance_measure_A = distance_measure_A
         self.distance_measure_B = distance_measure_B
-        self.distance_measure_A = distance_measure_A
-        self.distance_measure_B = distance_measure_B
         self.verbose = verbose
         self.knn = knn
         self.agg_method = agg_method
@@ -191,18 +189,14 @@ class SPUD:
     return value
 
   def get_SGDM(self, data, distance_measure):
-  def get_SGDM(self, data, distance_measure):
     """SGDM - Same Graph Distance Matrix.
     This returns the normalized distances within each domain."""
 
     #Check to see if it is a function
     if callable(distance_measure):
       return distance_measure(data)
-    if callable(distance_measure):
-      return distance_measure(data)
 
     #If the distances are precomputed, return the data. 
-    elif distance_measure.lower() == "precomputed":
     elif distance_measure.lower() == "precomputed":
       return data
     
