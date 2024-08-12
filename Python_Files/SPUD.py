@@ -5,9 +5,8 @@ Ideas to increase Computation:
 np.tri to get the indicies seems to take a long time. We likely use the same indicies, so maybe we could create a dictionary of size to indicies?
 
 Tasks: Go through code and check where we want to make things triangular, and where to test their speeds in computing. 
-2. Go through and change the data type to a smaller float
 3. Do I need the check for symmetric? IT always will be, unless given a precomputed data... ? No it will always be
-3. With the mean and abs value, would we want to change from using kernals to Jaccard similarities? Maybe we could cap it at 3 connections so its still fast -- or we could apply diffusion and then overlap that with the kernal??  Or compute the kernal via numpy?
+5. Make the use-kernals thing automatic?
 """
 
 #Install the libraries
@@ -26,7 +25,7 @@ from time import time
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
                OD_method = "default", use_kernals = False, agg_method = "normalize", IDC = 1, 
-               similarity_measure = "default", verbose = 0, **kwargs):
+               similarity_measure = "default", float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
@@ -78,6 +77,8 @@ class SPUD:
         self.IDC = IDC
         self.OD_method = OD_method.lower()
         self.use_kernals = use_kernals
+        self.similarity_measure = similarity_measure.lower()
+        self.float_precision = float_precision
 
         #Set self.emb to be None
         self.emb = None
@@ -95,10 +96,6 @@ class SPUD:
             [[1,1], [4,3], [7,6]] would be appropiate.
         '''
 
-        #Print timing data
-        if self.verbose > 3:
-           print("Time Data Below")
-
         #Cache these values for fast lookup
         self.len_A = len(dataA)
         self.len_B = len(dataB)
@@ -110,7 +107,7 @@ class SPUD:
         self.print_time("Time it took to compute SGDM:  ")
 
         #If these parameters are true, we can skip this all:
-        if self.OD_method != "default" and self.use_kernals == False:
+        if self.OD_method != "default" and self.use_kernals == False and self.similarity_measure == "nama":
            if self.verbose > 0:
               print("Skipping graph creating. Performing nearest anchor manifold alignment (NAMA) instead of SPUD.")
 
@@ -211,72 +208,6 @@ class SPUD:
     #Normalize it and return the data
     return self.get_triangular(self.normalize_0_to_1(dists))
 
-  def get_off_diagonal_distances(self):
-    """
-    Calculates the off-diagonal by finding the closest anchors to each other.
-    """
-
-    #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
-    if self.verbose > 2:
-       print(f"Preforming {self.OD_method} calculations.\n")
-    
-    if self.use_kernals == True:
-       matrixA = 1 - self.kernalsA
-       matrixB = 1 - self.kernalsB
-    else:
-       matrixA = self.distsA
-       matrixB = self.distsB
-
-    if self.OD_method == "abs":
-      """
-      Excessive Memory Problem Solution: Batches
-
-      We normally hit the problem with the Anchor Dists (though it may be the closest anchor part too -- hopefully not)
-
-      Instead of selecting the anchor distances later we can apply it before via a loop (Maybe do bacthes of len_B/15?
-
-      Can we shrink the float size? 
-      
-      """
-
-      #Subset A and B to only the columns so we only have the distances to the anchors
-      anchor_dists_A, indiciesA = self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
-      anchor_dists_B, indiciesB = self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
-
-      # Find the indices of the closest anchors for each node in both graphs
-      A_smallest_index = self.min_bincount(indiciesA, anchor_dists_A)
-      B_smallest_index = self.min_bincount(indiciesB, anchor_dists_B)
-
-      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(matrixA[A_smallest_index], repeats=self.len_B)
-      anchor_dists_B = np.tile(matrixB[A_smallest_index], self.len_A)
-
-      off_diagonal_using_A_anchors = np.abs(anchor_dists_A - anchor_dists_B)
-
-      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(matrixA[B_smallest_index], repeats=self.len_B)
-      anchor_dists_B = np.tile(matrixB[B_smallest_index], self.len_A)
-
-      off_diagonal_using_B_anchors = np.abs(anchor_dists_A - anchor_dists_B)
-
-      #Perform the calculation
-      off_diagonal = np.reshape(np.minimum(off_diagonal_using_A_anchors, off_diagonal_using_B_anchors), newshape=(self.len_A, self.len_B))
-
-    if self.OD_method == "mean":
-
-      #Take the mean of each one first, then select.
-      anchor_dists_A = self.get_triangular_mean(*self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
-      anchor_dists_B = self.get_triangular_mean(*self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
-
-      #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
-      anchor_dists_A = np.repeat(anchor_dists_A, repeats= self.len_B)
-      anchor_dists_B = np.tile(anchor_dists_B, self.len_A)
-      
-      #Convert it to the square matrix. NOTE: Do we want to convert it back into a triangular????? - Probably not.
-      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
-             
-    return off_diagonal
-
   def get_triangular(self, matrix, tol=1e-4):
     """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
     redundant. 
@@ -324,9 +255,7 @@ class SPUD:
         else:
             # Just return the matrix
             return upper_triangular
-        
     else:
-
         # If the input is already a matrix, apply the row and column selection directly
         upper_triangular = upper_triangular[:, columns]
 
@@ -345,20 +274,6 @@ class SPUD:
 
     return sums / counts
   
-  def get_triangular_min(self, upper_triangle, indices):
-    """Upper_triangle is a subsetted and flattned upper_triangle of a matrix
-       Indicies tell us which values are kept and which values were subsetted out"""
-    
-    #Incase some indicies were skipped. TODO: upgrade this for when the labels aren't continuous
-    indices -= indices.min()
-
-    # For each row, return the argmin with the flattened upper triangle. 
-
-    #
-
-
-    return 
-
   def min_bincount(self, indices, values):
     # Get the unique indices and their positions
     unique_indices= np.unique(indices)
@@ -407,7 +322,6 @@ class SPUD:
     else:
        return upper_triangular
     
-  
   """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
@@ -478,6 +392,90 @@ class SPUD:
         #Return the Igraph object
         return merged
     
+  def get_off_diagonal_distances(self):
+    """
+    Calculates the off-diagonal by finding the closest anchors to each other.
+    """
+
+    #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
+    if self.verbose > 2:
+       print(f"Preforming {self.OD_method} calculations.\n")
+
+    if self.similarity_measure == "jaccard":
+       matrixA = self.get_triangular(np.array(self.graphA.similarity_jaccard(pairs=None), dtype = self.float_precision))
+       matrixB = self.get_triangular(np.array(self.graphB.similarity_jaccard(pairs=None), dtype = self.float_precision))
+       
+    elif self.similarity_measure == "distances" or self.similarity_measure == "default":
+       matrixA = self.get_triangular(self.normalize_0_to_1(np.array(self.graphA.distances(weights = "weight"), dtype = self.float_precision)))
+       matrixB = self.get_triangular(self.normalize_0_to_1(np.array(self.graphB.distances(weights = "weight"), dtype = self.float_precision)))
+  
+    elif self.similarity_measure == "nama":
+      if self.use_kernals == True:
+        matrixA = 1 - self.kernalsA
+        matrixB = 1 - self.kernalsB
+      else:
+        matrixA = self.distsA
+        matrixB = self.distsB
+
+    else: 
+       raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama' or 'jaccard'")
+
+    if self.OD_method == "abs":
+      """
+      Excessive Memory Problem Solution: Batches
+
+      We normally hit the problem with the Anchor Dists (though it may be the closest anchor part too -- hopefully not)
+
+      Instead of selecting the anchor distances later we can apply it before via a loop (Maybe do bacthes of len_B/15?
+
+      Can we shrink the float size? 
+      
+      """
+
+      if self.len_A != self.len_B:
+         raise RuntimeError("To perfom the absolute value the domain sizes must be equal")
+
+      #Subset A and B to only the columns so we only have the distances to the anchors
+      anchor_dists_A, indiciesA = self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
+      anchor_dists_B, indiciesB = self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
+
+      # Find the indices of the closest anchors for each node in both graphs
+      A_smallest_index = self.min_bincount(indiciesA, anchor_dists_A)
+      B_smallest_index = self.min_bincount(indiciesB, anchor_dists_B)
+
+      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
+      anchor_dists_A = np.repeat(matrixA[A_smallest_index].astype(self.float_precision), repeats=self.len_B)
+      anchor_dists_B = np.tile(matrixB[A_smallest_index].astype(self.float_precision), self.len_A)
+
+      off_diagonal_using_A_anchors = np.abs(anchor_dists_A - anchor_dists_B)
+
+      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
+      anchor_dists_A = np.repeat(matrixA[B_smallest_index].astype(self.float_precision), repeats=self.len_B)
+      anchor_dists_B = np.tile(matrixB[B_smallest_index].astype(self.float_precision), self.len_A)
+
+      off_diagonal_using_B_anchors = np.abs(anchor_dists_A - anchor_dists_B)
+
+      #Perform the calculation
+      off_diagonal = np.reshape(np.minimum(off_diagonal_using_A_anchors, off_diagonal_using_B_anchors), newshape=(self.len_A, self.len_B))
+
+    elif self.OD_method == "mean":
+
+      #Take the mean of each one first, then select.
+      anchor_dists_A = self.get_triangular_mean(*self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
+      anchor_dists_B = self.get_triangular_mean(*self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
+
+      #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
+      anchor_dists_A = np.repeat(anchor_dists_A.astype(self.float_precision), repeats= self.len_B)
+      anchor_dists_B = np.tile(anchor_dists_B.astype(self.float_precision), self.len_A)
+      
+      #Convert it to the square matrix. NOTE: Do we want to convert it back into a triangular????? - Probably not.
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
+
+    else:
+       raise RuntimeError("Did not understand your input for OD_method (Off-Diagonal method). Please use 'mean', 'abs', or 'default'.")
+             
+    return off_diagonal
+
   def get_block(self):
     """
     Returns a transformed and normalized block.
@@ -502,10 +500,6 @@ class SPUD:
     #Apply agg_method modifications
     if type(self.agg_method) == float:
       off_diagonal *= self.agg_method
-
-    elif self.agg_method == "abs":
-       pass
-
 
     elif self.agg_method == "sqrt":
       off_diagonal = np.sqrt(off_diagonal + 1) #We have found that adding one helps
@@ -539,7 +533,7 @@ class SPUD:
 
     return block
 
-  """VISUALIZATION FUNCTIONS"""
+  """<><><><><><><><><><><><><><><><><><><><>     VIZUALIZATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def plot_graphs(self):
     """
     Using the Igraph plot function to plot graphs A, B, and AB. 
