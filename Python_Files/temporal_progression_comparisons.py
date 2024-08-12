@@ -40,7 +40,7 @@ def sequences_distance(df, id_1, id_2, method):
     """feed in the two temporal sequences that you want to compare and specify the method to 
     compare them with, eucidean for just a generalized euclidean distance, dtw for a dynamic time 
     warping, and normdtw for dtw normalized for time sequence length"""
-    print(id_1)
+    #print(id_1) #uncomment to see if it's actually running and how fast it's going
     person_1 = df.loc[[id_1], :].to_numpy()
     person_2 = df.loc[[id_2], :].to_numpy()
     #get the possible lag values with an overlap of at least 3
@@ -73,7 +73,7 @@ def wrapped_euclidean_distances(df):
     # Make and return the omparisions squareform array
     rids = normalized_df.index.get_level_values("RID").unique()
     patient_count = len(rids)
-    comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="dtw") for id_2 in rids] for id_1 in rids]
+    comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="euclidean") for id_2 in rids] for id_1 in rids]
     squareform = np.array(comparisons)
     # Normalize to the range of 0 to 1
     min_val = np.min(squareform)
@@ -90,7 +90,7 @@ def wrapped_dtw_distances(df):
     # Make and return the omparisions squareform array
     rids = normalized_df.index.get_level_values("RID").unique()
     patient_count = len(rids)
-    comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="euclidean") for id_2 in rids] for id_1 in rids]
+    comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="normdtw") for id_2 in rids] for id_1 in rids]
     squareform = np.array(comparisons)
     # Normalize to the range of 0 to 1
     min_val = np.min(squareform)
