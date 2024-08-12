@@ -16,7 +16,10 @@ Changes Log:
     7a) Completed it for the means algorithm. (However, we may need to compute with jaccard's methodology)
     7b) Completed it for abs algorithm. It doesn't preform as well as I feel it should
 
-8. Added whether or not you wish to include to use the kernal in determining off-diagonal and block rather than just the pdists. 
+8. Tested jaccards similaririty. Not great (But it is helpful when the others methods suck)
+
+9. Added whether or not you wish to include to use the kernal in determining off-diagonal and block rather than just the pdists. 
+10. Added float precision to the code if you wanted it
 
 FUTURE IDEAS:
 3. Possible with n domains?
