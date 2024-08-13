@@ -205,10 +205,35 @@ class SPUD:
     elif distance_measure.lower() == "precomputed":
       return data
     
-    #Euclidian
+    #Euclidian and other sci-kit learn methods
     elif distance_measure.lower() in _METRICS:
-      #Just using a normal distance matrix without Igraph
-      dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
+
+      #Check to make sure we have no NaNs. If we do, we will change the algorihm
+      if np.isnan(data).any():
+
+        if self.verbose > 0:
+           print("Warning. NaN's dectected. Calculating distances by ignoring NaN positions, and normalizing. May take longer.")
+
+        #Proceed with the NanN adjustments by creating a custom nan function we can pass into pdist
+        def nan_metric(row_a, row_b, metric):
+
+          # Mask for valid (non-NaN) entries
+          valid_mask = ~np.isnan(row_a) & ~np.isnan(row_b)
+
+          if np.sum(valid_mask) == 0:
+              return np.inf  # If no valid entries, return inf.
+          
+          # Calculate the distance using the specified metric only on valid entries
+          dist = metric(row_a[valid_mask], row_b[valid_mask])
+
+          # Normalize by the number of valid entries
+          return dist / np.sum(valid_mask)
+        
+        dists = squareform(pdist(data, metric = lambda u, v: nan_metric(u, v, metric = _METRICS[distance_measure.lower()].dist_func)))
+        
+      else:
+        #Just using a normal distance matrix without Igraph
+        dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
 
     else:
       raise RuntimeError(f"Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
