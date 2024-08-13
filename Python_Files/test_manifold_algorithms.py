@@ -15,32 +15,29 @@ Changes Log:
 7. BIG KNEWS! Spent forever making "Triangular" processing. Speeds up get__block time to O(1) compared to O(n log n)
     7a) Completed it for the means algorithm. (However, we may need to compute with jaccard's methodology)
     7b) Completed it for abs algorithm. It doesn't preform as well as I feel it should
-
 8. Tested jaccards similaririty. Not great (But it is helpful when the others methods suck)
-
 9. Added whether or not you wish to include to use the kernal in determining off-diagonal and block rather than just the pdists. 
 10. Added float precision to the code if you wanted it
+11. Added the shortest paths methodology to the means process
+12. Improved the abs value process -- Changed Parameterization to be a little simpler as well
+13. Added the adj_block function
+14. Added error printing if wrong labels are given
 
 FUTURE IDEAS:
 3. Possible with n domains?
 4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-1. Fix memory demands for SPUD -- > We can lower the dtype still 
-2. Allow for toggling whether we want trianglelization or not -- determine best places to use it
-3. Determine if we want to use Jaccard-similarity instead of just the kernals so we still use the shortest paths
-
-4. Add MALI experiments
-5. Spud should error when bad known anchors are given
-
 6. Add in the NaN calculations. 
 7. Add in the other way Marshall asked to be able to format anchors
 
 If time things:
 1. Rewrite Test manifold algorithms to cache splits
+1.5. Add MALI experiments
 2. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 3. Encode multiple Domain testing
 4. Reduce time complexity somehow by maximizing processes (For example, would it be faster to not even use the graphs function? We could similate it already just by adding edges for MASH)
+5. Allow for toggling whether we want trianglelization or not -- determine best places to use it
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method

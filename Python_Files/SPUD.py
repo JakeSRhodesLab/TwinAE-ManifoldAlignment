@@ -16,15 +16,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import igraph as ig
 from sklearn.manifold import MDS
-import seaborn as sns
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from Triangular import *
 
-#Not necessary libraries, but helpful
+#Not necessary libraries for the minimal function
 from time import time
+import seaborn as sns
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
-               OD_method = "default", use_kernals = False, agg_method = "normalize", IDC = 1, 
+               OD_method = "default", agg_method = "normalize", IDC = 1, adj_block = False,
                similarity_measure = "default", float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
@@ -76,9 +77,9 @@ class SPUD:
         self.kwargs = kwargs
         self.IDC = IDC
         self.OD_method = OD_method.lower()
-        self.use_kernals = use_kernals
         self.similarity_measure = similarity_measure.lower()
         self.float_precision = float_precision
+        self.adj_block = adj_block
 
         #Set self.emb to be None
         self.emb = None
@@ -100,6 +101,16 @@ class SPUD:
         self.len_A = len(dataA)
         self.len_B = len(dataB)
 
+        #Save the known Anchors
+        self.known_anchors = np.array(known_anchors)
+
+        #Change known_anchors to correspond to off diagonal matricies
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+        #Check to make sure the anchors are given correctly
+        if np.max(self.known_anchors[:, 0]) > self.len_A or  np.max(self.known_anchors[:, 1]) > self.len_B:
+           raise RuntimeWarning("Warning: Check you known anchors. Anchors given exceed vertices in data.")
+
         #For each domain, calculate the distances within their own domain
         self.print_time()
         self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
@@ -107,25 +118,22 @@ class SPUD:
         self.print_time("Time it took to compute SGDM:  ")
 
         #If these parameters are true, we can skip this all:
-        if self.OD_method != "default" and self.use_kernals == False and self.similarity_measure == "nama":
+        if self.OD_method != "default"  and self.similarity_measure == "nama":
            if self.verbose > 0:
               print("Skipping graph creating. Performing nearest anchor manifold alignment (NAMA) instead of SPUD.")
 
         else:
           #Create Igraphs and kernals from the input.
           self.print_time()
-          self.graphA = graphtools.Graph(self.reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
-          self.graphB = graphtools.Graph(self.reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
+          self.graphA = graphtools.Graph(reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
+          self.graphB = graphtools.Graph(reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
 
-          self.kernalsA = self.get_triangular(self.graphA.K.toarray())
-          self.kernalsB = self.get_triangular(self.graphB.K.toarray())
+          self.kernalsA = get_triangular(self.graphA.K.toarray())
+          self.kernalsB = get_triangular(self.graphB.K.toarray())
 
           self.graphA = self.graphA.to_igraph()
           self.graphB = self.graphB.to_igraph()
           self.print_time("Time it took to execute graphtools.Graph functions:  ")
-
-        #Save the known Anchors
-        self.known_anchors = np.array(known_anchors)
 
         #Merge the graphs
         if self.OD_method == "default":
@@ -203,125 +211,11 @@ class SPUD:
       dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
 
     else:
-      raise RuntimeError("Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
+      raise RuntimeError(f"Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
 
     #Normalize it and return the data
-    return self.get_triangular(self.normalize_0_to_1(dists))
+    return get_triangular(self.normalize_0_to_1(dists))
 
-  def get_triangular(self, matrix, tol=1e-4):
-    """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
-    redundant. 
-    """
-    #Check if the matrix is symetric
-    if np.allclose(matrix, matrix.T, atol=tol):
-      
-      #flatten the array and just take the upper triangular part
-      return matrix[np.triu_indices_from(matrix)]
-    
-    else:
-      #Return the original matrix if the matrix is not symmetric
-      if self.verbose > 1:
-          print("  Matrix is not symmetric. Failed to create sparse matrix.")
-      return matrix
-
-  def index_triangular(self, upper_triangular, columns, return_indices=False):
-    """Indexes the triangular matrix. If rows or columns are set to None, it returns all of them.
-    If return_indices is True, it also returns the indices and the mask used for indexing."""
-
-    # Check to see if the ndim = 1, else it's already built
-    if upper_triangular.ndim == 1:
-
-        # Get the size of the original matrix
-        size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
-        indices = np.triu_indices(size)
-
-        # Create the mask for the specified columns
-        col_mask = np.isin(indices[1], columns)
-
-        # Create the mask for the symmetric counterparts in the lower triangle
-        row_mask = np.isin(indices[0], columns)
-
-        # Combine the row_mask with the off_diagonal_mask
-        row_mask = row_mask & (indices[0] != indices[1])
-
-
-        # Apply the combined mask to indices
-        indices = np.concatenate((indices[0][col_mask], indices[1][row_mask]))
-        upper_triangular = np.concatenate((upper_triangular[col_mask], upper_triangular[row_mask]))
-
-        if return_indices:
-            # Return the matrix, its indices, and mask
-            return upper_triangular, indices
-        else:
-            # Just return the matrix
-            return upper_triangular
-    else:
-        # If the input is already a matrix, apply the row and column selection directly
-        upper_triangular = upper_triangular[:, columns]
-
-        return upper_triangular
-    
-  def get_triangular_mean(self, upper_triangular, indices):
-    """Calculates the mean of the upper-triangle in a highly efficient and vectorized fashion. 
-      Column can be set to True to calculate the mean of the column or False for rows"""
-    
-    #Incase some indicies were skipped. TODO: upgrade this for when the labels aren't continuous
-    indices -= indices.min()
-
-    # Calculate the sums and counts for each index
-    sums = np.bincount(indices, weights=upper_triangular)
-    counts = np.bincount(indices)
-
-    return sums / counts
-  
-  def min_bincount(self, indices, values):
-    # Get the unique indices and their positions
-    unique_indices= np.unique(indices)
-    
-    # Initialize an array to store the minimum values and their positions
-    min_values = np.full(unique_indices.shape, np.inf)
-    
-    # Use np.minimum.at to update the min_values array
-    np.minimum.at(min_values, indices, values)
-
-    # Create a mask for the minimum values
-    min_pos = np.where((values == min_values[indices]))[0]
-
-    # Extract the relevant indices
-    list_thing = indices[min_pos]
-
-    # Use numpy's unique function to find duplicates
-    _, unique_indices = np.unique(list_thing, return_index=True)
-
-    # Remove duplicates by selecting only the unique indice
-    return min_pos[unique_indices]
-
-  def reconstruct_symmetric(self, upper_triangular):
-    """Rebuilds the triangular to a symmetric graph"""
-
-    #Check to see if the ndim = 1, else its already built
-    if upper_triangular.ndim == 1:
-
-      #Cache size for faster processing
-      size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
-
-      #Create a matrix filled with zeros
-      matrix = np.zeros((size, size))
-
-      #Get the indicies for the upper trianglar
-      indices = np.triu_indices(size)
-
-      #Reset the matrix
-      matrix[indices] = upper_triangular
-
-      # Mirror the upper part to the lower part
-      matrix[(indices[1], indices[0])] = upper_triangular 
-
-      return matrix
-    
-    else:
-       return upper_triangular
-    
   """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
@@ -379,9 +273,6 @@ class SPUD:
         using the known anchors.
         """
 
-        #Change known_anchors to correspond to off diagonal matricies
-        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
-
         #Merge the two graphs together
         merged = self.graphA.disjoint_union(self.graphB)
 
@@ -401,59 +292,58 @@ class SPUD:
     if self.verbose > 2:
        print(f"Preforming {self.OD_method} calculations.\n")
 
+    #Set the matrix domains to equal the jaccard similarity
     if self.similarity_measure == "jaccard":
-       matrixA = self.get_triangular(np.array(self.graphA.similarity_jaccard(pairs=None), dtype = self.float_precision))
-       matrixB = self.get_triangular(np.array(self.graphB.similarity_jaccard(pairs=None), dtype = self.float_precision))
-       
+       matrixA = 1 - get_triangular(np.array(self.graphA.similarity_jaccard(pairs=None), dtype = self.float_precision))
+       matrixB = 1 -  get_triangular(np.array(self.graphB.similarity_jaccard(pairs=None), dtype = self.float_precision))
+    
+    #Set the matrix domains to equal the distances via shortest paths
     elif self.similarity_measure == "distances" or self.similarity_measure == "default":
-       matrixA = self.get_triangular(self.normalize_0_to_1(np.array(self.graphA.distances(weights = "weight"), dtype = self.float_precision)))
-       matrixB = self.get_triangular(self.normalize_0_to_1(np.array(self.graphB.distances(weights = "weight"), dtype = self.float_precision)))
+       matrixA = get_triangular(self.normalize_0_to_1(np.array(self.graphA.distances(weights = "weight"), dtype = self.float_precision)))
+       matrixB = get_triangular(self.normalize_0_to_1(np.array(self.graphB.distances(weights = "weight"), dtype = self.float_precision)))
   
+    #Just use the pure distance measure
     elif self.similarity_measure == "nama":
-      if self.use_kernals == True:
-        matrixA = 1 - self.kernalsA
-        matrixB = 1 - self.kernalsB
-      else:
-        matrixA = self.distsA
-        matrixB = self.distsB
+      matrixA = self.distsA
+      matrixB = self.distsB
+
+    elif self.similarity_measure == "kernals":
+      matrixA = 1 - self.kernalsA
+      matrixB = 1 - self.kernalsB
 
     else: 
-       raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama' or 'jaccard'")
+       raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama', 'kernals', or 'jaccard'")
+    
+    #Adjust the block if needed
+    if self.adj_block:
+      self.distsA = matrixA
+      self.distsB = matrixB
+       
+      if self.verbose > 0:
+        print("Adjusting self.distsA and self.distsB to reflect the similaritiy measure adjustment.")
 
+    #Perform the absolute value method
     if self.OD_method == "abs":
-      """
-      Excessive Memory Problem Solution: Batches
-
-      We normally hit the problem with the Anchor Dists (though it may be the closest anchor part too -- hopefully not)
-
-      Instead of selecting the anchor distances later we can apply it before via a loop (Maybe do bacthes of len_B/15?
-
-      Can we shrink the float size? 
-      
-      """
-
-      if self.len_A != self.len_B:
-         raise RuntimeError("To perfom the absolute value the domain sizes must be equal")
 
       #Subset A and B to only the columns so we only have the distances to the anchors
-      anchor_dists_A, indiciesA = self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
-      anchor_dists_B, indiciesB = self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
+      anchor_dists_A, indiciesA = index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
+      anchor_dists_B, indiciesB = index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
 
       # Find the indices of the closest anchors for each node in both graphs
-      A_smallest_index = self.min_bincount(indiciesA, anchor_dists_A)
-      B_smallest_index = self.min_bincount(indiciesB, anchor_dists_B)
+      A_smallest_index = min_bincount(anchor_dists_A, indiciesA) #NOTE: These are the index positions of the smallest value, but its flattened according to the triangular. 
+      B_smallest_index = min_bincount(anchor_dists_B, indiciesB) #NOTE Continued: If the triangulars are different sizes we might need to adjust the values because they wont match up. 
 
       #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(matrixA[A_smallest_index].astype(self.float_precision), repeats=self.len_B)
-      anchor_dists_B = np.tile(matrixB[A_smallest_index].astype(self.float_precision), self.len_A)
+      matrixA = np.repeat(anchor_dists_A[A_smallest_index].astype(self.float_precision), repeats=self.len_B)
+      matrixB = np.tile(anchor_dists_B[A_smallest_index].astype(self.float_precision), self.len_A)
 
-      off_diagonal_using_A_anchors = np.abs(anchor_dists_A - anchor_dists_B)
+      off_diagonal_using_A_anchors = np.abs(matrixA - matrixB)
 
       #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      anchor_dists_A = np.repeat(matrixA[B_smallest_index].astype(self.float_precision), repeats=self.len_B)
-      anchor_dists_B = np.tile(matrixB[B_smallest_index].astype(self.float_precision), self.len_A)
+      matrixA = np.repeat(anchor_dists_A[B_smallest_index].astype(self.float_precision), repeats=self.len_B)
+      matrixB = np.tile(anchor_dists_B[B_smallest_index].astype(self.float_precision), self.len_A)
 
-      off_diagonal_using_B_anchors = np.abs(anchor_dists_A - anchor_dists_B)
+      off_diagonal_using_B_anchors = np.abs(matrixA - matrixB)
 
       #Perform the calculation
       off_diagonal = np.reshape(np.minimum(off_diagonal_using_A_anchors, off_diagonal_using_B_anchors), newshape=(self.len_A, self.len_B))
@@ -461,8 +351,8 @@ class SPUD:
     elif self.OD_method == "mean":
 
       #Take the mean of each one first, then select.
-      anchor_dists_A = self.get_triangular_mean(*self.index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
-      anchor_dists_B = self.get_triangular_mean(*self.index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
+      anchor_dists_A = get_triangular_mean(*index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
+      anchor_dists_B = get_triangular_mean(*index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
 
       #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
       anchor_dists_A = np.repeat(anchor_dists_A.astype(self.float_precision), repeats= self.len_B)
@@ -512,16 +402,15 @@ class SPUD:
         #Apply the negative log, pdist, and squareform
         off_diagonal = self.normalize_0_to_1((squareform(pdist((-np.log(1+off_diagonal))))))
 
+    elif self.agg_method == "normalize":
+       off_diagonal = self.normalize_0_to_1(off_diagonal)
+
     #Recreate the block matrix --> This may be faster?
-    off_diagonal = self.reconstruct_symmetric(off_diagonal)
+    off_diagonal = reconstruct_symmetric(off_diagonal)
 
     #Create the block
-    if self.use_kernals:
-      block = np.block([[self.reconstruct_symmetric(1 - self.kernalsA), off_diagonal],
-                        [off_diagonal.T, self.reconstruct_symmetric(1 - self.kernalsB)]])
-    else:
-      block = np.block([[self.reconstruct_symmetric(self.distsA), off_diagonal],
-                        [off_diagonal.T, self.reconstruct_symmetric(self.distsB)]])
+    block = np.block([[reconstruct_symmetric(self.distsA), off_diagonal],
+                        [off_diagonal.T, reconstruct_symmetric(self.distsB)]])
     
     #If the agg_method is log, and the domain shapes don't match, we have to apply the process to the block. 
     if self.agg_method == "log" and self.len_A != self.len_B:
