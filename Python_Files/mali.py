@@ -170,7 +170,7 @@ class MALI():
         """
         X, Y are tuples; each entry a dataset or set of labels
         """
-        ic()
+        #ic()
 
         ns = [np.shape(x)[0] for x in X]
         graphs = {}

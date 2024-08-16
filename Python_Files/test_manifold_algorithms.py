@@ -8,6 +8,7 @@ Questions:
 Changes Log: 
 1. Added NaN handling
 2. Added Split caching to speed up the tests
+3. Added an early kema implementation
 
 FUTURE IDEAS:
 3. Possible with n domains?
@@ -40,6 +41,7 @@ Carter - SPUD: running all spud combinations. (3 weeks and running)
 COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Weeks and running)
 COX - RF: running RF GAP larger files
 Hilton - Final: running RF gap smaller files
+COLLINGS - smallMALI -- runing mali tests across the smaller datasets
 
 """
 
@@ -558,8 +560,8 @@ class test_manifold_algorithms():
 
             try:
                 #Create the class with all the arguments
-                mali_class = MALI(knn = knn) 
-                mali_class.fit((self.split_A, self.labels), (self.split_B, self.labels))
+                mali_class = MALI(knn = knn, graph_decay=40, graph_knn = knn, random_state = self.random_state) 
+                mali_class.fit((self.split_A, self.split_B), (self.labels, self.labels))
 
             except Exception as e:
                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
@@ -569,7 +571,7 @@ class test_manifold_algorithms():
 
             #FOSCTTM METRICS
             try:
-                mali_FOSCTTM = self.FOSCTTM(mali_class.W_cross)
+                mali_FOSCTTM = self.FOSCTTM(1 - mali_class.W_cross.toarray())
                 print(f"                FOSCTTM Score: {mali_FOSCTTM}")
             except Exception as e:
                 print(f"                FOSCTTM exception occured: {e}")
@@ -579,7 +581,7 @@ class test_manifold_algorithms():
 
             #Cross Embedding Metrics
             try:
-                emb = self.mds.fit_transform(mali_class.W)
+                emb = self.mds.fit_transform(1 - mali_class.W.toarray())
                 mali_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                 print(f"                CE Score: {mali_CE}")
             except Exception as e:
@@ -594,7 +596,6 @@ class test_manifold_algorithms():
         #Run successful
         return True
     
-
     def run_CSPUD_tests(self, operations = ["log"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
@@ -1995,7 +1996,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -2095,6 +2096,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
         Parallel(n_jobs=-1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+
+    if run_MALI:
+        #Loop through each file (Using Parralel Processing) for NAMA
+        Parallel(n_jobs=-1)(delayed(instance.run_MALI_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
