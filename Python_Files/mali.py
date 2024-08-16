@@ -1,4 +1,3 @@
-
 import graphtools
 import scipy.sparse as sparse
 import numpy as np

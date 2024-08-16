@@ -5,39 +5,26 @@ Questions:
 1. Djisktra's O(n *log n) algorithm actually doesn't garuntee the shortest path between all nodes. Floyd-Warshall O(n3) does, though it takes way to long. Johnson's method is faster, but running djikstra from each node is fastest... I think distances does this already 
 
 
-Changes Log:
-1. Updated both SPUD and DIG so any sk-learn method can be used as a distance choice
-2. Added apply_agregation function (is that the right terminology here?) to MASH
-3. Added in Burn_in functionality to MASH... >>> It seems not helpful. 
-4. Added the abs methodology back to SPUD. Its called OD_method = "abs". However, it is optimized for speed, but will now easily overpass memory
-5. Changed operation parameter to agg_method for clarity in SPUD
-6. Add the flexibility to use kernals instead of pure distances for SPUD. It seems to be really helpful at times. 
-7. BIG KNEWS! Spent forever making "Triangular" processing. Speeds up get__block time to O(1) compared to O(n log n)
-    7a) Completed it for the means algorithm. (However, we may need to compute with jaccard's methodology)
-    7b) Completed it for abs algorithm. It doesn't preform as well as I feel it should
-8. Tested jaccards similaririty. Not great (But it is helpful when the others methods suck)
-9. Added whether or not you wish to include to use the kernal in determining off-diagonal and block rather than just the pdists. 
-10. Added float precision to the code if you wanted it
-11. Added the shortest paths methodology to the means process
-12. Improved the abs value process -- Changed Parameterization to be a little simpler as well
-13. Added the adj_block function
-14. Added error printing if wrong labels are given
+Changes Log: 
+1. Added NaN handling
+2. Added Split caching to speed up the tests
 
 FUTURE IDEAS:
 3. Possible with n domains?
-4. Get block SPUD possibilities. Layering ABS distance with log? Applying average before log
 
 TASKS:
-6. Add in the NaN calculations. 
+0. Run RF tests and use MALI and KEMA
+1. Update MASH to work like SPUD
 7. Add in the other way Marshall asked to be able to format anchors
 
 If time things:
 1. Rewrite Test manifold algorithms to cache splits
-1.5. Add MALI experiments
-2. Test the Nystrom Methodology. Maybe apply the method to MASh first?
+2. Add MALI experiments
 3. Encode multiple Domain testing
 4. Reduce time complexity somehow by maximizing processes (For example, would it be faster to not even use the graphs function? We could similate it already just by adding edges for MASH)
 5. Allow for toggling whether we want trianglelization or not -- determine best places to use it
+6. Figure out how to make NaN processing faster. Use the pdist?
+7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
@@ -49,8 +36,10 @@ Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 
 Running Zombies
-Carter - SPUD: running all spud combinations. 
-COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th
+Carter - SPUD: running all spud combinations. (3 weeks and running)
+COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Weeks and running)
+COX - RF: running RF GAP larger files
+Hilton - Final: running RF gap smaller files
 
 """
 
@@ -58,7 +47,7 @@ COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th
 import glob
 from ma_procrustes import MAprocr
 from DIG import DIG
-#from SPUD import SPUD
+from SPUD import SPUD
 from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
@@ -79,6 +68,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import MAGAN
 import timeit
+from rfgap import RFGAP
+from mali import MALI
 
 #Simply, for my sanity
 import warnings
@@ -95,6 +86,41 @@ else:
 #Directory Constant
 MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
+#Needed function
+#Create an RF Proximities function
+def use_rf_proximities(self, tuple):
+    """Creates RF proximities similarities
+    
+        tuple should be a tuple with position 0 being the data and position 1 being the labels"""
+    #Initilize Class
+    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+
+    #Fit it for Data A
+    rf_class.fit(tuple[0], y = tuple[1])
+
+    #Get promities
+    dataA = rf_class.get_proximities()
+
+    #Reset len_A and other varables
+    if self.len_A == 2:
+        self.len_A = len(tuple[0]) 
+
+        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+    elif self.len_B == 2:
+        self.len_B = len(tuple[0])
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(dataA[~np.isinf(dataA)]) != 0:
+
+      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+
+    #Reset inf values
+    dataA[np.isinf(dataA)] = 1
+
+    return 1 - dataA
+
 #Create function to do everything
 class test_manifold_algorithms():
     def __init__(self, csv_file, split = "random", percent_of_anchors = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5],  verbose = 0, random_state = 42):
@@ -109,6 +135,11 @@ class test_manifold_algorithms():
         2 everything."""
 
         self.verbose = verbose
+
+        #Create file directory to store the information
+        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
+        if not os.path.exists(self.base_directory):
+            os.makedirs(self.base_directory) 
 
         if self.verbose > 0:
             print(f"\n \n \n---------------------------       Initalizing class with {csv_file} data       ---------------------------\n")
@@ -146,10 +177,6 @@ class test_manifold_algorithms():
         if verbose > 1:
             print(f"The knn values are: {self.knn_range}")
 
-        #Create file directory to store the information
-        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
-        if not os.path.exists(self.base_directory):
-            os.makedirs(self.base_directory) 
 
     """EVALUATION FUNCTIONS"""
     def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
@@ -186,103 +213,121 @@ class test_manifold_algorithms():
     
     """HELPER FUNCTIONS"""
     def split_features(self, features, labels):
-        if self.split == "random":
-            if self.verbose > 0:
-                print("Splitting the data randomly")
 
-            # Generate column indices and shuffle them
-            column_indices = np.arange(features.shape[1])
-            np.random.shuffle(column_indices)
+        #Step 1. Check if a file exists already
+        #Create filename 
+        filename = CURR_DIR + "/Splits_Data/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
 
-            # Choose a random index to split the shuffled column indices
-            split_index = random.randint(1, len(column_indices) - 1)
+        if not os.path.exists(filename):
+            os.makedirs(filename) 
 
-            # Use the shuffled indices to split the features array into two parts
-            split_a = features[:, column_indices[:split_index]]
-            split_b = features[:, column_indices[split_index:]]
+        filename += self.split[0] + str(self.random_state) + ".npz"
 
-        elif self.split == "turn":
-            rng = np.random.default_rng(self.random_state)
-            n, d = np.shape(features)
-            random_matrix = rng.random((d, d))
-            q, _ = np.linalg.qr(random_matrix)
+        #Step 2b. If so, simply load the files into split A and split B
+        if os.path.exists(filename):
 
-            split_a = features
-            split_b = features @ q
+            #Load in the file
+            data = np.load(filename) 
+
+            #Grab the splits
+            return data['split_a'], data["split_b"]
+
+        #Step 2a. if not, Do the methodology we have before
+        else:
+
+            if self.split == "random":
+                if self.verbose > 0:
+                    print("Splitting the data randomly")
+
+                # Generate column indices and shuffle them
+                column_indices = np.arange(features.shape[1])
+                np.random.shuffle(column_indices)
+
+                # Choose a random index to split the shuffled column indices
+                split_index = random.randint(1, len(column_indices) - 1)
+
+                # Use the shuffled indices to split the features array into two parts
+                split_a = features[:, column_indices[:split_index]]
+                split_b = features[:, column_indices[split_index:]]
+
+            elif self.split == "turn":
+                rng = np.random.default_rng(self.random_state)
+                n, d = np.shape(features)
+                random_matrix = rng.random((d, d))
+                q, _ = np.linalg.qr(random_matrix)
+
+                split_a = features
+                split_b = features @ q
+            
+            elif self.split == "distort":
+                if self.verbose > 0:
+                    print("Creating a mirror dataset and distorting the features in the second Domain")
+
+                #Split A remains the same
+                split_a = features
+
+                #Add noise to split B
+                split_b = features + np.random.normal(scale = 0.05, size = np.shape(features))
+
+            else: 
         
-        elif self.split == "distort":
-            if self.verbose > 0:
-                print("Creating a mirror dataset and distorting the features in the second Domain")
+                # Splitting the dataset into training and testing sets
+                X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
-            #Split A remains the same
-            split_a = features
+                # Training the RandomForest Classifier
+                clf = RandomForestClassifier(random_state=self.random_state) #NOTE: this might take forever based on this algorithm 
+                clf.fit(X_train, y_train)
 
-            #Add noise to split B
-            split_b = features + np.random.normal(scale = 0.05, size = np.shape(features))
+                result = permutation_importance(clf, X_test, y_test, n_repeats=30, random_state=self.random_state)
+                # Get the indices that would sort the importances
+                sorted_idx = result.importances_mean.argsort()
 
-        else: 
-            """EDIT THIS TO CACHE SPLITS"""
-            #Step 1. Check if a file exists already
-            #Step 2a. if not, Do the methodology we have before
-            #Step 2b. If so, simply load the files into split A and split B
-            #Step 3. If not, upload to file. CSV file name and split. 
+                if self.split == "skewed":
+                    if self.verbose > 0:
+                        print("Splitting the data in a skewed fashion")
+                    #Split the data at the half point
+                    half_index = int(len(sorted_idx)/2)
 
-
-
-            # Splitting the dataset into training and testing sets
-            X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
-
-            # Training the RandomForest Classifier
-            clf = RandomForestClassifier(random_state=self.random_state) #NOTE: this might take forever based on this algorithm 
-            clf.fit(X_train, y_train)
-
-            result = permutation_importance(clf, X_test, y_test, n_repeats=30, random_state=self.random_state)
-            # Get the indices that would sort the importances
-            sorted_idx = result.importances_mean.argsort()
-
-            if self.split == "skewed":
-                if self.verbose > 0:
-                    print("Splitting the data in a skewed fashion")
-                #Split the data at the half point
-                half_index = int(len(sorted_idx)/2)
-
-                #Since its sorted by importance, the more important features will be the first half. We return all the important, and then the less important features
-                split_a = features[:, (sorted_idx[:half_index])]
-                split_b = features[:, (sorted_idx[half_index:])]
-            
-            elif self.split == "even":
-                if self.verbose > 0:
-                    print("Spliting the data evenly")
-
-                #Get a list of indexes to include
-                indexes = np.array(range(0, len(sorted_idx), 2))
-
-                #Use the above indexes to retrieve the balanced indexes
-                split_a_indexes = sorted_idx[indexes]
-                try: #Because if feature count is odd this will fail
-                    split_b_indexes = sorted_idx[indexes + 1]
-                except:
-                    split_b_indexes = sorted_idx[indexes[:-1] + 1]
+                    #Since its sorted by importance, the more important features will be the first half. We return all the important, and then the less important features
+                    split_a = features[:, (sorted_idx[:half_index])]
+                    split_b = features[:, (sorted_idx[half_index:])]
                 
-                #Now retrieve the values
-                split_a = features[:, split_a_indexes]
-                split_b = features[:, split_b_indexes]
-            
-            else:
-                raise NameError("Split type not recognized. Please type 'even', 'skewed', 'distort', or 'random'.")
+                elif self.split == "even":
+                    if self.verbose > 0:
+                        print("Spliting the data evenly")
 
-        #Reshape if they only have one sample
-        if split_a.shape[1] == 1:
-            split_a = split_a.reshape(-1, 1)
-        if split_b.shape[1] == 1:
-            split_b = split_b.reshape(-1, 1)
+                    #Get a list of indexes to include
+                    indexes = np.array(range(0, len(sorted_idx), 2))
 
-        #Print how they are shaped if verbose is 2 or more
-        if self.verbose > 1:
-                print(f"Split A features shape: {split_a.shape}")
-                print(f"Split B Features shape {split_b.shape}")
+                    #Use the above indexes to retrieve the balanced indexes
+                    split_a_indexes = sorted_idx[indexes]
+                    try: #Because if feature count is odd this will fail
+                        split_b_indexes = sorted_idx[indexes + 1]
+                    except:
+                        split_b_indexes = sorted_idx[indexes[:-1] + 1]
+                    
+                    #Now retrieve the values
+                    split_a = features[:, split_a_indexes]
+                    split_b = features[:, split_b_indexes]
+                
+                else:
+                    raise NameError("Split type not recognized. Please type 'even', 'skewed', 'distort', or 'random'.")
 
-        return split_a, split_b
+            #Reshape if they only have one sample
+            if split_a.shape[1] == 1:
+                split_a = split_a.reshape(-1, 1)
+            if split_b.shape[1] == 1:
+                split_b = split_b.reshape(-1, 1)
+
+            #Print how they are shaped if verbose is 2 or more
+            if self.verbose > 1:
+                    print(f"Split A features shape: {split_a.shape}")
+                    print(f"Split B Features shape {split_b.shape}")
+
+            #Step 3. If not, upload to file. CSV file name and split. 
+            np.savez(filename, split_a=split_a, split_b=split_b)
+
+            return split_a, split_b
 
     def create_blobs(self): #TODO: FINISH DAKINE
         """Creates 3 blobs for each split"""
@@ -402,67 +447,153 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    """
-    def run_SPUD_tests(self, operations = ("average", "abs")): 
-        '''Operations should be a tuple of the different operations wanted to run. All are included by default. '''
+    def run_RF_SPUD_tests(self, agg_methods = ["log", "normalize", "sqrt"], OD_methods = ["default", "abs", "mean"]): 
+        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
-        print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
-        for operation in operations:
-            print(f"Operation {operation}")
+        print(f"\n-------------------------------------    SPUD RF Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
+        for agg_method in agg_methods:
+            print(f"Aggregation method {agg_method}")
 
-            #Create files and store data
-            filename, AP_values = self.create_filename("SPUD", Operation = operation, Kind = "distance") # When we are ready to test the Spud copy, we can swicth this to "merge"
+            for OD_method in OD_methods:
+                print(f"    Off-diagonal method {OD_method}")
 
-            #If file aready exists, then we are done :)
-            if os.path.exists(filename) or len(AP_values) < 1:
-                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+
+                #Create file directory to store the information
+                original_directory = self.base_directory
+                self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+                if not os.path.exists(self.base_directory):
+                    os.makedirs(self.base_directory) 
+
+                #Create files and store data
+                filename, AP_values = self.create_filename("SPUD_RF", agg_method = agg_method, OD_method = OD_method) 
+                
+                #Reset the directory
+                self.base_directory = original_directory 
+
+                #If file aready exists, then we are done :)
+                if os.path.exists(filename) or len(AP_values) < 1:
+                    print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                    continue
+
+                #Store the data in a numpy array
+                spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
+
+                for k, knn in enumerate(self.knn_range):
+                    print(f"        KNN {knn}")
+                    for l, anchor_percent in enumerate(AP_values):
+                        print(f"            Percent of Anchors {anchor_percent}")
+
+                        try:
+                            #If KNN is the highest value, use NAMA approach instead
+                            if k == 9 and OD_method != "default":
+                                print("            Using NAMA approach.")
+                                similarity_measure = "NAMA"
+                            else:
+                                similarity_measure = "default"
+
+                            #Create the class with all the arguments
+                            spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, similarity_measure = similarity_measure) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
+                            spud_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)])
+
+                        except Exception as e:
+                            print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                            spud_scores[k, l, 0] = np.NaN
+                            spud_scores[k, l, 1] = np.NaN
+                            continue
+
+                        #FOSCTTM METRICS
+                        try:
+                            spud_FOSCTTM = self.FOSCTTM(spud_class.block[:spud_class.len_A, spud_class.len_A:])
+                            print(f"                FOSCTTM Score: {spud_FOSCTTM}")
+                        except Exception as e:
+                            print(f"                FOSCTTM exception occured: {e}")
+                            spud_FOSCTTM = np.NaN
+                        
+                        spud_scores[k, l, 0] = spud_FOSCTTM
+
+                        #Cross Embedding Metrics
+                        try:
+                            emb = self.mds.fit_transform(spud_class.block)
+                            spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                            print(f"                CE Score: {spud_CE}")
+                        except Exception as e:
+                            print(f"                Cross Embedding exception occured: {e}")
+                            spud_CE = np.NaN
+                        
+                        spud_scores[k, l, 1] = spud_CE
+                
+                #Save the numpy array
+                np.save(filename, spud_scores)
+        
+        #Run successful
+        return True
+    
+    def run_MALI_tests(self): 
+        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+
+        #We are going to run test with every variation
+        print(f"\n-------------------------------------    MALI Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
+
+        #Create file directory to store the information
+        original_directory = self.base_directory
+        self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+
+        #Create files and store data
+        filename, AP_values = self.create_filename("MALI_RF") 
+        
+        #Reset the directory
+        self.base_directory = original_directory 
+        
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the data in a numpy array
+        mali_scores = np.zeros((len(self.knn_range), 2))
+
+        for k, knn in enumerate(self.knn_range):
+            print(f"  KNN {knn}")
+
+            try:
+                #Create the class with all the arguments
+                mali_class = MALI(knn = knn) 
+                mali_class.fit((self.split_A, self.labels), (self.split_B, self.labels))
+
+            except Exception as e:
+                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                mali_scores[k, 0] = np.NaN
+                mali_scores[k, 1] = np.NaN
                 continue
 
-            #Store the data in a numpy array
-            spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
-
-            for k, knn in enumerate(self.knn_range):
-                print(f"        KNN {knn}")
-                for l, anchor_percent in enumerate(AP_values):
-                    print(f"            Percent of Anchors {anchor_percent}")
-
-                    try:
-                        #Create the class with all the arguments
-                        spud_class = SPUD(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation)
-                    except Exception as e:
-                        print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
-                        spud_scores[k, l, 0] = np.NaN
-                        spud_scores[k, l, 1] = np.NaN
-                        continue
-
-                    #FOSCTTM METRICS
-                    try:
-                        spud_FOSCTTM = self.FOSCTTM(spud_class.block[:spud_class.len_A, spud_class.len_A:])
-                        print(f"                FOSCTTM Score: {spud_FOSCTTM}")
-                    except Exception as e:
-                        print(f"                FOSCTTM exception occured: {e}")
-                        spud_FOSCTTM = np.NaN
-                    
-                    spud_scores[k, l, 0] = spud_FOSCTTM
-
-                    #Cross Embedding Metrics
-                    try:
-                        emb = self.mds.fit_transform(spud_class.block)
-                        spud_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                        print(f"                CE Score: {spud_CE}")
-                    except Exception as e:
-                        print(f"                Cross Embedding exception occured: {e}")
-                        spud_CE = np.NaN
-                    
-                    spud_scores[k, l, 1] = spud_CE
+            #FOSCTTM METRICS
+            try:
+                mali_FOSCTTM = self.FOSCTTM(mali_class.W_cross)
+                print(f"                FOSCTTM Score: {mali_FOSCTTM}")
+            except Exception as e:
+                print(f"                FOSCTTM exception occured: {e}")
+                mali_FOSCTTM = np.NaN
             
-            #Save the numpy array
-            np.save(filename, spud_scores)
+            mali_scores[k, 0] = mali_FOSCTTM
+
+            #Cross Embedding Metrics
+            try:
+                emb = self.mds.fit_transform(mali_class.W)
+                mali_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                print(f"                CE Score: {mali_CE}")
+            except Exception as e:
+                print(f"                Cross Embedding exception occured: {e}")
+                mali_CE = np.NaN
+            
+            mali_scores[k, 1] = mali_CE
+    
+        #Save the numpy array
+        np.save(filename, mali_scores)
 
         #Run successful
         return True
-    """
+    
 
     def run_CSPUD_tests(self, operations = ["log"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
@@ -523,6 +654,7 @@ class test_manifold_algorithms():
 
         #Run successful
         return True
+   
     #We can add t as a parameter, and run tests on that as well, but I feel like the auto is good enough for now
     def run_DIG_tests(self, page_ranks = ("None", "off-diagonal", "full"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
@@ -1438,7 +1570,7 @@ def contains_any_substring(s, substrings):
             return True
     return False
 
-def clear_directory(text_curater = "all", not_text = None):
+def clear_directory(text_curater = "all", not_text = None, directory = "default"):
     """CAREFUL. THIS WIPES THE MANIFOLD DATA DIRECTORY CLEAN"""
 
     #Use all of our files
@@ -1450,7 +1582,10 @@ def clear_directory(text_curater = "all", not_text = None):
                 "winequality-red", "zoo"]
 
     #Modify the file names to become directory names
-    directories = [MANIFOLD_DATA_DIR + file_name for file_name in file_names]
+    if directory == "default":
+        directories = [MANIFOLD_DATA_DIR + file_name for file_name in file_names]
+    else:
+        directories = [CURR_DIR + "/ManifoldData_RF/" + file_name for file_name in file_names]
 
     #Loop through each directory and file and get the file paths
     files = []
@@ -1860,7 +1995,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -1935,16 +2070,16 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=-1)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
-    """if run_SPUD:
-        #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
+    if run_RF_SPUD:
+        #Filter out the necessary Key word arguments for SPUD
         filtered_kwargs = {}
-        if "operations" in kwargs:
-            filtered_kwargs["operations"] = kwargs["operations"]
-        if "kind" in kwargs:
-            filtered_kwargs["kind"] = kwargs["kind"]
+        if "OD_methods" in kwargs:
+            filtered_kwargs["OD_methods"] = kwargs["OD_methods"]
+        if "agg_methods" in kwargs:
+            filtered_kwargs["agg_methods"] = kwargs["agg_methods"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-3)(delayed(instance.run_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())"""
+        Parallel(n_jobs=-3)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CSPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed

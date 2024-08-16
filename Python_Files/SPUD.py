@@ -25,19 +25,19 @@ import seaborn as sns
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
-               OD_method = "default", agg_method = "normalize", IDC = 1, adj_block = False,
+               OD_method = "default", agg_method = "log", IDC = 1, adj_block = False,
                similarity_measure = "default", float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
         Arguments:
           :distance_measure_A: Either a function, "precomputed" or SciKit_learn metric strings for domain A. If it is a function, then it should
-            be formated like my_func(data) and returns a distance measure between points.
+            be formated like my_func(data) and returns a distance measure between points. Self will be passed as the first argument.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
 
           :distance_measure_B: Either a function, "precomputed" or SciKit_learn metric strings for domain B. If it is a function, then it should
-            be formated like my_func(data) and returns a distance measure between points.
+            be formated like my_func(data) and returns a distance measure between points. Self will be passed as the first argument.
             If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
             function uses Euclidian distance, but this may manually changed through kwargs assignment.
 
@@ -60,8 +60,8 @@ class SPUD:
             representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
             deemed too strong, the user may choose to assign the IDC < 1.
 
-          :similarity_measure: Can be default or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
-            to the resulting graph. 
+          :similarity_measure: Can be default, NAMA,  or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
+            to the resulting graph. NAMA uses the original distances from the Pdist function. We recommend using NAMA for data that is very large. 
             
           :verbose: can be any float or integer. Determines what is printed as output as the function runs.
 
@@ -98,24 +98,24 @@ class SPUD:
         '''
 
         #Cache these values for fast lookup
-        self.len_A = len(dataA)
+        self.len_A = len(dataA) 
         self.len_B = len(dataB)
 
         #Save the known Anchors
         self.known_anchors = np.array(known_anchors)
-
-        #Change known_anchors to correspond to off diagonal matricies
-        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
-
-        #Check to make sure the anchors are given correctly
-        if np.max(self.known_anchors[:, 0]) > self.len_A or  np.max(self.known_anchors[:, 1]) > self.len_B:
-           raise RuntimeWarning("Warning: Check you known anchors. Anchors given exceed vertices in data.")
 
         #For each domain, calculate the distances within their own domain
         self.print_time()
         self.distsA = self.get_SGDM(dataA, self.distance_measure_A)
         self.distsB = self.get_SGDM(dataB, self.distance_measure_B)
         self.print_time("Time it took to compute SGDM:  ")
+
+        #Change known_anchors to correspond to off diagonal matricies. 
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+        #Check to make sure the anchors are given correctly
+        if np.max(self.known_anchors[:, 0]) > self.len_A or  np.max(self.known_anchors[:, 1]) > self.len_B:
+           raise RuntimeWarning("Warning: Check you known anchors. Anchors given exceed vertices in data.")
 
         #If these parameters are true, we can skip this all:
         if self.OD_method != "default"  and self.similarity_measure == "nama":
@@ -199,7 +199,7 @@ class SPUD:
 
     #Check to see if it is a function
     if callable(distance_measure):
-      return distance_measure(data)
+      return distance_measure(self, data)
 
     #If the distances are precomputed, return the data. 
     elif distance_measure.lower() == "precomputed":
@@ -209,7 +209,7 @@ class SPUD:
     elif distance_measure.lower() in _METRICS:
 
       #Check to make sure we have no NaNs. If we do, we will change the algorihm
-      if np.isnan(data).any():
+      if np.isnan(data).any(): #NOTE: Test ignoring infinites as well
 
         if self.verbose > 0:
            print("Warning. NaN's dectected. Calculating distances by ignoring NaN positions, and normalizing. May take longer.")
@@ -227,7 +227,7 @@ class SPUD:
           dist = metric(row_a[valid_mask], row_b[valid_mask])
 
           # Normalize by the number of valid entries
-          return dist / np.sum(valid_mask)
+          return dist / np.sum(valid_mask) #NOTE: This will create bias for Euclidean distance
         
         dists = squareform(pdist(data, metric = lambda u, v: nan_metric(u, v, metric = _METRICS[distance_measure.lower()].dist_func)))
         
@@ -431,7 +431,7 @@ class SPUD:
        off_diagonal = self.normalize_0_to_1(off_diagonal)
 
     #Recreate the block matrix --> This may be faster?
-    off_diagonal = reconstruct_symmetric(off_diagonal)
+    #off_diagonal = reconstruct_symmetric(off_diagonal)
 
     #Create the block
     block = np.block([[reconstruct_symmetric(self.distsA), off_diagonal],

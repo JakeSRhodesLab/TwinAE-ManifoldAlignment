@@ -1,7 +1,7 @@
 # Python Triangular methods
 import numpy as np
 
-def get_triangular(matrix, tol=1e-4):
+def get_triangular(matrix, tol=1e-4, force_conversion = False):
     """If the matrix is symmetric, the function seeks to save memory by cutting out information that is
     redundant. 
     """
@@ -12,7 +12,14 @@ def get_triangular(matrix, tol=1e-4):
       return matrix[np.triu_indices_from(matrix)]
     
     else:
-      #Return the original matrix if the matrix is not symmetric
+
+      if force_conversion:
+         #Make the matrix symmetric
+         matrix = (matrix.T + matrix)/2
+
+         return matrix[np.triu_indices_from(matrix)]
+
+      #Return the original matrix if the matrix is not symmetric and we aren't forcing conversion
       return matrix
 
 def index_triangular(upper_triangular, columns, return_indices=False):
@@ -20,36 +27,33 @@ def index_triangular(upper_triangular, columns, return_indices=False):
     If return_indices is True, it also returns the indices and the mask used for indexing."""
 
     # Check to see if the ndim = 1, else it's already built
-    if upper_triangular.ndim == 1:
+    if upper_triangular.ndim != 1:
+        
+        upper_triangular = get_triangular(upper_triangular, force_conversion = True)
 
-        # Get the size of the original matrix
-        size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
-        indices = np.triu_indices(size)
+    # Get the size of the original matrix
+    size = int((-1 + np.sqrt(1 + (8 * upper_triangular.size))) // 2)
+    indices = np.triu_indices(size)
 
-        # Create the mask for the specified columns
-        col_mask = np.isin(indices[1], columns)
+    # Create the mask for the specified columns
+    col_mask = np.isin(indices[1], columns)
 
-        # Create the mask for the symmetric counterparts in the lower triangle
-        row_mask = np.isin(indices[0], columns)
+    # Create the mask for the symmetric counterparts in the lower triangle
+    row_mask = np.isin(indices[0], columns)
 
-        # Combine the row_mask with the off_diagonal_mask
-        row_mask = row_mask & (indices[0] != indices[1])
+    # Combine the row_mask with the off_diagonal_mask
+    row_mask = row_mask & (indices[0] != indices[1])
 
 
-        # Apply the combined mask to indices
-        indices = np.concatenate((indices[0][col_mask], indices[1][row_mask]))
-        upper_triangular = np.concatenate((upper_triangular[col_mask], upper_triangular[row_mask]))
+    # Apply the combined mask to indices
+    indices = np.concatenate((indices[0][col_mask], indices[1][row_mask]))
+    upper_triangular = np.concatenate((upper_triangular[col_mask], upper_triangular[row_mask]))
 
-        if return_indices:
-            # Return the matrix, its indices, and mask
-            return upper_triangular, indices
-        else:
-            # Just return the matrix
-            return upper_triangular
+    if return_indices:
+        # Return the matrix, its indices, and mask
+        return upper_triangular, indices
     else:
-        # If the input is already a matrix, apply the row and column selection directly
-        upper_triangular = upper_triangular[:, columns]
-
+        # Just return the matrix
         return upper_triangular
     
 def get_triangular_mean(upper_triangular, indices):
