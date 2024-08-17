@@ -1,6 +1,8 @@
 """
 KEMA: Kernal Manifold Alignment -- Supervised
-Original MATLAB code: https://github.com/dtuia/KEMA
+
+Original MATLAB code: 
+https://github.com/dtuia/KEMA/blob/master/general_routine/KMA.m
 
 """
 
@@ -11,7 +13,12 @@ from scipy.linalg import eigh
 from sklearn.neighbors import kneighbors_graph
 from scipy.sparse import block_diag
 
-def KMA(labeled, unlabeled, options):
+def KMA(labeled, unlabeled, options, debug = False):
+
+    #Convert to numpy array
+    unlabeled = np.array(unlabeled)
+    labeled = np.array(labeled)
+
     # Set default options if not provided
     options.setdefault('numDomains', len(labeled))
     options.setdefault('kernelt', 'lin')
@@ -27,21 +34,28 @@ def KMA(labeled, unlabeled, options):
     options.setdefault('nn', 9)
     options.setdefault('mu', 0.5)
 
-    # Create data matrices
-    Y = np.array([])
     n = 0
     d = 0
-    X_list = []
-    Y_list = []
 
-    for domain in labeled:
-        X_combined = np.hstack([domain['X'], unlabeled[labeled.index(domain)]['X']])
-        X_list.append(X_combined)
-        Y_combined = np.hstack([domain['Y'], np.zeros(unlabeled[labeled.index(domain)]['X'].shape[1])])
-        Y_list.append(Y_combined)
-        Y = np.hstack([Y, Y_combined])
-        n += X_combined.shape[1]
-        d += X_combined.shape[0]
+    X_list = []  # To store combined matrices
+
+    if debug:
+        print(f"Number of Domains: {options['numDomains']}")
+        
+        print(f"First Labeled Information: {labeled[0, 0]}")
+        print(f"First Unlabeled Information: {unlabeled[0, 0]}")
+        print("<><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+
+
+    for data in unlabeled:
+        #The code for some reason has it backwards
+        X_list.append(data.T)
+
+    #Make one big list with labels
+    Y = labeled[0]
+    for labels in labeled[1:]:
+        Y = np.hstack([Y, labels])
+
 
     # Building Laplacians
     W = []
@@ -53,13 +67,30 @@ def KMA(labeled, unlabeled, options):
     W = block_diag(W)
     W = W.toarray()
 
+    if debug:
+        from matplotlib.pyplot import imshow, show
+        print("-----------------   The W matrix   -----------------------")
+        imshow(W), show()
+        input("Continue? Press Enter.")
+
     # Class Graph Laplacian
     Ws = (np.tile(Y, (len(Y), 1)) == np.tile(Y, (len(Y), 1)).T).astype(float)
     Ws[Y == 0, :] = 0
     Ws[:, Y == 0] = 0
+
+    if debug:
+        print("-----------------   The Ws matrix   -----------------------")
+        imshow(Ws), show()
+        input("Continue? Press Enter.")
+
     Wd = (np.tile(Y, (len(Y), 1)) != np.tile(Y, (len(Y), 1)).T).astype(float)
     Wd[Y == 0, :] = 0
     Wd[:, Y == 0] = 0
+
+    if debug:
+        print("-----------------   The Wd matrix   -----------------------")
+        imshow(Ws), show()
+        input("Continue? Press Enter.")
 
     # Normalization
     Sws = Ws.sum()
@@ -96,6 +127,16 @@ def KMA(labeled, unlabeled, options):
     
     KAK = K @ A @ K
     KBK = K @ B @ K
+
+    if debug:
+        print("KAK MATRIX")
+        imshow(KAK),show()
+
+        input("Continue? Press Enter.")
+
+        print("KBK MATRIX")
+        imshow(KBK), show()
+        input("Continue? Press Enter.")
 
     # Solve generalized eigenvalue problem
     ALPHA, LAMBDA = eigh(KAK, KBK)
