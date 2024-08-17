@@ -5,12 +5,6 @@ import pandas as pd
 from tslearn.metrics import dtw_path
 from dtaidistance import dtw
 
-
-
-    
-
-
-
 # Create a squareform array of the comparisons
 
 def normalized_euclidean_distance(sequence_1, sequence_2):
