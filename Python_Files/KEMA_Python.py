@@ -109,7 +109,7 @@ def KMA(labeled, unlabeled, options, debug = False):
     Dd = np.sum(Wd, axis=1)
     Ld = np.diag(Dd) - Wd
 
-    A = ((1 - options['mu']) * L + options['mu'] * Ls) + options.get('lambda', 0) * np.eye(len(Ls))
+    A = ((1 - options['mu']) * L + options['mu'] * Ls) + options.get('lambda', 1e-5) * np.eye(len(Ls)) #options.get('lambda', 1e-5) Modifiied number
     B = Ld
 
     # Kernel computation
@@ -129,26 +129,34 @@ def KMA(labeled, unlabeled, options, debug = False):
     KBK = K @ B @ K
 
     if debug:
-        print("KAK MATRIX")
+        print(f"KAK MATRIX. Max: {np.max(KAK)}. Min: {np.min(KAK)}")
         imshow(KAK),show()
 
         input("Continue? Press Enter.")
 
-        print("KBK MATRIX")
+        print(f"KBK MATRIX. Max: {np.max(KBK)}. Min: {np.min(KBK)}")
         imshow(KBK), show()
         input("Continue? Press Enter.")
 
-    # Solve generalized eigenvalue problem
+    # Regularization to ensure KBK is positive semi-definite
+    epsilon = 1e-10
+    KBK = (KBK + KBK.T) / 2  # Symmetrize KBK
+    KBK += epsilon * np.eye(KBK.shape[0])
+
+    # Solve the generalized eigenvalue problem
     ALPHA, LAMBDA = eigh(KAK, KBK)
+
 
     # Sort eigenvalues and corresponding eigenvectors
     idx = np.argsort(LAMBDA)
     LAMBDA = LAMBDA[idx]
-    ALPHA = ALPHA[:, idx]
+    ALPHA = ALPHA[idx]
 
-    # Limit number of projections if necessary
+    """# Limit number of projections if necessary
     if ALPHA.shape[1] < options['projections']:
         options['projections'] = ALPHA.shape[1]
-        print(f'Reduced the number of projections to {options["projections"]}.')
+        print(f'Reduced the number of projections to {options["projections"]}.')"""
     
     return ALPHA, LAMBDA, options
+
+"""Would the block be just the list of eigenvectors?"""
