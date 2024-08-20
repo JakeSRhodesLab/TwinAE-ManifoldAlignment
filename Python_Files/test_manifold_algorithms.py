@@ -71,6 +71,7 @@ import seaborn as sns
 import MAGAN
 import timeit
 from rfgap import RFGAP
+from MASH import MASH
 from mali import MALI
 
 #Simply, for my sanity
@@ -122,6 +123,41 @@ def use_rf_proximities(self, tuple):
     dataA[np.isinf(dataA)] = 1
 
     return 1 - dataA
+
+#Create an RF Proximities function
+def use_rf_proximities_MASH(self, tuple):
+    """Creates RF proximities similarities
+    
+        tuple should be a tuple with position 0 being the data and position 1 being the labels"""
+    #Initilize Class
+    rf_class = RFGAP(prediction_type="classification", y=dc.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+
+    #Fit it for Data A
+    rf_class.fit(tuple[0], y = tuple[1])
+
+    #Get promities
+    dataA = rf_class.get_proximities()
+
+    #Reset len_A and other varables
+    if self.len_A == 2:
+        self.len_A = len(tuple[0]) 
+
+        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
+        if hasattr(self, "known_anchors_adjusted"):
+            self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+    elif self.len_B == 2:
+        self.len_B = len(tuple[0])
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(dataA[~np.isinf(dataA)]) != 0:
+
+      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+
+    #Reset inf values
+    dataA[np.isinf(dataA)] = 1
+
+    return dataA
 
 #Create function to do everything
 class test_manifold_algorithms():
@@ -724,6 +760,206 @@ class test_manifold_algorithms():
                             try:
                                 #Create our class to run the tests
                                 DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = t, knn = knn, link = link)
+
+                            except Exception as e:
+                                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                                DIG_scores[j, k, 0] = np.NaN
+                                DIG_scores[j, k, 1] = np.NaN
+
+                                #If we are using predict, this must also be NaN
+                                if predict:
+                                    DIG_scores[j, k, 2] = np.NaN
+
+                                CwDIG_scores[j, k, 0] = np.NaN
+                                CwDIG_scores[j, k, 1] = np.NaN
+
+                                #If we are using predict, this must also be NaN
+                                if predict:
+                                    CwDIG_scores[j, k, 2] = np.NaN
+
+                                continue
+
+                            if saveMASH:
+                                #FOSCTTM Evaluation Metrics
+                                try:
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
+
+                                except Exception as e:
+                                    print(f"                    FOSCTTM exception occured: {e}")
+                                    DIG_FOSCTTM = np.NaN
+
+                                DIG_scores[j, k, 0] = DIG_FOSCTTM
+
+                                #Cross Embedding Evaluation Metric
+                                try:
+                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                                    print(f"                    CE Score: {DIG_CE}")
+
+                                except Exception as e:
+                                    print(f"                    Cross Embedding exception occured: {e}")
+                                    DIG_CE = np.NaN
+
+                                DIG_scores[j, k, 1] = DIG_CE
+
+                                #Predict features test
+                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                                    #Testing the PREDICT labels features
+                                    features_pred_B = DIG_class.predict_feature(predict="B")
+                                    features_pred_A = DIG_class.predict_feature(predict="A")
+
+                                    #Get the MAE for each set and average them
+                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                                    DIG_scores[j, k, 2] = DIG_MAE
+                                    print(f"                    Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+                            #<><><><><><><><><><><><><><><><><>     Now Repeat all of that!      <><><><><><><><><><><><><><><><><>
+                            #Make the connection limit value
+                            if save_connections:
+                                try:
+                                    #Make the connection limit value
+                                    if connection != None:
+                                        connection = int(DIG_class.len_A * connection)
+
+                                    #Boost the Algorithm
+                                    DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
+
+                                except Exception as e:
+                                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                                    CwDIG_scores[j, k, 0] = np.NaN
+                                    CwDIG_scores[j, k, 1] = np.NaN
+
+                                    #If we are using predict, this must also be NaN
+                                    if predict:
+                                        CwDIG_scores[j, k, 2] = np.NaN
+                                    continue
+
+                                #FOSCTTM Evaluation Metrics
+                                try:
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
+
+                                except Exception as e:
+                                    print(f"                FOSCTTM exception occured: {e}")
+                                    DIG_FOSCTTM = np.NaN
+
+                                CwDIG_scores[j, k, 0] = DIG_FOSCTTM
+
+                                #Cross Embedding Evaluation Metric
+                                try:
+                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+
+                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                                    print(f"                    CE Score: {DIG_CE}")
+
+                                except Exception as e:
+                                    print(f"                    Cross Embedding exception occured: {e}")
+                                    DIG_CE = np.NaN
+
+                                CwDIG_scores[j, k, 1] = DIG_CE
+
+                                #Predict features test
+                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+                                    #Testing the PREDICT labels features
+                                    features_pred_B = DIG_class.predict_feature(predict="B")
+                                    features_pred_A = DIG_class.predict_feature(predict="A")
+
+                                    #Get the MAE for each set and average them
+                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
+                                    CwDIG_scores[j, k, 2] = DIG_MAE
+                                    print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+
+
+                    #Save the numpy array
+                    if saveMASH:
+                        np.save(filename_minus, DIG_scores)
+
+                    #Save all connections
+                    if save_connections:
+                        np.save(filename, CwDIG_scores)
+
+        #Run successful
+        return True
+
+    def run_RF_MASH_tests(self, DTM = ("hellinger", "log", "kl"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
+        """page_ranks should be whether or not we want to test the page_ranks
+        
+        predict should be a Boolean value and decide whether we want to test the amputation features. 
+        NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
+        
+        t is the percent of values you want covered by that many steps"""
+
+        #Run through the tests with every variatioin
+        print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
+        for link in DTM:
+            print(f"Diffusion to matrix method applied: {link}")
+
+            for t in np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
+                print(f"    T value {t}")
+
+                #Create the filename
+                if t == -1:
+                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link) #T is not included it is assumed to be -1
+                else:
+                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link, t = np.round(t/len(self.split_A), decimals=2))
+
+                #set a varaible to Save Mash
+                saveMASH = True
+
+                #If file aready exists, then we are done :)
+                if os.path.exists(filename_minus) or len(AP_values) < 1:
+                    print(f"    <><><><><>    File {filename_minus} already exists for MASH-. Will not save again   <><><><><>")
+                    saveMASH = False
+
+                #Loop through the connections
+                for connection in connection_limit:
+                    print(f"        Connection Limit: {connection}")
+
+                    #Create file directory to store the information
+                    original_directory = self.base_directory
+                    self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+                    if not os.path.exists(self.base_directory):
+                        os.makedirs(self.base_directory) 
+
+                    #Create the filename
+                    if t == -1:
+                        filename, AP_values = self.create_filename("MASH_RF", DTM = link, Connection_limit = str(connection)) #T is not included it is assumed to be -1
+                    else:
+                        filename, AP_values = self.create_filename("MASH_RF", DTM = link, t = np.round(t/len(self.split_A), decimals=2), Connection_limit = str(connection))
+
+                    #Reset the directory
+                    self.base_directory = original_directory 
+
+                    save_connections = True
+                    #If file aready exists, then we are done :)
+                    if os.path.exists(filename) or len(AP_values) < 1:
+                        print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                        
+                        #set a varaible to Save Mash
+                        save_connections = False
+
+                        if not saveMASH:
+                            continue
+
+                    #Store the data in a numpy array
+                    DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
+                    CwDIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
+
+
+                    for j, knn in enumerate(self.knn_range):
+                        print(f"            KNN {knn}")
+                        for k, anchor_percent in enumerate(AP_values):
+                            print(f"                Percent of Anchors {anchor_percent}")
+
+                            #Cache this information so it is faster
+                            anchor_amount = int((len(self.anchors) * anchor_percent)/2)
+                            
+                            try:
+                                #Create our class to run the tests
+                                DIG_class = MASH(t = t, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH)
+                                DIG_class.fit(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)])
 
                             except Exception as e:
                                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
