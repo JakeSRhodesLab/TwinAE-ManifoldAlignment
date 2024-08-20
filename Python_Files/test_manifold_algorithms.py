@@ -130,7 +130,7 @@ def use_rf_proximities_MASH(self, tuple):
     
         tuple should be a tuple with position 0 being the data and position 1 being the labels"""
     #Initilize Class
-    rf_class = RFGAP(prediction_type="classification", y=dc.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
 
     #Fit it for Data A
     rf_class.fit(tuple[0], y = tuple[1])
@@ -141,10 +141,6 @@ def use_rf_proximities_MASH(self, tuple):
     #Reset len_A and other varables
     if self.len_A == 2:
         self.len_A = len(tuple[0]) 
-
-        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
-        if hasattr(self, "known_anchors_adjusted"):
-            self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
     elif self.len_B == 2:
         self.len_B = len(tuple[0])
@@ -157,7 +153,7 @@ def use_rf_proximities_MASH(self, tuple):
     #Reset inf values
     dataA[np.isinf(dataA)] = 1
 
-    return dataA
+    return 1 - dataA
 
 #Create function to do everything
 class test_manifold_algorithms():
@@ -899,11 +895,20 @@ class test_manifold_algorithms():
             for t in np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
                 print(f"    T value {t}")
 
+                #Create file directory to store the information
+                original_directory = self.base_directory
+                self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+                if not os.path.exists(self.base_directory):
+                    os.makedirs(self.base_directory) 
+
                 #Create the filename
                 if t == -1:
-                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link) #T is not included it is assumed to be -1
+                    filename_minus, AP_values = self.create_filename("MASH_RF", DTM = link) #T is not included it is assumed to be -1
                 else:
-                    filename_minus, AP_values = self.create_filename("DIG", PageRanks = link, t = np.round(t/len(self.split_A), decimals=2))
+                    filename_minus, AP_values = self.create_filename("MASH_RF", DTM = link, t = np.round(t/len(self.split_A), decimals=2))
+
+                #Reset the directory
+                self.base_directory = original_directory 
 
                 #set a varaible to Save Mash
                 saveMASH = True
@@ -959,7 +964,7 @@ class test_manifold_algorithms():
                             try:
                                 #Create our class to run the tests
                                 DIG_class = MASH(t = t, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH)
-                                DIG_class.fit(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)])
+                                DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
 
                             except Exception as e:
                                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
@@ -982,7 +987,7 @@ class test_manifold_algorithms():
                             if saveMASH:
                                 #FOSCTTM Evaluation Metrics
                                 try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
                                     print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
                                 except Exception as e:
@@ -993,7 +998,7 @@ class test_manifold_algorithms():
 
                                 #Cross Embedding Evaluation Metric
                                 try:
-                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
                                     DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                                     print(f"                    CE Score: {DIG_CE}")
@@ -1027,7 +1032,7 @@ class test_manifold_algorithms():
                                     DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
 
                                 except Exception as e:
-                                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                                    print(f"<><><><><><>   UNABLE TO CREATE CONNECTIONS BECAUSE {e}  <><><><><><>")
                                     CwDIG_scores[j, k, 0] = np.NaN
                                     CwDIG_scores[j, k, 1] = np.NaN
 
@@ -1038,7 +1043,7 @@ class test_manifold_algorithms():
 
                                 #FOSCTTM Evaluation Metrics
                                 try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
                                     print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
                                 except Exception as e:
@@ -1049,7 +1054,7 @@ class test_manifold_algorithms():
 
                                 #Cross Embedding Evaluation Metric
                                 try:
-                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
                                     DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                                     print(f"                    CE Score: {DIG_CE}")

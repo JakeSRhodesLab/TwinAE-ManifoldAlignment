@@ -748,7 +748,7 @@ class MASH: #Manifold Alignment with Diffusion
                     self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
                     #Add in the hold out anchors to the known_anchors
-                    self.known_anchors += hold_out_anchors
+                    self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
 
                 #Return True if we had found a new alignment, otherwise false
                 return added_connections
