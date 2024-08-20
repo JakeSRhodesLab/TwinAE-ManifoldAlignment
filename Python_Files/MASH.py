@@ -89,15 +89,15 @@ class MASH: #Manifold Alignment with Diffusion
         self.dataA = dataA
         self.dataB = dataB
 
+        #This stores the length of the datasets A and B
+        self.len_A = len(self.dataA)
+        self.len_B = len(self.dataB)
+
         #Build graphs and kernals
         self.build_graphs()
 
         self.known_anchors = known_anchors
             
-        #This stores the length of the datasets A and B
-        self.len_A = len(self.dataA)
-        self.len_B = len(self.dataB)
-
         #Change known_anchors to correspond to off diagonal matricies
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
@@ -224,9 +224,7 @@ class MASH: #Manifold Alignment with Diffusion
             """#Apply burn in if necessary
             if self.burn_in > 0:
                 self.kernalsA = self.burn_in_domains(self.kernalsA)"""
-
-            #Normalize Data
-            self.dataA = self.normalize_0_to_1(self.dataA) 
+            
             self.print_time(" Time it took to execute SGDM for domain A:  ")
 
             #Create Graphs using our precomputed kernals
@@ -257,8 +255,6 @@ class MASH: #Manifold Alignment with Diffusion
             if self.burn_in > 0:
                 self.kernalsB = self.burn_in_domains(self.kernalsB)"""
             
-            #Normalize the Data
-            self.dataB = self.normalize_0_to_1(self.dataB) 
             self.print_time(" Time it took to execute SGDM for domain B:  ")
 
             #Create Graphs using our precomputed kernals
@@ -323,7 +319,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Check to see if it is a function
         if callable(distance_measure):
-            return distance_measure(data)
+            return distance_measure(self, data)
 
         #If the distances are precomputed, return the data. 
         elif distance_measure.lower() == "precomputed":
