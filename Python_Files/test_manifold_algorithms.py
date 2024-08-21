@@ -42,6 +42,8 @@ COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Week
 COX - RF: running RF GAP larger files
 Hilton - Final: running RF gap smaller files
 COLLINGS - smallMALI -- runing mali tests across the smaller datasets
+Tukey - rf_mash -- BIG mash files
+Cox - rf_mash - Small rf mash files
 
 """
 
@@ -2237,7 +2239,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -2298,6 +2300,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_DIG = True, run_CSPUD 
     
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=-1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+
+    if run_RF_MASH:
+        #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
+        filtered_kwargs = {}
+        if "DTM" in kwargs:
+            filtered_kwargs["DTM"] = kwargs["DTM"]
+        if "predict" in kwargs:
+            filtered_kwargs["predict"] = kwargs["predict"]
+        if "connection_limit" in kwargs:
+            filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
+    
+        #Loop through each file (Using Parralel Processing) for DIG
+        Parallel(n_jobs=-1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
