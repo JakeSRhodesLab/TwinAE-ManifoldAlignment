@@ -6,17 +6,19 @@ Questions:
 
 
 Changes Log: 
-1. Added NaN handling
-2. Added Split caching to speed up the tests
-3. Added an early kema implementation
+1. Added results
+2. Added plotting features for RF results
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
+-1. Fix Kema
 0. Run RF tests and use MALI and KEMA
 1. Update MASH to work like SPUD
-7. Add in the other way Marshall asked to be able to format anchors
+2. Upload MALI functions
+3. Test MALI with RF_GAP
+
 
 If time things:
 1. Rewrite Test manifold algorithms to cache splits
@@ -26,6 +28,7 @@ If time things:
 5. Allow for toggling whether we want trianglelization or not -- determine best places to use it
 6. Figure out how to make NaN processing faster. Use the pdist?
 7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
+8. Add in the other way Marshall asked to be able to format anchors
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
@@ -1877,9 +1880,12 @@ def clear_directory(text_curater = "all", not_text = None, directory = "default"
 def is_even(num):
     return num & 1 == 0
 
-def _upload_file(file):
+def _upload_file(file, directory = "default"):
     #Simply for error finding
-    original_file = MANIFOLD_DATA_DIR + file
+    if directory == "default":
+        original_file = MANIFOLD_DATA_DIR + file
+    else:
+        original_file = CURR_DIR + "/ManifoldData_RF/" + file
 
     #Create DataFrame
     df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
@@ -1894,7 +1900,7 @@ def _upload_file(file):
 
     #Load in the numpy array
     try:
-        data = np.load(MANIFOLD_DATA_DIR + file) #allow_pickle=True
+        data = np.load(original_file) #allow_pickle=True
     except Exception as e:
         print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing without uploading file\n-------------------------------------------------------------------------------------------------------")
         
@@ -1947,15 +1953,26 @@ def _upload_file(file):
     try:
 
         #Split based on method
-        if data_dict["method"] == "DIG":
+        if data_dict["method"] == "DIG" or data_dict["method"] == "MASH_RF":
 
             #Add the right Page Rank Argument
-            if "None" in file:
-                data_dict["Page_Rank"] = "None"
+            if "full" in file:
+                data_dict["Page_Rank"] = "full"
             elif "off-diagonal" in file:
                 data_dict["Page_Rank"] = "off-diagonal"
             else: #Then it is full
-                data_dict["Page_Rank"] = "full"
+                data_dict["Page_Rank"] = "None"
+
+            #Add the DTM if applicable:
+            if "hellinger" in file:
+                data_dict["Operation"] = "hellinger"
+            elif "kl" in file:
+                data_dict["Operation"] = "kl"
+            elif "log" in file:
+                data_dict["Operation"] = "log"
+            else:
+                data_dict["Operation"] = "None"
+
 
             #Add the right t value
             if "_t(" in file:
@@ -2090,6 +2107,68 @@ def _upload_file(file):
                     #Create a new Data frame instance with all the asociated values
                     df = df._append(data_dict, ignore_index=True)
 
+        #Method SPUD
+        elif data_dict["method"] == "RF_SPUD":
+
+            #Assign the operation
+            if "None" in file:
+                data_dict["Operation"] = "None"
+            elif "sqrt" in file:
+                data_dict["Operation"] = "sqrt"
+            elif "log" in file:
+                data_dict["Operation"] = "log"
+            else: 
+                data_dict["Operation"] = "float" #We can update this later to tell us which float
+
+            #Assign its Kind
+            if "abs" in file:
+                data_dict["SPUDS_Algorithm"] = "abs"
+            elif "mean" in file:
+                data_dict["SPUDS_Algorithm"] = "mean"
+            else:
+                data_dict["SPUDS_Algorithm"] = "default"
+            
+            #Loop through each Knn
+            for k in range(0, 10):
+
+                if k == 9 and data_dict["SPUDS_Algorithm"] != "default":
+                    data_dict["KNN"] = "NAMA"
+                else:
+                    knn = (k*knn_increment) + 2
+                    data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (k * 0.02) + 0.01
+
+                #Loop through each Anchor percentage
+                for l in range(len(AP_values)):
+                    data_dict["Percent_of_Anchors"] = AP_values[l]
+
+                    #Now use are data array to grab the FOSCTTM and CE scores
+                    data_dict["FOSCTTM"] = data[k, l, 0]
+                    data_dict["Cross_Embedding_KNN"] = data[k, l, 1]
+
+                    #Create a new Data frame instance with all the asociated values
+                    df = df._append(data_dict, ignore_index=True)
+
+        #METHOD MALI
+        elif data_dict["method"] == "MALI_RF":
+
+            #Loop through each Knn
+            for k in range(0, 10):
+                knn = (k*knn_increment) + 2
+                data_dict["KNN"] = knn
+
+                #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                data_dict["Percent_of_KNN"] = (k * 0.02) + 0.01
+            
+                #Now use are data array to grab the FOSCTTM and CE scores
+                data_dict["FOSCTTM"] = data[k, 0]
+                data_dict["Cross_Embedding_KNN"] = data[k, 1]
+
+                #Create a new Data frame instance with all the asociated values
+                df = df._append(data_dict, ignore_index=True)
+        
         #METHOD NAMA
         elif data_dict["method"] == "NAMA":
             #Loop through each Anchor percentage
@@ -2156,8 +2235,8 @@ def _upload_file(file):
     
     #If there was an error anywhere in processing the data
     except Exception as e:
-        print(f"Error occured with {original_file}, and it will not be fully uploaded. It was {e}. Will delete")
-        os.remove(original_file)
+        print(f"Error occured with {original_file}, and it will not be fully uploaded. It was {e}.")
+        #os.remove(original_file)
         
         #It will be empty
         return (df, base_df)
@@ -2385,17 +2464,25 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_D
 
     return manifold_instances
 
-def upload_to_DataFrame():
+def upload_to_DataFrame(directory = "default"):
     """Returns a Panda's DataFrame from all the test data"""
 
     #Loop through each directory to get all the file names
     files = []
-    for directory in os.listdir(MANIFOLD_DATA_DIR):
-        if os.path.isdir(MANIFOLD_DATA_DIR + directory): #Check to make sure its a directory
-            files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
+
+    if directory == "default":
+        for directory in os.listdir(MANIFOLD_DATA_DIR):
+            if os.path.isdir(MANIFOLD_DATA_DIR + directory): #Check to make sure its a directory
+                files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
+
+    else: 
+        for directory in os.listdir(CURR_DIR + "/ManifoldData_RF/"):
+            if os.path.isdir(CURR_DIR + "/ManifoldData_RF/" + directory): #Check to make sure its a directory
+                files += [os.path.join(directory, file) for file in os.listdir(CURR_DIR + "/ManifoldData_RF/" + directory)]
+        
 
     #Use Parralel processing to upload lines to dataframe
-    processed_files = Parallel(n_jobs=-5)(delayed(_upload_file)(file) for file in files)
+    processed_files = Parallel(n_jobs=-5)(delayed(_upload_file)(file, directory) for file in files)
 
     # Separate the DataFrames from the list of tuples
     dataframes, base_dataframes = zip(*processed_files)

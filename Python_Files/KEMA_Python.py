@@ -32,6 +32,10 @@ class KMA:
 
     def KMA(self, labeled, unlabeled, options, debug = False):
 
+        #Convert to numpy array
+        labeled = np.array(labeled)
+        unlabeled = np.array(unlabeled)
+
         # Set default options if not provided
         options.setdefault('numDomains', len(labeled))
         options.setdefault('kernelt', 'lin')
@@ -125,7 +129,7 @@ class KMA:
         Dd = np.sum(Wd, axis=1)
         Ld = np.diag(Dd) - Wd
 
-        A = ((1 - options['mu']) * L + options['mu'] * Ls) + options.get('lambda', 1e-5) * np.eye(len(Ls)) #options.get('lambda', 1e-5) Modifiied number
+        A = ((1 - options['mu']) * L + options['mu'] * Ls) + options.get('lambda', 1e-10) * np.eye(len(Ls)) #options.get('lambda', 1e-5) Modifiied number
         B = Ld
 
         # Kernel computation
@@ -170,14 +174,19 @@ class KMA:
             imshow(KBK), show()
             input("Continue? Press Enter.")
 
+        # Symmetrize KBK and KAK
+        #KBK = (KBK + KBK.T) / 2
+        #KAK = (KAK + KAK.T) / 2
+
         # Regularization to ensure KBK is positive semi-definite
-        epsilon = 1e-10
-        KBK = (KBK + KBK.T) / 2  # Symmetrize KBK
-        KBK += epsilon * np.eye(KBK.shape[0])
+        KBK += 1e-10 * np.eye(KBK.shape[0])
 
         # Solve the generalized eigenvalue problem
-        ALPHA, LAMBDA = np.linalg.eig(np.dot(np.linalg.inv(KBK), KAK))
-        LAMBDA = np.diag(LAMBDA)
+        M = np.dot(np.linalg.inv(KBK), KAK)
+        M = (M + M.T) / 2  # Symmetrize the matrix product
+
+        # Obtain eigenvalues and eigenvectors
+        LAMBDA, ALPHA = np.linalg.eig(M)
         
         return ALPHA, LAMBDA, options
 
