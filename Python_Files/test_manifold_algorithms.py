@@ -10,6 +10,7 @@ Changes Log:
 2. Added plotting features for RF results
 3. Added Python Engine
 4. Made updates to KMA to make it run -> Check lamda, and other defaults I added.
+5. Debugged the KMA mainTest file so it works :)
 
 FUTURE IDEAS:
 3. Possible with n domains?
