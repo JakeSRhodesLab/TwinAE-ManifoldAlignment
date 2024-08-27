@@ -11,12 +11,14 @@ Changes Log:
 3. Added Python Engine
 4. Made updates to KMA to make it run -> Check lamda, and other defaults I added.
 5. Debugged the KMA mainTest file so it works :)
+6. Added a KMA pipeline through Adam_MATLAB
+7. Updated MASH CE to calculate on both domains
+8. Added KEMA test all fucntions
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
--1. Fix Kema
 0. Run RF tests and use MALI and KEMA
 1. Update MASH to work like SPUD
 2. Upload MALI functions
@@ -81,6 +83,7 @@ import timeit
 from rfgap import RFGAP
 from MASH import MASH
 from mali import MALI
+from scipy.spatial.distance import pdist, squareform
 
 #Simply, for my sanity
 import warnings
@@ -568,6 +571,117 @@ class test_manifold_algorithms():
                 #Save the numpy array
                 np.save(filename, spud_scores)
         
+        #Run successful
+        return True
+    
+    def run_KEMA_tests(self): 
+        """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+
+        #We are going to run test with every variation
+        print(f"\n-------------------------------------    KEMA Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
+
+        #Create file directory to store the information
+        original_directory = self.base_directory
+        self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+
+        #Create files and store data
+        filename, AP_values = self.create_filename("KEMA_RF") 
+        
+        #Reset the directory
+        self.base_directory = original_directory 
+        
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename):
+            print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+            return True
+
+        #Store the data in a numpy array
+        kema_scores = np.zeros((len(self.knn_range), 2))
+
+        #Start MATLAB Engine  #This is a long import -> 4 seconds. Starting the engine takes 18 seconds
+        import matlab.engine
+        eng = matlab.engine.start_matlab()
+        eng.cd(r'/yunity/arusty/Graph-Manifold-Alignment/KEMA/general_routine', nargout=0)
+
+        labeled = [
+            {'X': matlab.double((self.split_A.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}, # It needs this shape to be transposed....
+            {'X': matlab.double((self.split_B.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}
+        ]
+
+        unlabeled = [
+            {'X': matlab.double([])},
+            {'X': matlab.double([])}
+        ]
+
+        for k, knn in enumerate(self.knn_range):
+            print(f"  KNN {knn}")
+
+            try:
+                #Create the class with all the arguments
+                ALPHA, LAMBDA, options = eng.KMA(labeled, unlabeled,  {"kernelt" : 'lin', "debug" : 0, "nn" : knn}, nargout = 3, background = False) #We can change the kernelt too
+
+                # 3) project test data
+
+                # Convert to MATLAB types
+                test = [
+                    {'X': matlab.double((self.split_A.T).tolist())},
+                    {'X': matlab.double((self.split_B.T).tolist())}
+                ]
+
+                save_files = 0
+                emb = eng.Adam_MATLAB(labeled, unlabeled, test, ALPHA, options, save_files, nargout = 1, background = False)
+
+                #Squeeze embedding
+                emb = np.squeeze(emb).T
+
+
+            except Exception as e:
+                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                kema_scores[k, 0] = np.NaN
+                kema_scores[k, 1] = np.NaN
+                continue
+
+            #FOSCTTM METRICS
+            try:
+                #Create a FOSCTTM Like Field
+                x_dists = squareform(pdist(emb))
+
+                #normalize it
+                block = x_dists / np.max(x_dists, axis = None)
+
+                kema_FOSCTTM = self.FOSCTTM(block)
+                print(f"                FOSCTTM Score: {kema_FOSCTTM}")
+            except Exception as e:
+                print(f"                FOSCTTM exception occured: {e}")
+                kema_FOSCTTM = np.NaN
+            
+            kema_scores[k, 0] = kema_FOSCTTM
+
+            #Cross Embedding Metrics
+            try:
+               
+               #initialize the model
+                knn_model = KNeighborsClassifier(n_neighbors = 4)
+
+                #Fit and score predicting from domain A to domain B
+                knn_model.fit(emb, self.labels)
+                score1 =  knn_model.score(emb, self.labels)
+
+                #Fit and score predicting from domain B to domain A, and then return the average value
+                knn_model.fit(emb, self.labels)
+                kema_CE =  np.mean([score1, knn_model.score(emb, self.labels)])
+
+                print(f"                CE Score: {kema_CE}")
+
+            except Exception as e:
+                print(f"                Cross Embedding exception occured: {e}")
+                kema_CE = np.NaN
+            
+            kema_scores[k, 1] = kema_CE
+    
+        #Save the numpy array
+        np.save(filename, kema_scores)
+
         #Run successful
         return True
     
@@ -2321,7 +2435,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_KEMA = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -2438,6 +2552,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_D
     if run_MALI:
         #Loop through each file (Using Parralel Processing) for NAMA
         Parallel(n_jobs=-1)(delayed(instance.run_MALI_tests)() for instance in manifold_instances.values())
+
+    if run_KEMA:
+        #Loop through each file (Using Parralel Processing) for NAMA
+        Parallel(n_jobs=-1)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA

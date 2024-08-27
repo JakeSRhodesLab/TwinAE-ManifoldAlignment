@@ -163,20 +163,30 @@ class MASH: #Manifold Alignment with Diffusion
 
         return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
     
-    def cross_embedding_knn(self, embedding, labels, knn_args = {'n_neighbors': 4}):
-        """Often abreviated as CE. 
+    def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+        """
+        Returns the classification score by training on one domain and predicting on the the other.
+        This will test on both domains, and return the average score.
         
-        This trains a knn model using points only from one domain to predict the labels
-        in the other domain. It returns the accuracy score. The closer to 1, the better."""
+        Parameters:
+            :embedding: the manifold alignment embedding. 
+            :Labels: a concatenated list of labels for domain A and labels for domain B
+            :knn_args: the key word arguments for the KNeighborsClassifier."""
 
-        (labels1, labels2) = labels
+        (labels1, labels2) = Labels
 
         n1 = len(labels1)
 
+        #initialize the model
         knn = KNeighborsClassifier(**knn_args)
-        knn.fit(embedding[:n1, :], labels1)
 
-        return knn.score(embedding[n1:, :], labels2)
+        #Fit and score predicting from domain A to domain B
+        knn.fit(embedding[:n1, :], labels1)
+        score1 =  knn.score(embedding[n1:, :], labels2)
+
+        #Fit and score predicting from domain B to domain A, and then return the average value
+        knn.fit(embedding[n1:, :], labels2)
+        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
 
     """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def print_time(self, print_statement =  ""):
