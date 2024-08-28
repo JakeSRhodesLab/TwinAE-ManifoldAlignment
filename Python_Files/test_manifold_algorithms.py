@@ -14,6 +14,8 @@ Changes Log:
 6. Added a KMA pipeline through Adam_MATLAB
 7. Updated MASH CE to calculate on both domains
 8. Added KEMA test all fucntions
+9. Added KEMA to plotting functions (Though waiting to run tests)
+10. Added RF method Rankings
 
 FUTURE IDEAS:
 3. Possible with n domains?
