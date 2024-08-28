@@ -1,4 +1,9 @@
-"""This is a function for calculating the difference between time series data using cross correlation"""
+"""
+This is a function for calculating the difference between time series data using cross correlation
+This code is meant to handle a dataframe with a multilevel index where level one is RID and level
+two is the visit month
+There should be no nans in the input data
+"""
 
 import numpy as np
 import pandas as pd
@@ -66,7 +71,6 @@ def wrapped_euclidean_distances(df):
     normalized_df = df.apply(normalize_column, axis=0)
     # Make and return the omparisions squareform array
     rids = normalized_df.index.get_level_values("RID").unique()
-    patient_count = len(rids)
     comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="euclidean") for id_2 in rids] for id_1 in rids]
     squareform = np.array(comparisons)
     # Normalize to the range of 0 to 1
@@ -83,7 +87,6 @@ def wrapped_dtw_distances(df):
     normalized_df = df.apply(normalize_column, axis=0)
     # Make and return the omparisions squareform array
     rids = normalized_df.index.get_level_values("RID").unique()
-    patient_count = len(rids)
     comparisons = [[sequences_distance(normalized_df, id_1, id_2, method="normdtw") for id_2 in rids] for id_1 in rids]
     squareform = np.array(comparisons)
     # Normalize to the range of 0 to 1
@@ -95,13 +98,14 @@ def wrapped_dtw_distances(df):
 if __name__ == "__main__":
     #this code runs if you just wanna run the functions in here and get the squareform
     print("This is running as __main__")
-    sample_size = 10
+    sample_size = 100
     data = pd.read_excel(r"C:/Users/jcory/Box/ADNI/Datasets/Merged Data Files/Progression Variables 2024-08-02.xlsx", index_col=[0,1])
     first_level_values = data.index.get_level_values(0)
     unique_rids = first_level_values.unique()
     sample_rids = unique_rids[:sample_size]
     sample_data = data.loc[sample_rids]
-    squareform = wrapped_dtw_distances(sample_data)
+    squareform = wrapped_euclidean_distances(sample_data)
+    print(squareform)
 else:
     print("This is not running as __main__")
 
