@@ -14,7 +14,7 @@ import test_manifold_algorithms as tma
 
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
-csv_files = [#"zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+csv_files = [#"#zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
              #"segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
              #"ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
              #"S-curve", "blobs",
@@ -22,7 +22,7 @@ csv_files = [#"zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinso
              #"diabetes.csv", "tic-tac-toe.csv",
              'Medicaldataset.csv', "water_potability.csv",
              'treeData.csv', 'winequality-red.csv', 'car.csv',
-             "artificial_tree.csv", "chess.csv", "optdigits.csv", "waveform.csv"
+             #"artificial_tree.csv", "chess.csv", "optdigits.csv", "waveform.csv"
              ]
 
 """
@@ -58,7 +58,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830],#, 34
                             run_JLMA = state,
                             run_KNN_Tests=state,
                             run_PCR = state,
-                            run_MALI=True,
+                            run_MALI=state,
+                            run_RF_MASH= True,
                             run_RF_SPUD=state,
                             run_CSPUD = state, operations = ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -76,7 +77,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 9515, 1825], #Gen
                             run_JLMA = state,
                             run_KNN_Tests= state,
                             run_PCR = state,
-                            run_MALI=True,
+                            run_MALI=state,
+                            run_RF_MASH=  True,
                             run_RF_SPUD=state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -93,7 +95,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667],# 951
                             run_JLMA = state,
                             run_KNN_Tests= state,
                             run_PCR = state,
-                            run_MALI=True,
+                            run_MALI=state,
+                            run_RF_MASH=True,
                             run_RF_SPUD=state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -109,7 +112,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1825, 2830, 2969],# 340
                             run_JLMA = state,
                             run_KNN_Tests= state,
                             run_PCR = state,
-                            run_MALI=True,
+                            run_MALI=state,
+                            run_RF_MASH=True,
                             run_RF_SPUD=state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments"""
 
@@ -125,6 +129,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 1825, 2830],# 340
                             run_JLMA = state,
                             run_KNN_Tests=state,
                             run_PCR = state,
-                            run_MALI=True,
+                            run_MALI=state,
+                            run_RF_MASH=True,
                             run_RF_SPUD=state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments

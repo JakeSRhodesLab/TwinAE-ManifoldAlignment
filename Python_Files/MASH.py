@@ -89,15 +89,15 @@ class MASH: #Manifold Alignment with Diffusion
         self.dataA = dataA
         self.dataB = dataB
 
+        #This stores the length of the datasets A and B
+        self.len_A = len(self.dataA)
+        self.len_B = len(self.dataB)
+
         #Build graphs and kernals
         self.build_graphs()
 
         self.known_anchors = known_anchors
             
-        #This stores the length of the datasets A and B
-        self.len_A = len(self.dataA)
-        self.len_B = len(self.dataB)
-
         #Change known_anchors to correspond to off diagonal matricies
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
@@ -163,20 +163,30 @@ class MASH: #Manifold Alignment with Diffusion
 
         return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
     
-    def cross_embedding_knn(self, embedding, labels, knn_args = {'n_neighbors': 4}):
-        """Often abreviated as CE. 
+    def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+        """
+        Returns the classification score by training on one domain and predicting on the the other.
+        This will test on both domains, and return the average score.
         
-        This trains a knn model using points only from one domain to predict the labels
-        in the other domain. It returns the accuracy score. The closer to 1, the better."""
+        Parameters:
+            :embedding: the manifold alignment embedding. 
+            :Labels: a concatenated list of labels for domain A and labels for domain B
+            :knn_args: the key word arguments for the KNeighborsClassifier."""
 
-        (labels1, labels2) = labels
+        (labels1, labels2) = Labels
 
         n1 = len(labels1)
 
+        #initialize the model
         knn = KNeighborsClassifier(**knn_args)
-        knn.fit(embedding[:n1, :], labels1)
 
-        return knn.score(embedding[n1:, :], labels2)
+        #Fit and score predicting from domain A to domain B
+        knn.fit(embedding[:n1, :], labels1)
+        score1 =  knn.score(embedding[n1:, :], labels2)
+
+        #Fit and score predicting from domain B to domain A, and then return the average value
+        knn.fit(embedding[n1:, :], labels2)
+        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
 
     """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def print_time(self, print_statement =  ""):
@@ -224,9 +234,7 @@ class MASH: #Manifold Alignment with Diffusion
             """#Apply burn in if necessary
             if self.burn_in > 0:
                 self.kernalsA = self.burn_in_domains(self.kernalsA)"""
-
-            #Normalize Data
-            self.dataA = self.normalize_0_to_1(self.dataA) 
+            
             self.print_time(" Time it took to execute SGDM for domain A:  ")
 
             #Create Graphs using our precomputed kernals
@@ -257,8 +265,6 @@ class MASH: #Manifold Alignment with Diffusion
             if self.burn_in > 0:
                 self.kernalsB = self.burn_in_domains(self.kernalsB)"""
             
-            #Normalize the Data
-            self.dataB = self.normalize_0_to_1(self.dataB) 
             self.print_time(" Time it took to execute SGDM for domain B:  ")
 
             #Create Graphs using our precomputed kernals
@@ -323,7 +329,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Check to see if it is a function
         if callable(distance_measure):
-            return distance_measure(data)
+            return distance_measure(self, data)
 
         #If the distances are precomputed, return the data. 
         elif distance_measure.lower() == "precomputed":
@@ -752,7 +758,7 @@ class MASH: #Manifold Alignment with Diffusion
                     self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
 
                     #Add in the hold out anchors to the known_anchors
-                    self.known_anchors += hold_out_anchors
+                    self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
 
                 #Return True if we had found a new alignment, otherwise false
                 return added_connections
