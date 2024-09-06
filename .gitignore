@@ -162,5 +162,5 @@ cython_debug/
 .DS_Store
 
 #Ignore the Data DataFrame file -- its too big anyways
-ManifoldData/Data_DataFrame.csv
-/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv
+ManifoldData_RF
+ManifoldData
