@@ -161,6 +161,7 @@ cython_debug/
 
 .DS_Store
 
-#Ignore the Data DataFrame file -- its too big anyways
+#Ignore the following folders
 ManifoldData_RF
 ManifoldData
+Splits_Data
