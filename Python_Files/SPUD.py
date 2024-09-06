@@ -1,8 +1,10 @@
 #Shortest Path to Union Domains (SPUD)
 
 """
-Ideas to increase Computation:
-np.tri to get the indicies seems to take a long time. We likely use the same indicies, so maybe we could create a dictionary of size to indicies?
+Adam's Notes
+------------
+Parameters to delete:
+If we can show that mean does always better than abs, we can combine the OD_method and the similarity_measures, and greatly simplify the parameterization.
 
 Tasks: Go through code and check where we want to make things triangular, and where to test their speeds in computing. 
 3. Do I need the check for symmetric? IT always will be, unless given a precomputed data... ? No it will always be
@@ -25,7 +27,7 @@ import seaborn as sns
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
-               OD_method = "default", agg_method = "log", IDC = 1, adj_block = False,
+               OD_method = "default", agg_method = "log", IDC = 1,
                similarity_measure = "default", float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
@@ -52,8 +54,8 @@ class SPUD:
             It can be 'sqrt', 'log', any float, or 'None'.
             If 'sqrt', it applies a square root function, and then transposes it to start at 0. Best for when domains aren't the same shape.
             If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
-            If 'float', it multiplies the off-diagonal block by the float value. 
-            If 'None', it applies no additional transformation besides normalizing the values between 0 and 1. 
+            If 'None', it applies no additional transformation besides normalizing the values between 0 and 1.
+            If given a float, it multiplies the off-diagonal block by the float value.  
 
           :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
             to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
@@ -79,7 +81,6 @@ class SPUD:
         self.OD_method = OD_method.lower()
         self.similarity_measure = similarity_measure.lower()
         self.float_precision = float_precision
-        self.adj_block = adj_block
 
         #Set self.emb to be None
         self.emb = None
@@ -140,6 +141,9 @@ class SPUD:
           if self.verbose > 0 and self.len_A > 1000:
              print("  --> Warning: Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'abs' for faster computation time.")
 
+          if self.similarity_measure != "default" and self.verbose > 0:
+             print("Will not be using the similarity measure. It only applies when OD_method does not equal 'default'.")
+             
 
           self.print_time()
           self.graphAB = self.merge_graphs()
@@ -152,6 +156,23 @@ class SPUD:
 
         if self.verbose > 0:
            print("<><><><><><><><><><><><><>  Processed Finished  <><><><><><><><><><><><><>")
+
+  def get_distsA(self):
+     """Returns the reconstructed distance matrix for domain A"""
+     return reconstruct_symmetric(self.distsA)
+  
+  def get_distsB(self):
+     """Returns the reconstructed distance matrix for domain B"""
+     return reconstruct_symmetric(self.distsB)
+  
+  def get_kernalsA(self):
+     """Returns the reconstructed distance matrix for kernal A"""
+     return reconstruct_symmetric(self.kernalsA)
+  
+  def get_kernalsB(self):
+     """Returns the reconstructed distance matrix for kernal B"""
+     return reconstruct_symmetric(self.kernalsB)
+  
 
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def print_time(self, print_statement =  ""):
@@ -291,6 +312,51 @@ class SPUD:
 
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
   
+  def compute_scores(self, labels, **kwargs):
+      """Returns the FOSCTTM and CE score. 
+      
+      Labels should be the labels for domain A concatenated with domain B.
+      
+      Other key word arguments are to fit the MDS if necessary"""
+
+      #Calculate FOSCTTM
+      try:
+        FOSCTTM_score = self.FOSCTTM(self.block[self.len_A:, :self.len_A])
+      except:
+        raise RuntimeError("SPUD must be fit first.")
+      
+      if self.verbose > 1:
+        print(f"FOSCTTM: {FOSCTTM_score}") #This gets the off-diagonal part
+
+      #Check to see if we already have created our embedding, else create the embedding.
+      if type(self.emb) == type(None):
+        #Time the embedding creation
+        self.print_time()
+
+        #Create the mds object and then the embedding
+        mds = MDS(metric=True, dissimilarity = 'precomputed', **kwargs)
+        self.emb = mds.fit_transform(self.block) 
+
+        if self.verbose > 2:
+          print("Embedding Calculated. Will not need to be calculated for future plotting again.")
+
+        self.print_time("Time it took to calculate the embedding: ")
+      
+      elif self.verbose > 2:
+         print("Embedding already calculated. ")
+
+      #Seperate the labels into their respective domains
+      first_labels = labels[:self.len_A]
+      second_labels = labels[self.len_A:]
+
+      #Compute Cross Embedding
+      CE_score = self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})
+      if self.verbose > 1:
+        print(f"Cross Embedding: {CE_score}")
+
+      return FOSCTTM_score, CE_score
+
+
   """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def merge_graphs(self):
         """
@@ -336,16 +402,12 @@ class SPUD:
       matrixA = 1 - self.kernalsA
       matrixB = 1 - self.kernalsB
 
-    else: 
-       raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama', 'kernals', or 'jaccard'")
-    
-    #Adjust the block if needed
-    if self.adj_block:
+      #Change the interclass distances to be the kernals
       self.distsA = matrixA
       self.distsB = matrixB
-       
-      if self.verbose > 0:
-        print("Adjusting self.distsA and self.distsB to reflect the similaritiy measure adjustment.")
+
+    else: 
+      raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama', 'kernals', or 'jaccard'")
 
     #Perform the absolute value method
     if self.OD_method == "abs":
@@ -501,9 +563,17 @@ class SPUD:
 
         #Check to see if we already have created our embedding, else create the embedding.
         if type(self.emb) == type(None):
+          #Time the embedding creation
+          self.print_time()
+
           #Create the mds object and then the embedding
-          mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
+          mds = MDS(metric=True, dissimilarity = 'precomputed', **kwargs)
           self.emb = mds.fit_transform(self.block) 
+
+          if self.verbose > 2:
+            print("Embedding Calculated. Will not need to be calculated for future plotting again.")
+
+          self.print_time("Time it took to calculate the embedding: ")
 
         #Check to make sure we have labels
         if type(labels)!= type(None):
@@ -525,6 +595,10 @@ class SPUD:
             print(f"FOSCTTM: {self.FOSCTTM(self.block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
         except: #This will run if the domains are different shapes
             print("Can't compute FOSCTTM with different domain shapes.")
+
+
+        #Time the plotting creation
+        self.print_time()
 
         #Create styles to change the points from graph 1 to be triangles and circles from graph 2
         styles = ['Domain A' if i < self.len_A else 'Domain B' for i in range(len(self.emb[:]))]
@@ -596,3 +670,5 @@ class SPUD:
             ax.set_title("Predicted Labels")
 
             plt.show()
+
+        self.print_time("Time it took complete the plots: ")

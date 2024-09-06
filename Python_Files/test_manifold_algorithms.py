@@ -2,67 +2,61 @@
 
 """
 Questions:
-1. Djisktra's O(n *log n) algorithm actually doesn't garuntee the shortest path between all nodes. Floyd-Warshall O(n3) does, though it takes way to long. Johnson's method is faster, but running djikstra from each node is fastest... I think distances does this already 
+1. GIT storage? We ran out.
+
 
 
 Changes Log: 
-1. Added results
-2. Added plotting features for RF results
-3. Added Python Engine
-4. Made updates to KMA to make it run -> Check lamda, and other defaults I added.
-5. Debugged the KMA mainTest file so it works :)
-6. Added a KMA pipeline through Adam_MATLAB
-7. Updated MASH CE to calculate on both domains
-8. Added KEMA test all fucntions
-9. Added KEMA to plotting functions (Though waiting to run tests)
-10. Added RF method Rankings
+1. Updated the time table for SPUD --> Time goes fast when KNN is low, or if OD-METHOD is mean/abs. Also tested if mean is more helpful that abs
+2. Created  Baseline Tests
+3. Added Basline resutls
+
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-0. Run RF tests and use MALI and KEMA
-1. Update MASH to work like SPUD
-2. Upload MALI functions
-3. Test MALI with RF_GAP
+1. Create plot method to method -> RF to Not
+2. Base line for RF -> for each domain seperately
+3. Split RF MASH- from MASH 
 
 
 If time things:
-1. Rewrite Test manifold algorithms to cache splits
-2. Add MALI experiments
 3. Encode multiple Domain testing
-4. Reduce time complexity somehow by maximizing processes (For example, would it be faster to not even use the graphs function? We could similate it already just by adding edges for MASH)
-5. Allow for toggling whether we want trianglelization or not -- determine best places to use it
 6. Figure out how to make NaN processing faster. Use the pdist?
 7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 8. Add in the other way Marshall asked to be able to format anchors
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
--> RF proximity measures (its a similarity measure)
 -> Multiple Domains 
+-> MASH optimization function to work something like a nueral network. At the least, make it so connections are adjustable
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 
 Running Zombies
-Carter - SPUD: running all spud combinations. (3 weeks and running)
-COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Weeks and running)
-COX - RF: running RF GAP larger files
-Hilton - Final: running RF gap smaller files
-COLLINGS - smallMALI -- runing mali tests across the smaller datasets
-Tukey - rf_mash -- BIG mash files
-Cox - rf_mash - Small rf mash files
+Tukey - rf_mash: small mash files
+collings - rf_mash: medium mash files
+cox - rf_mash: big mash files
+LAPLACE - KEMA: Everything KEMA.
+CARTER - SPUD: everything RF spud
+
+Killed Zombies
+Cox - rf_mash - Small rf mash files -- It was killed by memory overload.
+COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Weeks and running). It was killed by memory overload.
+
+
 
 """
 
 #Import libraries
 import glob
 from ma_procrustes import MAprocr
-from DIG import DIG
+#from DIG import DIG
 from SPUD import SPUD
-from SPUD_Copy import SPUD_Copy
+#from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
 from jlma import JLMA
@@ -403,12 +397,12 @@ class test_manifold_algorithms():
         self.split_A, self.split_B = self.split_features(features, self.labels)
         self.labels_doubled = np.concatenate((self.labels, self.labels))
 
-        #We just assume they want the components to be the number of features
-        n_comp = max(min(len(self.split_B[1]), len(self.split_A[1])), 2)
-        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = n_comp)
+        #We just assume they want the scomponents to be the number of features
+        self.n_comp = max(min(len(self.split_B[1]), len(self.split_A[1])), 2)
+        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = self.n_comp)
 
         if self.verbose > 1:
-            print(f"MDS initialized with {n_comp} components")
+            print(f"MDS initialized with {self.n_comp} components")
 
     def create_Scurve(self):
         """Create Scurve Data"""
@@ -509,19 +503,21 @@ class test_manifold_algorithms():
                 #Create file directory to store the information
                 original_directory = self.base_directory
                 self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
-                if not os.path.exists(self.base_directory):
-                    os.makedirs(self.base_directory) 
+                
 
                 #Create files and store data
                 filename, AP_values = self.create_filename("SPUD_RF", agg_method = agg_method, OD_method = OD_method) 
                 
-                #Reset the directory
-                self.base_directory = original_directory 
 
                 #If file aready exists, then we are done :)
                 if os.path.exists(filename) or len(AP_values) < 1:
                     print(f"        <><><><><>    File {filename} already exists   <><><><><>")
+                    #Reset the directory
+                    self.base_directory = original_directory 
                     continue
+
+                #Reset the directory
+                self.base_directory = original_directory 
 
                 #Store the data in a numpy array
                 spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
@@ -540,7 +536,7 @@ class test_manifold_algorithms():
                                 similarity_measure = "default"
 
                             #Create the class with all the arguments
-                            spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, similarity_measure = similarity_measure) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
+                            spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, similarity_measure = similarity_measure, n_pca = 100) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
                             spud_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)])
 
                         except Exception as e:
@@ -576,178 +572,201 @@ class test_manifold_algorithms():
         #Run successful
         return True
     
-    def run_KEMA_tests(self): 
+    def run_KEMA_tests(self, kernelts = ["lin", "rbf"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    KEMA Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
 
-        #Create file directory to store the information
-        original_directory = self.base_directory
-        self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+        for kernelt in kernelts:
+            print(f"Kenelt: {kernelt}")
 
-        #Create files and store data
-        filename, AP_values = self.create_filename("KEMA_RF") 
-        
-        #Reset the directory
-        self.base_directory = original_directory 
-        
-        #If file aready exists, then we are done :)
-        if os.path.exists(filename):
-            print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-            return True
+            #Create file directory to store the information
+            original_directory = self.base_directory
+            self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
 
-        #Store the data in a numpy array
-        kema_scores = np.zeros((len(self.knn_range), 2))
-
-        #Start MATLAB Engine  #This is a long import -> 4 seconds. Starting the engine takes 18 seconds
-        import matlab.engine
-        eng = matlab.engine.start_matlab()
-        eng.cd(r'/yunity/arusty/Graph-Manifold-Alignment/KEMA/general_routine', nargout=0)
-
-        labeled = [
-            {'X': matlab.double((self.split_A.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}, # It needs this shape to be transposed....
-            {'X': matlab.double((self.split_B.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}
-        ]
-
-        unlabeled = [
-            {'X': matlab.double([])},
-            {'X': matlab.double([])}
-        ]
-
-        for k, knn in enumerate(self.knn_range):
-            print(f"  KNN {knn}")
-
-            try:
-                #Create the class with all the arguments
-                ALPHA, LAMBDA, options = eng.KMA(labeled, unlabeled,  {"kernelt" : 'lin', "debug" : 0, "nn" : knn}, nargout = 3, background = False) #We can change the kernelt too
-
-                # 3) project test data
-
-                # Convert to MATLAB types
-                test = [
-                    {'X': matlab.double((self.split_A.T).tolist())},
-                    {'X': matlab.double((self.split_B.T).tolist())}
-                ]
-
-                save_files = 0
-                emb = eng.Adam_MATLAB(labeled, unlabeled, test, ALPHA, options, save_files, nargout = 1, background = False)
-
-                #Squeeze embedding
-                emb = np.squeeze(emb).T
-
-
-            except Exception as e:
-                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
-                kema_scores[k, 0] = np.NaN
-                kema_scores[k, 1] = np.NaN
-                continue
-
-            #FOSCTTM METRICS
-            try:
-                #Create a FOSCTTM Like Field
-                x_dists = squareform(pdist(emb))
-
-                #normalize it
-                block = x_dists / np.max(x_dists, axis = None)
-
-                kema_FOSCTTM = self.FOSCTTM(block)
-                print(f"                FOSCTTM Score: {kema_FOSCTTM}")
-            except Exception as e:
-                print(f"                FOSCTTM exception occured: {e}")
-                kema_FOSCTTM = np.NaN
+            #Create files and store data
+            filename, AP_values = self.create_filename("KEMA_RF", kernelt = kernelt) 
             
-            kema_scores[k, 0] = kema_FOSCTTM
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
 
-            #Cross Embedding Metrics
-            try:
-               
-               #initialize the model
-                knn_model = KNeighborsClassifier(n_neighbors = 4)
+                #Reset the directory
+                self.base_directory = original_directory 
 
-                #Fit and score predicting from domain A to domain B
-                knn_model.fit(emb, self.labels)
-                score1 =  knn_model.score(emb, self.labels)
-
-                #Fit and score predicting from domain B to domain A, and then return the average value
-                knn_model.fit(emb, self.labels)
-                kema_CE =  np.mean([score1, knn_model.score(emb, self.labels)])
-
-                print(f"                CE Score: {kema_CE}")
-
-            except Exception as e:
-                print(f"                Cross Embedding exception occured: {e}")
-                kema_CE = np.NaN
+                return True
             
-            kema_scores[k, 1] = kema_CE
-    
-        #Save the numpy array
-        np.save(filename, kema_scores)
+            #Reset the directory
+            self.base_directory = original_directory 
+
+            #Store the data in a numpy array
+            kema_scores = np.zeros((len(self.knn_range), 2))
+
+            #Start MATLAB Engine  #This is a long import -> 4 seconds. Starting the engine takes 18 seconds
+            import matlab.engine
+            eng = matlab.engine.start_matlab()
+            eng.cd(r'/yunity/arusty/Graph-Manifold-Alignment/KEMA/general_routine', nargout=0)
+
+            labeled = [
+                {'X': matlab.double((self.split_A.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}, # It needs this shape to be transposed....
+                {'X': matlab.double((self.split_B.T).tolist()), 'Y': matlab.double(self.labels.reshape(-1, 1).tolist())}
+            ]
+
+            unlabeled = [
+                {'X': matlab.double([])},
+                {'X': matlab.double([])}
+            ]
+
+            for k, knn in enumerate(self.knn_range):
+                print(f"  KNN {knn}")
+
+                try:
+                    #Create the class with all the arguments
+                    ALPHA, LAMBDA, options = eng.KMA(labeled, unlabeled,  {"kernelt" : kernelt, "debug" : 0, "nn" : knn}, nargout = 3, background = False) #We can change the kernelt too
+
+                    # 3) project test data
+
+                    # Convert to MATLAB types
+                    test = [
+                        {'X': matlab.double((self.split_A.T).tolist())},
+                        {'X': matlab.double((self.split_B.T).tolist())}
+                    ]
+
+                    save_files = 0
+                    emb = eng.Adam_MATLAB(labeled, unlabeled, test, ALPHA, options, save_files, self.n_comp, nargout = 1, background = False)
+
+                    #Convert to array
+                    emb = np.array(emb)
+
+                    # Get the middle dimension
+                    middle_dim = emb.shape[1]
+
+                    # Flatten the array while preserving the structure
+                    emb = emb.transpose(1, 0, 2).reshape(middle_dim, -1).T
+
+
+                except Exception as e:
+                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                    kema_scores[k, 0] = np.NaN
+                    kema_scores[k, 1] = np.NaN
+                    continue
+
+                #FOSCTTM METRICS
+                try:
+                    #Create a FOSCTTM Like Field
+                    x_dists = squareform(pdist(emb))
+
+                    #normalize it
+                    block = x_dists / np.max(x_dists, axis = None)
+                    
+                    len_A = len(self.split_A)
+                    kema_FOSCTTM = self.FOSCTTM(block[:len_A, len_A:])
+                    print(f"                FOSCTTM Score: {kema_FOSCTTM}")
+                except Exception as e:
+                    print(f"                FOSCTTM exception occured: {e}")
+                    kema_FOSCTTM = np.NaN
+                
+                kema_scores[k, 0] = kema_FOSCTTM
+
+                #Cross Embedding Metrics
+                try:
+                
+                    kema_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+
+                    print(f"                CE Score: {kema_CE}")
+
+                except Exception as e:
+                    print(f"                Cross Embedding exception occured: {e}")
+                    kema_CE = np.NaN
+                
+                kema_scores[k, 1] = kema_CE
+        
+            #Save the numpy array
+            np.save(filename, kema_scores)
 
         #Run successful
         return True
     
-    def run_MALI_tests(self): 
+    def run_MALI_tests(self, graph_distances = ["rf_gap", "default"]): #interclass distance set to be RF-Gap
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    MALI Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
 
-        #Create file directory to store the information
-        original_directory = self.base_directory
-        self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+        for graph_distance in graph_distances:
+            print(f"Using Graph Distance: {graph_distance}")
 
-        #Create files and store data
-        filename, AP_values = self.create_filename("MALI_RF") 
-        
-        #Reset the directory
-        self.base_directory = original_directory 
-        
-        #If file aready exists, then we are done :)
-        if os.path.exists(filename):
-            print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-            return True
+            #Create file directory to store the information
+            original_directory = self.base_directory
+            self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
 
-        #Store the data in a numpy array
-        mali_scores = np.zeros((len(self.knn_range), 2))
+            #Create files and store data
+            if graph_distance == "default":
+                filename, AP_values = self.create_filename("MALI_RF") 
+            else:
+                filename, AP_values = self.create_filename("MALI") 
 
-        for k, knn in enumerate(self.knn_range):
-            print(f"  KNN {knn}")
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
 
-            try:
-                #Create the class with all the arguments
-                mali_class = MALI(knn = knn, graph_decay=40, graph_knn = knn, random_state = self.random_state) 
-                mali_class.fit((self.split_A, self.split_B), (self.labels, self.labels))
-
-            except Exception as e:
-                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
-                mali_scores[k, 0] = np.NaN
-                mali_scores[k, 1] = np.NaN
-                continue
-
-            #FOSCTTM METRICS
-            try:
-                mali_FOSCTTM = self.FOSCTTM(1 - mali_class.W_cross.toarray())
-                print(f"                FOSCTTM Score: {mali_FOSCTTM}")
-            except Exception as e:
-                print(f"                FOSCTTM exception occured: {e}")
-                mali_FOSCTTM = np.NaN
+                #Reset the directory
+                self.base_directory = original_directory 
             
-            mali_scores[k, 0] = mali_FOSCTTM
-
-            #Cross Embedding Metrics
-            try:
-                emb = self.mds.fit_transform(1 - mali_class.W.toarray())
-                mali_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                print(f"                CE Score: {mali_CE}")
-            except Exception as e:
-                print(f"                Cross Embedding exception occured: {e}")
-                mali_CE = np.NaN
+                return True
             
-            mali_scores[k, 1] = mali_CE
-    
-        #Save the numpy array
-        np.save(filename, mali_scores)
+            #Reset the directory
+            self.base_directory = original_directory 
+            
+
+            #Store the data in a numpy array
+            mali_scores = np.zeros((len(self.knn_range), 2))
+
+            for k, knn in enumerate(self.knn_range):
+                print(f"  KNN {knn}")
+
+                try:
+                    #Create the class with all the arguments
+                    if graph_distance == "default":
+                        mali_class = MALI(knn = knn, graph_decay=40, graph_knn = knn, random_state = self.random_state)
+                    else:
+                        mali_class = MALI(knn = knn, graph_decay=40, graph_knn = knn, random_state = self.random_state, interclass_distance = "rfgap") #graph_distance = "rfgap",interclass_distance = "rfgap"
+
+                    mali_class.fit((self.split_A, self.split_B), (self.labels, self.labels))
+
+                except Exception as e:
+                    print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
+                    mali_scores[k, 0] = np.NaN
+                    mali_scores[k, 1] = np.NaN
+                    continue
+
+                #FOSCTTM METRICS
+                try:
+                    mali_FOSCTTM = self.FOSCTTM(1 - mali_class.W_cross.toarray())
+                    print(f"                FOSCTTM Score: {mali_FOSCTTM}")
+                except Exception as e:
+                    print(f"                FOSCTTM exception occured: {e}")
+                    mali_FOSCTTM = np.NaN
+                
+                mali_scores[k, 0] = mali_FOSCTTM
+
+                #Cross Embedding Metrics
+                try:
+                    #Ensure its symmetric
+                    sym_W = ((1 - mali_class.W.toarray()) + (1 - mali_class.W.toarray()).T) /2
+
+                    emb = self.mds.fit_transform(sym_W)
+                    mali_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                    print(f"                CE Score: {mali_CE}")
+                except Exception as e:
+                    print(f"                Cross Embedding exception occured: {e}")
+                    mali_CE = np.NaN
+                
+                mali_scores[k, 1] = mali_CE
+        
+            #Save the numpy array
+            np.save(filename, mali_scores)
 
         #Run successful
         return True
@@ -826,7 +845,7 @@ class test_manifold_algorithms():
         for link in page_ranks:
             print(f"Page rank applied: {link}")
 
-            for t in np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
+            for t in [-1]:#np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
                 print(f"    T value {t}")
 
                 #Create the filename
@@ -879,7 +898,7 @@ class test_manifold_algorithms():
                             
                             try:
                                 #Create our class to run the tests
-                                DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:int(len(self.anchors) * anchor_percent)], t = t, knn = knn, link = link)
+                                DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:anchor_amount], t = t, knn = knn, link = link)
 
                             except Exception as e:
                                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
@@ -1003,7 +1022,7 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-    def run_RF_MASH_tests(self, DTM = ("hellinger", "log", "kl"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
+    def run_RF_MASH_tests(self, DTM = ("hellinger", "log", "kl")):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
@@ -1012,301 +1031,92 @@ class test_manifold_algorithms():
         t is the percent of values you want covered by that many steps"""
 
         #Run through the tests with every variatioin
-        print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
+        print("\n-------------------------------------   MASH TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for link in DTM:
             print(f"Diffusion to matrix method applied: {link}")
 
-            for t in np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1):
+            for t in [-1]: #np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1): #This takes .... FOREVER
                 print(f"    T value {t}")
 
                 #Create file directory to store the information
                 original_directory = self.base_directory
                 self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
-                if not os.path.exists(self.base_directory):
-                    os.makedirs(self.base_directory) 
+                
 
                 #Create the filename
-                if t == -1:
-                    filename_minus, AP_values = self.create_filename("MASH_RF", DTM = link) #T is not included it is assumed to be -1
-                else:
-                    filename_minus, AP_values = self.create_filename("MASH_RF", DTM = link, t = np.round(t/len(self.split_A), decimals=2))
+                filename, AP_values = self.create_filename("MASH_RF", DTM = link)
+    
+                #If file aready exists, then we are done :)
+                if os.path.exists(filename) or len(AP_values) < 1:
+                    print(f"    <><><><><>    File {filename} already exists for MASH-. Will not save again   <><><><><>")
+                    return True
 
                 #Reset the directory
                 self.base_directory = original_directory 
 
-                #set a varaible to Save Mash
-                saveMASH = True
-
-                #If file aready exists, then we are done :)
-                if os.path.exists(filename_minus) or len(AP_values) < 1:
-                    print(f"    <><><><><>    File {filename_minus} already exists for MASH-. Will not save again   <><><><><>")
-                    saveMASH = False
-
                 #Loop through the connections
-                for connection in connection_limit:
+                for i, connection in enumerate(["default", None]):
                     print(f"        Connection Limit: {connection}")
 
-                    #Create file directory to store the information
-                    original_directory = self.base_directory
-                    self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
-                    if not os.path.exists(self.base_directory):
-                        os.makedirs(self.base_directory) 
-
-                    #Create the filename
-                    if t == -1:
-                        filename, AP_values = self.create_filename("MASH_RF", DTM = link, Connection_limit = str(connection)) #T is not included it is assumed to be -1
-                    else:
-                        filename, AP_values = self.create_filename("MASH_RF", DTM = link, t = np.round(t/len(self.split_A), decimals=2), Connection_limit = str(connection))
-
-                    #Reset the directory
-                    self.base_directory = original_directory 
-
-                    save_connections = True
-                    #If file aready exists, then we are done :)
-                    if os.path.exists(filename) or len(AP_values) < 1:
-                        print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-                        
-                        #set a varaible to Save Mash
-                        save_connections = False
-
-                        if not saveMASH:
-                            continue
-
                     #Store the data in a numpy array
-                    DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
-                    CwDIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
-
+                    DIG_scores = np.zeros((2, len(self.knn_range), len(AP_values), 2)) #the first two if for the connection limit
 
                     for j, knn in enumerate(self.knn_range):
                         print(f"            KNN {knn}")
+
                         for k, anchor_percent in enumerate(AP_values):
                             print(f"                Percent of Anchors {anchor_percent}")
 
                             #Cache this information so it is faster
-                            anchor_amount = int((len(self.anchors) * anchor_percent)/2)
+                            anchor_amount = int((len(self.anchors) * anchor_percent))
                             
                             try:
                                 #Create our class to run the tests
-                                DIG_class = MASH(t = t, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH)
-                                DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
+                                DIG_class = MASH(t = t, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH, n_pca = 100)
+                                
+                                if connection == "default":
+                                    DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
+
+                                else: #Add the optimization
+                                    DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(anchor_amount/2)])
+                                    DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit=None, hold_out_anchors = self.anchors[int(anchor_amount/2):anchor_amount])
 
                             except Exception as e:
                                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
-                                DIG_scores[j, k, 0] = np.NaN
-                                DIG_scores[j, k, 1] = np.NaN
-
-                                #If we are using predict, this must also be NaN
-                                if predict:
-                                    DIG_scores[j, k, 2] = np.NaN
-
-                                CwDIG_scores[j, k, 0] = np.NaN
-                                CwDIG_scores[j, k, 1] = np.NaN
-
-                                #If we are using predict, this must also be NaN
-                                if predict:
-                                    CwDIG_scores[j, k, 2] = np.NaN
-
-                                continue
-
-                            if saveMASH:
-                                #FOSCTTM Evaluation Metrics
-                                try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
-                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
-
-                                except Exception as e:
-                                    print(f"                    FOSCTTM exception occured: {e}")
-                                    DIG_FOSCTTM = np.NaN
-
-                                DIG_scores[j, k, 0] = DIG_FOSCTTM
-
-                                #Cross Embedding Evaluation Metric
-                                try:
-                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
-
-                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                                    print(f"                    CE Score: {DIG_CE}")
-
-                                except Exception as e:
-                                    print(f"                    Cross Embedding exception occured: {e}")
-                                    DIG_CE = np.NaN
-
-                                DIG_scores[j, k, 1] = DIG_CE
-
-                                #Predict features test
-                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
-                                    #Testing the PREDICT labels features
-                                    features_pred_B = DIG_class.predict_feature(predict="B")
-                                    features_pred_A = DIG_class.predict_feature(predict="A")
-
-                                    #Get the MAE for each set and average them
-                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                                    DIG_scores[j, k, 2] = DIG_MAE
-                                    print(f"                    Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
-
-                            #<><><><><><><><><><><><><><><><><>     Now Repeat all of that!      <><><><><><><><><><><><><><><><><>
-                            #Make the connection limit value
-                            if save_connections:
-                                try:
-                                    #Make the connection limit value
-                                    if connection != None:
-                                        connection = int(DIG_class.len_A * connection)
-
-                                    #Boost the Algorithm
-                                    DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
-
-                                except Exception as e:
-                                    print(f"<><><><><><>   UNABLE TO CREATE CONNECTIONS BECAUSE {e}  <><><><><><>")
-                                    CwDIG_scores[j, k, 0] = np.NaN
-                                    CwDIG_scores[j, k, 1] = np.NaN
-
-                                    #If we are using predict, this must also be NaN
-                                    if predict:
-                                        CwDIG_scores[j, k, 2] = np.NaN
-                                    continue
-
-                                #FOSCTTM Evaluation Metrics
-                                try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
-                                    print(f"                    FOSCTTM: {DIG_FOSCTTM}")
-
-                                except Exception as e:
-                                    print(f"                FOSCTTM exception occured: {e}")
-                                    DIG_FOSCTTM = np.NaN
-
-                                CwDIG_scores[j, k, 0] = DIG_FOSCTTM
-
-                                #Cross Embedding Evaluation Metric
-                                try:
-                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
-
-                                    DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                                    print(f"                    CE Score: {DIG_CE}")
-
-                                except Exception as e:
-                                    print(f"                    Cross Embedding exception occured: {e}")
-                                    DIG_CE = np.NaN
-
-                                CwDIG_scores[j, k, 1] = DIG_CE
-
-                                #Predict features test
-                                if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
-                                    #Testing the PREDICT labels features
-                                    features_pred_B = DIG_class.predict_feature(predict="B")
-                                    features_pred_A = DIG_class.predict_feature(predict="A")
-
-                                    #Get the MAE for each set and average them
-                                    DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                                    CwDIG_scores[j, k, 2] = DIG_MAE
-                                    print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
+                                DIG_scores[i, j, k, 0] = np.NaN
+                                DIG_scores[i, j, k, 1] = np.NaN
 
 
-                    #Save the numpy array
-                    if saveMASH:
-                        np.save(filename_minus, DIG_scores)
+                            #FOSCTTM Evaluation Metrics
+                            try:
+                                DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
-                    #Save all connections
-                    if save_connections:
-                        np.save(filename, CwDIG_scores)
+                            except Exception as e:
+                                print(f"                    FOSCTTM exception occured: {e}")
+                                DIG_FOSCTTM = np.NaN
 
-        #Run successful
-        return True
+                            DIG_scores[i, j, k, 0] = DIG_FOSCTTM
 
-    def run_DIG_Conections_tests(self, page_ranks = ("None", "off-diagonal", "full"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
-        """page_ranks should be whether or not we want to test the page_ranks
-        
-        predict should be a Boolean value and decide whether we want to test the amputation features. 
-        NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same"""
+                            #Cross Embedding Evaluation Metric
+                            try:
+                                emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
-        #Run through the tests with every variatioin
-        print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
-        for link in page_ranks:
-            print(f"Page rank applied: {link}")
+                                DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                                print(f"                    CE Score: {DIG_CE}")
 
-            for connection in connection_limit:
-                print(f"    Connection Limit: {connection}")
+                            except Exception as e:
+                                print(f"                    Cross Embedding exception occured: {e}")
+                                DIG_CE = np.NaN
 
-                #Create the filename
-                filename, AP_values = self.create_filename("CwDIG", PageRanks = link, Connection_limit = str(connection))
+                            DIG_scores[i, j, k, 1] = DIG_CE
 
-                #If file aready exists, then we are done :)
-                if os.path.exists(filename) or len(AP_values) < 1:
-                    print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-                    return True
-                
-                #Store the data in a numpy array
-                DIG_scores = np.zeros((len(self.knn_range), len(AP_values), 2 + predict))
 
-                for j, knn in enumerate(self.knn_range):
-                    print(f"        KNN {knn}")
-                    for k, anchor_percent in enumerate(AP_values):
-                        print(f"            Percent of Anchors {anchor_percent}")
-
-                        #Cache this information so it is faster
-                        anchor_amount = int((len(self.anchors) * anchor_percent)/2)
-
-                        try:
-                            #Create our class to run the tests
-                            DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:anchor_amount], t = -1, knn = knn, link = link, verbose = 0)
-
-                            #Make the connection limit value
-                            if connection != None:
-                                connection = int(DIG_class.len_A * connection)
-
-                            #Boost the Algorithm
-                            DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit = connection, threshold = "auto", hold_out_anchors=self.anchors[anchor_amount:int(anchor_amount*2)])
-
-                        except Exception as e:
-                            print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
-                            DIG_scores[j, k, 0] = np.NaN
-                            DIG_scores[j, k, 1] = np.NaN
-
-                            #If we are using predict, this must also be NaN
-                            if predict:
-                                DIG_scores[j, k, 2] = np.NaN
-                            continue
-
-                        #FOSCTTM Evaluation Metrics
-                        try:
-                            DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
-                            print(f"                FOSCTTM: {DIG_FOSCTTM}")
-
-                        except Exception as e:
-                            print(f"            FOSCTTM exception occured: {e}")
-                            DIG_FOSCTTM = np.NaN
-
-                        DIG_scores[j, k, 0] = DIG_FOSCTTM
-
-                        #Cross Embedding Evaluation Metric
-                        try:
-                            emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
-
-                            DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                            print(f"                CE Score: {DIG_CE}")
-
-                        except Exception as e:
-                            print(f"                Cross Embedding exception occured: {e}")
-                            DIG_CE = np.NaN
-
-                        DIG_scores[j, k, 1] = DIG_CE
-
-                        #Predict features test
-                        if predict: #NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
-                            #Testing the PREDICT labels features
-                            features_pred_B = DIG_class.predict_feature(predict="B")
-                            features_pred_A = DIG_class.predict_feature(predict="A")
-
-                            #Get the MAE for each set and average them
-                            DIG_MAE = (abs(self.split_B - features_pred_B).mean() + abs(self.split_A - features_pred_A).mean())/2
-                            DIG_scores[j, k, 2] = DIG_MAE
-                            print(f"            Predicted MAE {DIG_MAE}") #NOTE: this is all scaled 0-1
-
-                #Save the numpy array
                 np.save(filename, DIG_scores)
 
         #Run successful
         return True
-    
+ 
     def run_NAMA_tests(self):
         """Needs no additional parameters"""
 
@@ -1516,7 +1326,7 @@ class test_manifold_algorithms():
         filename, AP_values = self.create_filename("SSMA")
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
@@ -1712,7 +1522,7 @@ class test_manifold_algorithms():
         B_emb = pca.fit_transform(self.split_B)
 
         #If file aready exists, then we are done :)
-        if os.path.exists(filename):
+        if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
@@ -1727,7 +1537,6 @@ class test_manifold_algorithms():
             #Initilize model
             model = KNeighborsClassifier(n_neighbors = knn)
 
-            
             #Split data and train for split A
             try:
                 model.fit(A_emb, self.labels)
@@ -1745,6 +1554,76 @@ class test_manifold_algorithms():
             except:
                 scores[1, 1] = np.NaN
                 print(f"    Classification Score trained on B Failed")
+
+        #Save the numpy array
+        np.save(filename, scores)
+
+        #Run successful
+        return True
+
+
+    def run_RF_BL_tests(self):
+        """Needs no additional paramenters.
+        
+        Gets the baseline classification without doing any alignment for each data set"""
+
+        #Create file directory to store the information
+        original_directory = self.base_directory
+        self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]  
+
+        #Create file name
+        filename, AP_values = self.create_filename("RF_BL")
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename) or len(AP_values) < 1:
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
+        #Reset the directory
+        self.base_directory = original_directory 
+        
+        """Editing here"""
+        #Initilize Class
+        rf_class = RFGAP(prediction_type="classification", y=self.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+
+        #Fit it for Data A and get proximities
+        rf_class.fit(self.split_A, y = self.labels)
+        dataA = rf_class.get_proximities()
+        if np.max(dataA[~np.isinf(dataA)]) != 0:
+            dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+        dataA[np.isinf(dataA)] = 1
+        dataA = 1 - dataA
+
+        #Fit it for Data B and get proximities
+        rf_class.fit(self.split_B, y = self.labels)
+        dataB = rf_class.get_proximities()
+        if np.max(dataB[~np.isinf(dataB)]) != 0:
+            dataB = (dataB - dataB.min()) / (dataB[~np.isinf(dataB)].max() - dataB.min()) 
+        dataB[np.isinf(dataB)] = 1
+        dataB = 1 - dataB
+
+        #create squares
+        from scipy.spatial.distance import pdist, squareform
+        distsA = squareform(pdist(dataA))
+        distsB = squareform(pdist(dataB))
+
+        #Get cross embedding score
+        A_emb = self.mds.fit_transform(np.block([[distsA, dataA],
+                                                [dataA.T, distsA]]))
+        B_emb = self.mds.fit_transform(np.block([[distsB, dataB],
+                                                [dataB.T, distsB]]))
+                 
+        #Create an array to store the important data in 
+        scores = np.zeros(2) #Now both of these are classification scores -- one for Split A and one for Split B
+
+        print("\n--------------------------------------   RF Gap Baseline Tests " + self.base_directory[53:-1] + "   --------------------------------------\n")
+            
+        #Run CE and FOSCTTM
+        scores[0] = np.mean((self.FOSCTTM(dataA), self.FOSCTTM(dataB)))
+        scores[1] = np.mean((self.cross_embedding_knn(A_emb, (self.labels, self.labels), other_side = True), self.cross_embedding_knn(B_emb, (self.labels, self.labels), other_side = False)))
+
+        print(f"FOSCTTM SCORE: {scores[0]}")
+        print(f"CE SCORE: {scores[1]}")
 
         #Save the numpy array
         np.save(filename, scores)
@@ -2010,7 +1889,7 @@ def _upload_file(file, directory = "default"):
     df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
                                 "Percent_of_KNN", "Percent_of_Anchors", 
                                 "Page_Rank", "t_value", "Predicted_Feature_MAE",
-                                "Operation", "SPUDS_Algorithm", 
+                                "Operation", "algorithm", 
                                 "FOSCTTM", "Cross_Embedding_KNN"])
     
     #Create Base Line Data Frame
@@ -2071,8 +1950,69 @@ def _upload_file(file, directory = "default"):
     #Overarching error catching system
     try:
 
+        #Correct the bad naming for MALI
+        if data_dict["method"] == "MALI":
+            data_dict["method"] = "MALI_RF"
+            data_dict["Operation"] = "RF_GAP"
+        elif data_dict["method"] == "MALI_RF":
+            data_dict["method"] = "MALI"
+            data_dict["Operation"] = "default"
+
+        if data_dict["method"] == "MASH_RF":
+
+            #Set Page Rank to None
+            data_dict["Page_Rank"] = "None"
+
+            #Add the DTM if applicable:
+            if "hellinger" in file:
+                data_dict["algorithm"] = "hellinger"
+            elif "kl" in file:
+                data_dict["algorithm"] = "kl"
+            elif "log" in file:
+                data_dict["algorithm"] = "log"
+            else:
+                data_dict["algorithm"] = "None"
+
+            #Add the right t value
+            if "_t(" in file:
+                t_index = file.find("_t(")
+                even = is_even(int(file[t_index+3 : t_index + file[t_index:].find(")")][-1]))
+
+                if even:
+                    data_dict["t_value"] = float(file[t_index+3 : t_index + file[t_index:].find(")")])
+                else:
+                    data_dict["t_value"] = np.round(float(file[t_index+3 : t_index + file[t_index:].find(")")]) + 0.01, decimals=2)
+            else:
+                data_dict["t_value"] = -1.0
+
+
+            #Loop through both connections
+            for i in range(2):
+                if i == 0:
+                    data_dict["Operation"] = "Not Optimized"
+                else:
+                    data_dict["Operation"] = "Optimized"
+
+                #Loop through each Knn
+                for j in range(0, 10):
+                    knn = (j*knn_increment) + 2
+                    data_dict["KNN"] = knn
+
+                    #These percents are rough, and not exact. This is so we can have similar estimates to compare
+                    data_dict["Percent_of_KNN"] = (j * 0.02) + 0.01
+
+                    #Loop through each Anchor percentage
+                    for k in range(len(AP_values)):
+                        data_dict["Percent_of_Anchors"] = AP_values[k]
+
+                        #Now use are data array to grab the FOSCTTM and CE scores
+                        data_dict["FOSCTTM"] = data[i, j, k, 0]
+                        data_dict["Cross_Embedding_KNN"] = data[i, j, k, 1]
+
+                        df = df._append(data_dict, ignore_index=True)
+
         #Split based on method
-        if data_dict["method"] == "DIG" or data_dict["method"] == "MASH_RF":
+        elif data_dict["method"] == "DIG":
 
             #Add the right Page Rank Argument
             if "full" in file:
@@ -2084,14 +2024,13 @@ def _upload_file(file, directory = "default"):
 
             #Add the DTM if applicable:
             if "hellinger" in file:
-                data_dict["Operation"] = "hellinger"
+                data_dict["algorithm"] = "hellinger"
             elif "kl" in file:
-                data_dict["Operation"] = "kl"
+                data_dict["algorithm"] = "kl"
             elif "log" in file:
-                data_dict["Operation"] = "log"
+                data_dict["algorithm"] = "log"
             else:
-                data_dict["Operation"] = "None"
-
+                data_dict["algorithm"] = "None"
 
             #Add the right t value
             if "_t(" in file:
@@ -2131,7 +2070,7 @@ def _upload_file(file, directory = "default"):
                         df = df._append(data_dict, ignore_index=True)
 
         #Split based on method
-        if data_dict["method"] == "CwDIG":
+        elif data_dict["method"] == "CwDIG":
 
             #Add the right Page Rank Argument
             if "full" in file:
@@ -2140,6 +2079,16 @@ def _upload_file(file, directory = "default"):
                 data_dict["Page_Rank"] = "off-diagonal"
             else: #Then it is None
                 data_dict["Page_Rank"] = "None"
+
+            #Add the DTM if applicable:
+            if "hellinger" in file:
+                data_dict["Operation"] = "hellinger"
+            elif "kl" in file:
+                data_dict["Operation"] = "kl"
+            elif "log" in file:
+                data_dict["Operation"] = "log"
+            else:
+                data_dict["Operation"] = "None"
 
             #Add the right t value
             if "_t(" in file:
@@ -2199,13 +2148,13 @@ def _upload_file(file, directory = "default"):
 
             #Assign its Kind
             if "distance" in file:
-                data_dict["SPUDS_Algorithm"] = "distance"
+                data_dict["algorithm"] = "distance"
             elif "merge" in file:
-                data_dict["SPUDS_Algorithm"] = "merge"
+                data_dict["algorithm"] = "merge"
             elif "pure" in file:
-                data_dict["SPUDS_Algorithm"] = "pure"
+                data_dict["algorithm"] = "pure"
             else:
-                data_dict["SPUDS_Algorithm"] = "similarity"
+                data_dict["algorithm"] = "similarity"
             
             #Loop through each Knn
             for k in range(0, 10):
@@ -2227,7 +2176,7 @@ def _upload_file(file, directory = "default"):
                     df = df._append(data_dict, ignore_index=True)
 
         #Method SPUD
-        elif data_dict["method"] == "RF_SPUD":
+        elif data_dict["method"] == "SPUD_RF":
 
             #Assign the operation
             if "None" in file:
@@ -2241,16 +2190,16 @@ def _upload_file(file, directory = "default"):
 
             #Assign its Kind
             if "abs" in file:
-                data_dict["SPUDS_Algorithm"] = "abs"
+                data_dict["algorithm"] = "abs"
             elif "mean" in file:
-                data_dict["SPUDS_Algorithm"] = "mean"
+                data_dict["algorithm"] = "mean"
             else:
-                data_dict["SPUDS_Algorithm"] = "default"
+                data_dict["algorithm"] = "default"
             
             #Loop through each Knn
             for k in range(0, 10):
 
-                if k == 9 and data_dict["SPUDS_Algorithm"] != "default":
+                if k == 9 and data_dict["algorithm"] != "default":
                     data_dict["KNN"] = "NAMA"
                 else:
                     knn = (k*knn_increment) + 2
@@ -2271,7 +2220,12 @@ def _upload_file(file, directory = "default"):
                     df = df._append(data_dict, ignore_index=True)
 
         #METHOD MALI
-        elif data_dict["method"] == "MALI_RF":
+        elif data_dict["method"] == "MALI_RF" or data_dict["method"] == "KEMA_RF" or data_dict["method"] == "MALI":
+
+            if "lin" in file:
+                data_dict["Operation"] = "lin"
+            elif "rbf" in file:
+                data_dict["Operation"] = "rbf"
 
             #Loop through each Knn
             for k in range(0, 10):
@@ -2327,6 +2281,20 @@ def _upload_file(file, directory = "default"):
                 #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
                 base_df = base_df._append(data_dict, ignore_index=True)
 
+                return (df, base_df)
+            
+        elif data_dict["method"] == "RF_BL":
+            
+
+            #Now use are data array to grab the FOSCTTM and CE scores
+            data_dict["A_Classification_Score"] = data[0]
+            data_dict["B_Classification_Score"] = data[1]
+
+            #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
+            base_df = base_df._append(data_dict, ignore_index=True)
+
+            return (df, base_df)
+
         #METHOD DTA and JLMA and PCR
         #METHOD SSMA NOTE: This is literally the same code as DTA's method. We have it seperate for readability (and clarity writing the code the first time), although doesn't need to be. Maybe we can functionalize the process a little bit
         else: 
@@ -2349,6 +2317,10 @@ def _upload_file(file, directory = "default"):
                     #Create a new Data frame instance with all the asociated values
                     df = df._append(data_dict, ignore_index=True)
 
+        #Check to make sure there is data in the file
+        if np.isnan(data_dict["FOSCTTM"]) or np.isnan(data_dict["Cross_Embedding_KNN"]):
+            print(f"File {original_file} is missing FOSCTTM or Cross_Embedding Score")
+            os.remove(original_file)
 
         return (df, base_df)
     
@@ -2437,7 +2409,7 @@ def time_all_files(csv_files = "all"):
 
     return True
 
-def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_KEMA = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
+def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, run_RF_MASH = False, run_KEMA = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
 
@@ -2504,13 +2476,11 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_K
         filtered_kwargs = {}
         if "DTM" in kwargs:
             filtered_kwargs["DTM"] = kwargs["DTM"]
-        if "predict" in kwargs:
-            filtered_kwargs["predict"] = kwargs["predict"]
         if "connection_limit" in kwargs:
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=2)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2534,7 +2504,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_K
             filtered_kwargs["agg_methods"] = kwargs["agg_methods"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-3)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=-10)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CSPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2553,7 +2523,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_K
 
     if run_MALI:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-1)(delayed(instance.run_MALI_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_MALI_tests)() for instance in manifold_instances.values())
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
@@ -2584,6 +2554,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_MASH = False, run_K
         #Loop through each file (Using Parralel Processing) for SSMA
         Parallel(n_jobs=-1)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
 
+    #Now run Knn tests
+    if run_RF_BL_tests:
+        #Loop through each file (Using Parralel Processing) for SSMA
+        Parallel(n_jobs=-1)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
 
     return manifold_instances
 
@@ -2597,6 +2571,8 @@ def upload_to_DataFrame(directory = "default"):
         for directory in os.listdir(MANIFOLD_DATA_DIR):
             if os.path.isdir(MANIFOLD_DATA_DIR + directory): #Check to make sure its a directory
                 files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
+
+        directory = "default"
 
     else: 
         for directory in os.listdir(CURR_DIR + "/ManifoldData_RF/"):
@@ -2618,14 +2594,21 @@ def upload_to_DataFrame(directory = "default"):
     base_df = base_df.drop(columns=["method", "seed"])
 
     #Merge the DataFrames together
-    merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how = "left")
+    if directory == "default":
+        merged_df = pd.merge(df, base_df, on=["csv_file",  "split", "KNN"], how = "left")
+        #Add the values for methodsthat don't have KNN by first finding the rows with missing 'KNN' values
+        missing_knn_df = merged_df[merged_df['KNN'].isna()]
 
-    #Add the values for methods that don't have KNN by first finding the rows with missing 'KNN' values
-    missing_knn_df = merged_df[merged_df['KNN'].isna()]
+        # Find the best scores within each 'csv_file'
+        for csv_file in missing_knn_df['csv_file'].unique():
+            best_scores = merged_df[merged_df['csv_file'] == csv_file][['A_Classification_Score', 'B_Classification_Score']].max()
+            merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
+            
+    else:
+        #Prep base_df for merging
+        base_df = base_df.drop(columns=["KNN"])
+        merged_df = pd.merge(df, base_df, on=["csv_file",  "split"], how = "left")
 
-    # Find the best scores within each 'csv_file'
-    for csv_file in missing_knn_df['csv_file'].unique():
-        best_scores = merged_df[merged_df['csv_file'] == csv_file][['A_Classification_Score', 'B_Classification_Score']].max()
-        merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
+
 
     return merged_df#.drop_duplicates()

@@ -166,7 +166,7 @@ def subset_df(df, **kwargs):
     return df
 
         
-def plot_in_fig(columns, rows, df = "None", **kwargs):
+def plot_in_fig(columns, rows, df = "None", plot_labels = False, **kwargs):
     """df should be the dataframe
     
     Columns should be a list of dictionaries that represent the key word arguments for plotting.
@@ -185,6 +185,15 @@ def plot_in_fig(columns, rows, df = "None", **kwargs):
         column_count = 0
         for column in columns:
             df_new.plot(ax = axes[row_count, column_count], **column, **kwargs)
+
+
+            if plot_labels:
+                summary = df_new[column.values()].describe().loc[['min', '25%', '50%', '75%', 'max']]
+
+                # Annotate the box plot
+                for value in summary.values:
+                    value = float(value)
+                    axes[row_count, column_count].text(1.13, value, f'{value:.2f}', horizontalalignment='center')
 
             #Add one to the next axis
             column_count += 1

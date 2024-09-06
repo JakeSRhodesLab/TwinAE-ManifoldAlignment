@@ -1,4 +1,34 @@
 #MASH (Manifold Alignment with Diffusion)
+"""
+Adam's Notes
+-------------
+
+Parameters in question of keeping: (In order of least helpful to more helpful)
+-> Burn in: It seems unhelpfull all the time except when you get lucky. It doens't seem the worth of effort.
+-> Page Rank: It's effects are minimal. Rarely does anything. 
+-> Density Normalization: While it is clear what it does, it doesn't seem that helpful.
+-> DTM: Has its cases when it is uses to change to hellinger. Maybe add more variations or methods of transformation?
+
+-> Surprisingly, across the data the connection limit seems to have little impact. See Picture MASH_con_lim_effect
+
+MASH - Supervised Idea:
+-----------------------
+Question: How can we improve the optimize_by_connections method if MASH is supervised?
+
+Ideas: 
+1. What if we rigged similar to a neural network? Where the network was automatically built from any given node. It is a functional 
+network meaning that each layer would connect to a different node as the paths could go. It would then reach any node and could use the value
+received from that path to predict the label of that node. If its right, strengthen the connections, and wrong, weaken the connections (typical 
+of a nueral network.) We wouldn't have to do this is a neural network approach either. (NEEDS more thought.)
+
+2. Some kind of extended KNN prediction model? -> Maybe using Jaccard similarities measure? 
+If the node guess the label correctly, stregthen the path? (NEEDS more thought)
+
+3. For each node, find all of the nodes it could possibly reach. If the labels between the two nodes macth, we could strengthen the paths
+between those nodes. However, if the classes between those nodes don't macth, we can weaken the paths between those nodes. This should increase
+CE dramatically, and hopefully FOSCTTM too. (Simple, seems plausible. Maybe requires lots of computational power? We could just do it for those designated as anchors.)
+"""
+
 
 #Import the needed libraries
 import graphtools
@@ -115,6 +145,9 @@ class MASH: #Manifold Alignment with Diffusion
         self.print_time()
         self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
         self.print_time(" Time it took to compute diffusion process:  ")
+
+        if self.verbose > 0:
+            print("Fit process finished. We recommend calling optimize_by_creating_connections.")
 
     """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def FOSCTTM(self, off_diagonal): 
@@ -658,8 +691,6 @@ class MASH: #Manifold Alignment with Diffusion
                 The threshold determines how similar a point has to be to another to be considered an anchor
             :hold_out_anchors: Should be in the same format as known_anchors. These are used to validate the new alignment. Can be given 
                 anchors already used, but it preforms best if these are unseen anchors. 
-            :pruned_connections: should be a list formated like Known Anchors. The node connections in this list will not be considered
-                for possible connections. 
             :epochs: the number of iterations the cycle will go through. 
         """
 

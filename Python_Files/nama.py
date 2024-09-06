@@ -15,9 +15,6 @@ from scipy import sparse
 from sklearn.manifold import MDS
 import seaborn as sns
 
-
-import ot
-
 # TODO: Add OT functionality, using kernel instead of distance?
 # TODO: Add plotting functions, e.g., matrix visual
 # TODO: Add a function to test a datset; gets random subset of anchors,
