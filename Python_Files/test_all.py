@@ -21,8 +21,8 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
              "crx.csv", "breast_cancer.csv", "titanic.csv", 
              "diabetes.csv", "tic-tac-toe.csv",
              'Medicaldataset.csv', "water_potability.csv", "chess.csv",
-             #'treeData.csv', 
-             #"optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
+             'treeData.csv', 
+             "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
 """

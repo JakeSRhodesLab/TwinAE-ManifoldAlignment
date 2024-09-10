@@ -7,6 +7,9 @@ Questions:
 
 Changes Log: 
 1. Created Baseline results, and plotted them. (Tests run only on one domain)
+2. Merged RF_DF and original df into a master df. 
+3. Added the ranking plots in comparison
+4. Added side by side method comparisons (rf to original)
 
 
 FUTURE IDEAS:
@@ -15,7 +18,6 @@ FUTURE IDEAS:
 TASKS:
 0.5 Figure out why MASH sometimes asks for 3.64 TiB of data
 1. Create plot method to method -> RF to Not
-2. Base line for RF -> for each domain seperately
 3. Split RF MASH- from MASH 
 4. Time data for MASH
 5. Clean MASH and DIG files and make a repository to upload with the paper
@@ -1931,6 +1933,12 @@ def _upload_file(file, directory = "default"):
     data_dict["csv_file"] = file[:name_index]
     file = file[name_index + 1:]
 
+    #Correct csv_files
+    if data_dict["csv_file"] == "b":
+        data_dict["csv_file"] = "blobs"
+    elif data_dict["csv_file"] == "S-c":
+        data_dict["csv_file"] = "S-curve"
+
     #Get the method of the file, then cut the method out of the name
     method_index = file.find('(')
     data_dict["method"] = file[:method_index]
@@ -2330,6 +2338,10 @@ def _upload_file(file, directory = "default"):
         #Check to make sure there is data in the file
         if np.isnan(data_dict["FOSCTTM"]) or np.isnan(data_dict["Cross_Embedding_KNN"]):
             print(f"File {original_file} is missing FOSCTTM or Cross_Embedding Score")
+            os.remove(original_file)
+
+        if data_dict["FOSCTTM"] == 0 and data_dict["Cross_Embedding_KNN"] == 0:
+            print(f"File {original_file} scores are uncalculated.")
             os.remove(original_file)
 
         return (df, base_df)
