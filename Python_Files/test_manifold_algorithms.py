@@ -2,23 +2,23 @@
 
 """
 Questions:
-1. GIT storage? We ran out.
 
 
 
 Changes Log: 
-1. Updated the time table for SPUD --> Time goes fast when KNN is low, or if OD-METHOD is mean/abs. Also tested if mean is more helpful that abs
-2. Created  Baseline Tests
-3. Added Basline resutls
+1. Created Baseline results, and plotted them. (Tests run only on one domain)
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
+0.5 Figure out why MASH sometimes asks for 3.64 TiB of data
 1. Create plot method to method -> RF to Not
 2. Base line for RF -> for each domain seperately
 3. Split RF MASH- from MASH 
+4. Time data for MASH
+5. Clean MASH and DIG files and make a repository to upload with the paper
 
 
 If time things:
@@ -31,6 +31,8 @@ Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
 -> Multiple Domains 
 -> MASH optimization function to work something like a nueral network. At the least, make it so connections are adjustable
+-> Weighting feature importance
+-> Class based feature importance (Dr. Rhodes)
 
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
@@ -42,6 +44,7 @@ collings - rf_mash: medium mash files
 cox - rf_mash: big mash files
 LAPLACE - KEMA: Everything KEMA.
 CARTER - SPUD: everything RF spud
+hilton - Everything rf_mash
 
 Killed Zombies
 Cox - rf_mash - Small rf mash files -- It was killed by memory overload.
@@ -1561,7 +1564,6 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-
     def run_RF_BL_tests(self):
         """Needs no additional paramenters.
         
@@ -1582,7 +1584,6 @@ class test_manifold_algorithms():
         #Reset the directory
         self.base_directory = original_directory 
         
-        """Editing here"""
         #Initilize Class
         rf_class = RFGAP(prediction_type="classification", y=self.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
 
@@ -1608,19 +1609,28 @@ class test_manifold_algorithms():
         distsB = squareform(pdist(dataB))
 
         #Get cross embedding score
-        A_emb = self.mds.fit_transform(np.block([[distsA, dataA],
-                                                [dataA.T, distsA]]))
-        B_emb = self.mds.fit_transform(np.block([[distsB, dataB],
-                                                [dataB.T, distsB]]))
+        A_emb = self.mds.fit_transform(distsA)
+        B_emb = self.mds.fit_transform(distsB)
+
                  
         #Create an array to store the important data in 
         scores = np.zeros(2) #Now both of these are classification scores -- one for Split A and one for Split B
 
         print("\n--------------------------------------   RF Gap Baseline Tests " + self.base_directory[53:-1] + "   --------------------------------------\n")
-            
+        
+
+        X_train, X_test, y_train, y_test = train_test_split(A_emb, self.labels, test_size=0.5, random_state=42)
+        knn = KNeighborsClassifier(n_neighbors=4)
+        knn.fit(X_train, y_train)
+        ce_score_A =  knn.score(X_test, y_test)
+
+        X_train, X_test, y_train, y_test = train_test_split(B_emb, self.labels, test_size=0.5, random_state=42)
+        knn.fit(X_train, y_train)
+        ce_score_B =  knn.score(X_test, y_test)
+        
         #Run CE and FOSCTTM
         scores[0] = np.mean((self.FOSCTTM(dataA), self.FOSCTTM(dataB)))
-        scores[1] = np.mean((self.cross_embedding_knn(A_emb, (self.labels, self.labels), other_side = True), self.cross_embedding_knn(B_emb, (self.labels, self.labels), other_side = False)))
+        scores[1] = np.mean((ce_score_A, ce_score_B))
 
         print(f"FOSCTTM SCORE: {scores[0]}")
         print(f"CE SCORE: {scores[1]}")
@@ -2480,7 +2490,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=2)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
