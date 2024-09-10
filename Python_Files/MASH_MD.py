@@ -47,6 +47,9 @@ from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from time import time
 
+#Temporary
+import igraph as ig
+
 
 class MASH: #Manifold Alignment with Diffusion
     def __init__(self, t = -1, knn = 5, distance_measures = ["default", "default"], page_rank = "None",
@@ -301,31 +304,16 @@ class MASH: #Manifold Alignment with Diffusion
                 self.print_time()
                 self.kernals.append(np.array(self.graphs[i].K.toarray()))
                 self.print_time(f" Time it took to compute kernal {i}:  ")
-
-    def burn_in_domains(self, kernal):
-        """Applies the diffusion just to domain A and B seperately to prepare for diffusion later on. Will return the kernal"""
-
-        # Row normalize the matrix
-        kernal = self.row_normalize_matrix(kernal)
-
-        #Raise the normalized matrix to the burn_in power
-        kernal = np.linalg.matrix_power(kernal, self.burn_in)
-
-        #Apply the aggregation function
-        #kernal = self.apply_aggregation(kernal)
-
-        #Convert it back to similarities
-        return self.normalize_0_to_1(kernal)
     
     def apply_aggregation(self, matrix):
         """Apply the aggregation function to a powered diffusion operator"""
         
         #The Hellinger algorithm requires that the matricies have the same shape
-        if self.DTM == "hellinger" and self.len_A == self.len_B:
+        if self.DTM == "hellinger" and len(np.unique(self.len_domains)) < 2:
             #Apply the hellinger process
             agg_matix = self.hellinger_distance_matrix(matrix)
 
-        elif self.DTM == "kl" and self.len_A == self.len_B:
+        elif self.DTM == "kl" and len(np.unique(self.len_domains)) < 2:
             #Apply the hellinger process
             agg_matix = self.kl_divergence_matrix(matrix)
 
@@ -493,12 +481,19 @@ class MASH: #Manifold Alignment with Diffusion
         numpy.ndarray: Distance matrix.
         """
 
-        #Create a single matrix by stacking the two blocks
-        matrix = np.vstack([matrix[:self.len_A, :self.len_A], matrix[self.len_A:, self.len_A:]])
+        #Get the sgdms from the matrix
+        SGDMs = [matrix[:self.len_domains[0], :self.len_domains[0]]]
+        for i in range(self.domain_count-1):
+            SGDMs.append(matrix[self.len_domains[i]: sum(self.len_domains[:i+2]), self.len_domains[i]: sum(self.len_domains[:i+2])])
+
+        #Stack each of the sgdm so they become one graph
+        stacked_matrix = np.array([])
+        for i in range(self.domain_count):
+            stacked_matrix = np.vstack([stacked_matrix, SGDMs[i]])
 
         #Reshape the maticies
-        sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :])
-        sqrt_matrix2 = np.sqrt(matrix[np.newaxis, :, :])
+        sqrt_matrix1 = np.sqrt(stacked_matrix[:, np.newaxis, :])
+        sqrt_matrix2 = np.sqrt(stacked_matrix[np.newaxis, :, :])
 
         # Calculate the squared differences
         squared_diff = (sqrt_matrix1 - sqrt_matrix2) ** 2
@@ -617,12 +612,16 @@ class MASH: #Manifold Alignment with Diffusion
                 if type(anchor[i]) != str: #NOTE: We may have to encode something to add these for each array that has this as an anchor? Leaving out "_"
                     weights_to_add = np.concatenate((weights_to_add,
                                                 np.repeat( #We do this one because we need to add these weights to each other domain 
-                                                    self.kernals[i][neighbors[i], np.repeat( #This one is to get it so the anchor connects to each position
+                                                        self.kernals[i][neighbors[i], np.repeat( #This one is to get it so the anchor connects to each position
                                                                                     anchor[i], len(neighbors[i])
-                                                                                  )], num_valid_anchors-1
+                                                                                    )], 
+                                                        num_valid_anchors-1
                                                 )
                                                )) #Looks like [0.65, 0.02, 0.06... 0.65, 0.02, 0.06... 0.65, 0.02, 0.06... 0.84, 0.2, 0.2... 0.84, 0.2, 0.2... 0.84, 0.2, 0.2...] if there are three domains
 
+            #Debugger
+            if self.verbose > 5:
+                print(f"Length of weights to add: {len(weights_to_add)}")
 
             #Bulk add the Edges
             edges_to_add = []
@@ -630,10 +629,10 @@ class MASH: #Manifold Alignment with Diffusion
             for i in range(self.domain_count):
 
                 #loop through the anchor positions -> So we add the edges for each domain to each other domain the anchor correlates with
-                for anchor_pos in range(i , self.domain_count):
+                for anchor_pos in range(self.domain_count):
                     
-                    #Check to make sure its valide
-                    if type(anchor[anchor_pos]):
+                    #Check to make sure its valid
+                    if type(anchor[anchor_pos]) and anchor_pos != i:
 
                         #Finally add the edges
                         edges_to_add.append(
@@ -645,18 +644,29 @@ class MASH: #Manifold Alignment with Diffusion
             #Add each set of edges
             for edges in edges_to_add:
                 merged.add_edges(edges)
+
+                #Debugger
+                if self.verbose > 5:
+                    print(f"Length of edges to add: {len(edges)}")
                 
             #Add the weights
             merged.es[-len(weights_to_add):]["weight"] = weights_to_add
 
         #Now add the edges between anchors. We do this last so if we don't override an anchor in the previous step if multiple points in a domain correlate to a single point in the other domain.
         for i in range(self.domain_count): #Loop through each domain
-            for j in range(i, self.domain_count): #Loop through each other domain
+            for j in range(i + 1, self.domain_count): #Loop through each other domain
 
                 #Check to make sure the edges do connect to each other
                 if type(self.known_anchors_adjusted[:, i]) != str and type(self.known_anchors_adjusted[:, j]) != str:
                     merged.add_edges(list(zip(self.known_anchors_adjusted[:, i], self.known_anchors_adjusted[:, j])))
                     merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(self.IDC, len(self.known_anchors_adjusted))
+
+        if self.verbose > 4:
+
+            # Plot the graph
+            fig, ax = plt.subplots(figsize = (18, 16))
+            ig.plot(merged, layout=merged.layout("kk"), target=ax)
+            plt.show()
 
         #Convert back to graphtools
         merged_graphtools = graphtools.api.from_igraph(merged)
