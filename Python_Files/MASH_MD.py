@@ -963,9 +963,6 @@ class MASH: #Manifold Alignment with Diffusion
             for i in range(1, self.domain_count):
                 self.embeddings.append(emb[sum(self.len_domains[:i]):sum(self.len_domains[:i+1]),:])
 
-        #Create domain_lengths for temporary use
-        domain_lengths = [0] + self.len_domains
-
         #Print out each of the domains scores
         for i in range(self.domain_count):
             #Compare domain I to each other domain
@@ -985,7 +982,11 @@ class MASH: #Manifold Alignment with Diffusion
                                         
                 #Calculate FOSCTTM score
                 try:    
-                    print(f"    FOSCTTM: {self.FOSCTTM(self.int_diff_dist[sum(domain_lengths[:i]):sum(domain_lengths[:i+1]), sum(domain_lengths[:k-1]):sum(domain_lengths[:k])])}") #This gets the off-diagonal part
+                    if self.verbose > 5:
+                        plt.imshow(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1])])
+                        plt.show()
+
+                    print(f"    FOSCTTM: {self.FOSCTTM(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1]) ])}") #This gets the off-diagonal part
                 except: #This will run if the domains are different shapes
                     print(f"    Can't compute FOSCTTM with different domain shapes. Domain {i + 1}: {self.domains[i].shape}. Domain {k+1}: {self.domains[k].shape}")
         

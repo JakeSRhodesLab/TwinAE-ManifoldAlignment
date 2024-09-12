@@ -513,17 +513,15 @@ class test_manifold_algorithms():
 
                 #Create files and store data
                 filename, AP_values = self.create_filename("SPUD_RF", agg_method = agg_method, OD_method = OD_method) 
+
+                #Reset the directory
+                self.base_directory = original_directory 
                 
 
                 #If file aready exists, then we are done :)
                 if os.path.exists(filename) or len(AP_values) < 1:
                     print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-                    #Reset the directory
-                    self.base_directory = original_directory 
                     continue
-
-                #Reset the directory
-                self.base_directory = original_directory 
 
                 #Store the data in a numpy array
                 spud_scores = np.zeros((len(self.knn_range), len(AP_values), 2))
@@ -593,18 +591,14 @@ class test_manifold_algorithms():
 
             #Create files and store data
             filename, AP_values = self.create_filename("KEMA_RF", kernelt = kernelt) 
+
+            #Reset the directory
+            self.base_directory = original_directory 
             
             #If file aready exists, then we are done :)
             if os.path.exists(filename) or len(AP_values) < 1:
                 print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-
-                #Reset the directory
-                self.base_directory = original_directory 
-
                 return True
-            
-            #Reset the directory
-            self.base_directory = original_directory 
 
             #Store the data in a numpy array
             kema_scores = np.zeros((len(self.knn_range), 2))
@@ -713,17 +707,13 @@ class test_manifold_algorithms():
             else:
                 filename, AP_values = self.create_filename("MALI") 
 
-            #If file aready exists, then we are done :)
-            if os.path.exists(filename) or len(AP_values) < 1:
-                print(f"        <><><><><>    File {filename} already exists   <><><><><>")
-
-                #Reset the directory
-                self.base_directory = original_directory 
-            
-                return True
-            
             #Reset the directory
             self.base_directory = original_directory 
+
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"        <><><><><>    File {filename} already exists   <><><><><>")    
+                return True
             
 
             #Store the data in a numpy array
@@ -1028,7 +1018,7 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-    def run_RF_MASH_tests(self, DTM = ("hellinger", "log", "kl")):  #TODO: Add a predict features evaluation 
+    def run_RF_MASH_tests(self, DTM = ("hellinger", "log")):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
@@ -1041,84 +1031,84 @@ class test_manifold_algorithms():
         for link in DTM:
             print(f"Diffusion to matrix method applied: {link}")
 
-            for t in [-1]: #np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1): #This takes .... FOREVER
-                print(f"    T value {t}")
+            # for t in [-1]: #np.append(np.array(self.knn_range)[[1,3,5,7,9]], -1): #This takes .... FOREVER
+            #     print(f"    T value {t}")
 
-                #Create file directory to store the information
-                original_directory = self.base_directory
-                self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
-                
+            #Create file directory to store the information
+            original_directory = self.base_directory
+            self.base_directory = CURR_DIR + "/ManifoldData_RF/" + self.base_directory[len(MANIFOLD_DATA_DIR):]
+            
 
-                #Create the filename
-                filename, AP_values = self.create_filename("MASH_RF", DTM = link)
-    
-                #If file aready exists, then we are done :)
-                if os.path.exists(filename) or len(AP_values) < 1:
-                    print(f"    <><><><><>    File {filename} already exists for MASH-. Will not save again   <><><><><>")
-                    return True
+            #Create the filename
+            filename, AP_values = self.create_filename("MASH_RF", DTM = link)
 
-                #Reset the directory
-                self.base_directory = original_directory 
+            #Reset the directory
+            self.base_directory = original_directory 
 
-                #Loop through the connections
-                for i, connection in enumerate(["default", None]):
-                    print(f"        Connection Limit: {connection}")
+            #If file aready exists, then we are done :)
+            if os.path.exists(filename) or len(AP_values) < 1:
+                print(f"    <><><><><>    File {filename} already exists for MASH-. Will not save again   <><><><><>")
+                continue
 
-                    #Store the data in a numpy array
-                    DIG_scores = np.zeros((2, len(self.knn_range), len(AP_values), 2)) #the first two if for the connection limit
+            #Loop through the connections
+            for i, connection in enumerate(["default", None]):
+                print(f"        Connection Limit: {connection}")
 
-                    for j, knn in enumerate(self.knn_range):
-                        print(f"            KNN {knn}")
+                #Store the data in a numpy array
+                DIG_scores = np.zeros((2, len(self.knn_range), len(AP_values), 2)) #the first two if for the connection limit
 
-                        for k, anchor_percent in enumerate(AP_values):
-                            print(f"                Percent of Anchors {anchor_percent}")
+                for j, knn in enumerate(self.knn_range):
+                    print(f"            KNN {knn}")
 
-                            #Cache this information so it is faster
-                            anchor_amount = int((len(self.anchors) * anchor_percent))
+                    for k, anchor_percent in enumerate(AP_values):
+                        print(f"                Percent of Anchors {anchor_percent}")
+
+                        #Cache this information so it is faster
+                        anchor_amount = int((len(self.anchors) * anchor_percent))
+                        
+                        try:
+                            #Create our class to run the tests
+                            DIG_class = MASH(t = -1, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH, n_pca = 100)
                             
-                            try:
-                                #Create our class to run the tests
-                                DIG_class = MASH(t = t, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH, n_pca = 100)
-                                
-                                if connection == "default":
-                                    DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
+                            if connection == "default":
+                                DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
 
-                                else: #Add the optimization
-                                    DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(anchor_amount/2)])
-                                    DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit=None, hold_out_anchors = self.anchors[int(anchor_amount/2):anchor_amount])
+                            else: #Add the optimization
+                                DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(anchor_amount/2)])
+                                DIG_class.optimize_by_creating_connections(epochs = 10000, connection_limit=None, hold_out_anchors = self.anchors[int(anchor_amount/2):anchor_amount])
 
-                            except Exception as e:
-                                print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
-                                DIG_scores[i, j, k, 0] = np.NaN
-                                DIG_scores[i, j, k, 1] = np.NaN
+                        except Exception as e:
+                            print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
+                            DIG_scores[i, j, k, 0] = np.NaN
+                            DIG_scores[i, j, k, 1] = np.NaN
 
 
-                            #FOSCTTM Evaluation Metrics
-                            try:
-                                DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
-                                print(f"                    FOSCTTM: {DIG_FOSCTTM}")
+                        #FOSCTTM Evaluation Metrics
+                        try:
+                            DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
+                            print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
-                            except Exception as e:
-                                print(f"                    FOSCTTM exception occured: {e}")
-                                DIG_FOSCTTM = np.NaN
+                        except Exception as e:
+                            print(f"                    FOSCTTM exception occured: {e}")
+                            DIG_FOSCTTM = np.NaN
 
-                            DIG_scores[i, j, k, 0] = DIG_FOSCTTM
+                        DIG_scores[i, j, k, 0] = DIG_FOSCTTM
 
-                            #Cross Embedding Evaluation Metric
-                            try:
-                                emb = self.mds.fit_transform(DIG_class.int_diff_dist)
+                        #Cross Embedding Evaluation Metric
+                        try:
+                            emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
-                                DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
-                                print(f"                    CE Score: {DIG_CE}")
+                            DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
+                            print(f"                    CE Score: {DIG_CE}")
 
-                            except Exception as e:
-                                print(f"                    Cross Embedding exception occured: {e}")
-                                DIG_CE = np.NaN
+                        except Exception as e:
+                            print(f"                    Cross Embedding exception occured: {e}")
+                            DIG_CE = np.NaN
 
-                            DIG_scores[i, j, k, 1] = DIG_CE
+                        DIG_scores[i, j, k, 1] = DIG_CE
 
 
-                np.save(filename, DIG_scores)
+            np.save(filename, DIG_scores)
 
         #Run successful
         return True
@@ -1579,13 +1569,14 @@ class test_manifold_algorithms():
         #Create file name
         filename, AP_values = self.create_filename("RF_BL")
 
+        #Reset the directory
+        self.base_directory = original_directory 
+
         #If file aready exists, then we are done :)
         if os.path.exists(filename) or len(AP_values) < 1:
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
-        #Reset the directory
-        self.base_directory = original_directory 
         
         #Initilize Class
         rf_class = RFGAP(prediction_type="classification", y=self.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)

@@ -461,7 +461,7 @@ class MASH: #Manifold Alignment with Diffusion
         # Ensure there are no zero values to avoid division by zero
         matrix = np.where(matrix == 0, 1e-10, matrix)
 
-        #Normalize and do all the math to preform the KL divergence
+        #Normalize and do all the math to preform the KL divergence. #NOTE -> This likely is sucking up a ton of memory
         matrix = self.normalize_0_to_1(squareform(pdist(np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2))))
 
         #Return the block matrix!
@@ -508,7 +508,7 @@ class MASH: #Manifold Alignment with Diffusion
         matrix = np.vstack([matrix[:self.len_A, :self.len_A], matrix[self.len_A:, self.len_A:]])
 
         #Reshape the maticies
-        sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :])
+        sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :]) #NOTE: This will also take a good amount of memory
         sqrt_matrix2 = np.sqrt(matrix[np.newaxis, :, :])
 
         # Calculate the squared differences
