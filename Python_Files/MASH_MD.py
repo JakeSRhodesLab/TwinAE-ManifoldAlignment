@@ -70,12 +70,6 @@ class MASH: #Manifold Alignment with Diffusion
                 function uses Euclidian distance, but this may manually changed through kwargs assignment.
                 If set to "default" it will use the graph created kernals. 
 
-            
-
-            :page_rank: Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
-                want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
-                mean we want to apply the page ranking algorithm across the entire block matrix.
-
             :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
                 to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
                 representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
@@ -92,7 +86,6 @@ class MASH: #Manifold Alignment with Diffusion
         #Store the needed information
         self.t = t
         self.knn = knn
-        self.page_rank = page_rank
         self.normalize_density = density_normalization
         self.DTM = DTM.lower()
         self.distance_measures = distance_measures
@@ -102,7 +95,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.burn_in = burn_in
 
         #Set self.emb to be None
-        self.emb = None
+        self.embeddings = None
     
     def fit(self, domains, known_anchors):
         """
@@ -157,7 +150,6 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Get Diffusion Matrix. int_diff_dist stands for the integrated diffusion distance.
         self.print_time()
-        #self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
         self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
         self.print_time(" Time it took to compute diffusion process:  ")
 
@@ -389,24 +381,6 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Prefrom the row-normalized division
         return matrix / row_sums[:, np.newaxis]
-
-    def apply_page_rank(self, matrix, alpha = 0.95):
-        """
-        Applies the PageRank modifications to the normalized matrix.
-
-        Parameters:
-        - matrix: The row-normalized adjacency matrix.
-        - Alpha: the alpha value.
-
-        Returns:
-        - The modified matrix incorporating the damping factor and teleportation.
-        """
-
-        #Get the shape
-        N, M = matrix.shape
-
-        # Apply the damping factor and add the teleportation matrix
-        return alpha * matrix + (1 - alpha) * np.ones((N, M)) / N
 
     def get_similarity_matrix(self, matrix):
         """Applies adjustments to get the similarity Matrix
@@ -673,7 +647,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         return merged_graphtools.K.toarray()
     
-    def get_diffusion(self, matrix, return_projection = True): 
+    def get_diffusion(self, matrix): 
         """
         Returns the powered diffusion opperator from the given matrix.
         Also returns the projection matrix from domain A to B, and then the projection matrix from domain B to A. 
@@ -687,50 +661,18 @@ class MASH: #Manifold Alignment with Diffusion
             if self.verbose > 0:
                 print(f"Using optimal t value of {self.t}")
 
-        if self.burn_in > 0:
-            matrix[self.len_A:, self.len_A:] = self.burn_in_domains(matrix[self.len_A:, self.len_A:])
-            matrix[:self.len_A, :self.len_A] = self.burn_in_domains(matrix[:self.len_A, :self.len_A])
-                
         # Row normalize the matrix
         normalized_matrix = self.row_normalize_matrix(matrix)
-
-        #Apply the page rank algorithm
-        if self.page_rank == "full":
-            if self.verbose > 2:
-                print("Applying Page Ranking against the full matrix")
-            
-            normalized_matrix = self.apply_page_rank(normalized_matrix)
-            normalized_matrix = self.row_normalize_matrix(normalized_matrix)
-        
-        #Get off-Diagonal blocks and apply the Page Rank transformation
-        elif self.page_rank == "off-diagonal":
-            if self.verbose > 2:
-                print("Applying Rage Ranking against the off-diagonal parts of the matrix")
-
-            normalized_matrix[:self.len_A, self.len_A:] = self.apply_page_rank(normalized_matrix[:self.len_A, self.len_A:]) #Top right
-            normalized_matrix[self.len_A:, :self.len_A] = self.apply_page_rank(normalized_matrix[self.len_A:, :self.len_A]) #Bottom left
-            normalized_matrix = self.row_normalize_matrix(normalized_matrix)
-            
 
         #Raise the normalized matrix to the t power
         diffusion_matrix = np.linalg.matrix_power(normalized_matrix, self.t)
 
-        # if return_projection:
-        #     #Prepare the Projection Matricies by normalizing each domain by itself
-        #     domainAB = diffusion_matrix[:self.len_A, self.len_A:]#Top Right
-        #     domainBA = diffusion_matrix[self.len_A:, :self.len_A] #Bottom Left
-        #     domainAB = self.row_normalize_matrix(domainAB)
-        #     domainBA = self.row_normalize_matrix(domainBA)
-        
+
         #Apply the aggregation function
         diffused = self.apply_aggregation(diffusion_matrix)
 
         return diffused
         
-        # if return_projection:
-        #     return diffused, domainAB, domainBA
-        # else:
-        #     return diffused
 
     def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
         """
@@ -841,7 +783,7 @@ class MASH: #Manifold Alignment with Diffusion
                     self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
 
                     #Reset the Diffusion Matrix
-                    self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+                    self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
 
                     #Add in the hold out anchors to the known_anchors
                     self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
@@ -918,7 +860,7 @@ class MASH: #Manifold Alignment with Diffusion
                 self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
 
             #Recalculate diffusion matrix
-            self.int_diff_dist, self.projectionAB, self.projectionBA = self.get_diffusion(self.similarity_matrix)
+            self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
 
             #Show the final connections
             if self.verbose > 1:
@@ -996,13 +938,11 @@ class MASH: #Manifold Alignment with Diffusion
 
         plt.show()
 
-    def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
+    def plot_emb(self, labels = None, n_comp = 2, show_legend = True, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
         Arguments:
-            :labels: should be a flattened list of the labels for points in domain A and then domain B. 
-                If set to None, the cross embedding can not be calculated, and all points will be colored
-                the same. 
+            :labels: should be a tuple-like of the labes for each domain. For example (labels_domain_1, labels_domain_2, labels_domain_3...)
             :n_comp: The amount of components or dimensions for the MDS function.
             :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
                 that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
@@ -1012,45 +952,81 @@ class MASH: #Manifold Alignment with Diffusion
         """
 
         #Check to see if we already have created our embedding, else create the embedding.
-        if type(self.emb) == type(None):
+        if type(self.embeddings) == type(None):
             #Convert to a MDS
             mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
-            self.emb = mds.fit_transform(self.int_diff_dist)
+            emb = mds.fit_transform(self.int_diff_dist)
 
-        #Check to make sure we have labels
-        if type(labels)!= type(None):
-            #Seperate the labels into their respective domains
-            first_labels = labels[:self.len_A]
-            second_labels = labels[self.len_A:]
+            #Sort out the embedding by domains
+            self.embeddings = [emb[:self.len_domains[0], :]]
 
-            #Calculate Cross Embedding Score
-            try: #Will fail if the domain shapes aren't equal
-                print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
-            except:
-                print("Can't calculate the Cross Embedding score")
-        else:
+            for i in range(1, self.domain_count):
+                self.embeddings.append(emb[sum(self.len_domains[:i]):sum(self.len_domains[:i+1]),:])
+
+        #Create domain_lengths for temporary use
+        domain_lengths = [0] + self.len_domains
+
+        #Print out each of the domains scores
+        for i in range(self.domain_count):
+            #Compare domain I to each other domain
+            for k in range(i+1, self.domain_count):
+
+                #Check to make sure we have labels
+                if len(labels) == self.domain_count:
+                    print(f"Scores from domain {i+1} to {k+1}: ")
+                    try: #Will fail if the domain shapes aren't equal
+                        print(f"""    Cross Embedding: {self.cross_embedding_knn(
+                                                                                np.vstack([self.embeddings[i], self.embeddings[k]]),
+                                                                                (labels[i], labels[k]),
+                                                                                knn_args = {'n_neighbors': 4}
+                                                                                    )}""")
+                    except:
+                        print("    Can't calculate the Cross Embedding score")
+                                        
+                #Calculate FOSCTTM score
+                try:    
+                    print(f"    FOSCTTM: {self.FOSCTTM(self.int_diff_dist[sum(domain_lengths[:i]):sum(domain_lengths[:i+1]), sum(domain_lengths[:k-1]):sum(domain_lengths[:k])])}") #This gets the off-diagonal part
+                except: #This will run if the domains are different shapes
+                    print(f"    Can't compute FOSCTTM with different domain shapes. Domain {i + 1}: {self.domains[i].shape}. Domain {k+1}: {self.domains[k].shape}")
+        
+        #Create artificial labels? 
+        if len(labels)!= self.domain_count:
             #Set all labels to be the same
-            labels = np.ones(shape = (len(self.emb)))
-
-        #Calculate FOSCTTM score
-        try:    
-            print(f"FOSCTTM: {self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
-        except: #This will run if the domains are different shapes
-            print("Can't compute FOSCTTM with different domain shapes.")
+            labels = np.ones(shape = (len(np.concatenate(self.embeddings))))
 
         #Set the styles to show if a point comes from the first domain or the second domain
-        styles = ['Domain A' if i < self.len_A else 'Domain B' for i in range(len(self.emb[:]))]
+        #styles = [f"Domain {i+1}" for i, sublist in enumerate(self.embeddings) for _ in sublist]
 
-        #Create the figure
-        plt.figure(figsize=(14, 8))
+        # Create the figure and axes
+        fig, ax = plt.subplots(figsize=(14, 8))
 
-        #If show_pred is chosen, we want to show labels in Domain B as muted
-        if show_pred:
-            ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=120, marker= "o", **kwargs)
-            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=120, marker= "^", **kwargs)
-        else:
-            #Now plot the points with correct lables
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(labels), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+        #Create a list of markers
+        if not hasattr(self, "markers"):
+            self.markers = [
+                            'o',  # circle marker
+                            '^',  # triangle_up marker
+                            '*',  # star marker
+                            's',  # square marker
+                            'p',  # pentagon marker
+                            'h',  # hexagon1 marker
+                            'd',  # thin_diamond marker
+                            '<',  # triangle_left marker
+                            '>',  # triangle_right marker
+                            '1',  # tri_down marker
+                            '2',  # tri_up marker
+                            '3',  # tri_left marker
+                            '4',  # tri_right marker
+                            'v',  # triangle_down marker
+                            'H',  # hexagon2 marker
+                            '+',  # plus marker
+                            'D',  # diamond marker
+                            '.',  # point marker
+                            'x',  # x marker
+                        ]
+
+        #Now plot the points with correct labels
+        for emb, label, i in zip(self.embeddings, labels, range(0, self.domain_count)):
+            sns.scatterplot(x = emb[:, 0], y = emb[:, 1], ax = ax, hue = Categorical(label), s=120, style = np.repeat(("Domain " + str(i+1)), repeats = self.len_domains[i]), markers = self.markers[i%len(self.markers)], **kwargs)
 
         #Set the title and plot Legend
         ax.set_title("MASH", fontsize = 25)
@@ -1059,52 +1035,67 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Plot Legend
         if show_legend:
-            plt.legend()
+            ax.legend()
 
-        #To plot line connections
-        if show_lines:
+        # #To plot line connections
+        # if show_lines:
             
-            #Since this assumes 1 to 1 correpsondence, we must chech that the domains sizes are the same
-            if self.len_A == self.len_B:
-              for i in range(self.len_B):
-                  ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
-            else:
-               raise AssertionError("To show the lines, domain A and domain B must be the same size.")
+        #     #Since this assumes 1 to 1 correpsondence, we must chech that the domains sizes are the same
+        #     if self.len_A == self.len_B:
+        #       for i in range(self.len_B):
+        #           ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
+        #     else:
+        #        raise AssertionError("To show the lines, domain A and domain B must be the same size.")
              
-        #Put black dots on the Anchors
-        if show_anchors:
+        # #Put black dots on the Anchors
+        # if show_anchors:
             
-            #For each anchor set, plot lines between them
-            for i in self.known_anchors_adjusted:
-              ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
+        #     #For each anchor set, plot lines between them
+        #     for i in self.known_anchors_adjusted:
+        #       ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
             
-            #Create a new style guide so every other point is a triangle or circle
-            styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
+        #     #Create a new style guide so every other point is a triangle or circle
+        #     styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
-            #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
+        #     #Plot the black triangles or circles on the correct points
+        #     sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
         
         #Show plot
         plt.show()
 
-        #Show the predicted points
-        if show_pred and type(labels) != type(None):
+        # #Show the predicted points
+        # if show_pred and type(labels) != type(None):
 
-            #Instantial model, fit on domain A, and predict for domain B
-            knn_model = KNeighborsClassifier(n_neighbors=4)
-            knn_model.fit(self.emb[:self.len_A, :], first_labels)
-            second_pred = knn_model.predict(self.emb[self.len_A:, :])
+        #     #Instantial model, fit on domain A, and predict for domain B
+        #     knn_model = KNeighborsClassifier(n_neighbors=4)
+        #     knn_model.fit(self.emb[:self.len_A, :], first_labels)
+        #     second_pred = knn_model.predict(self.emb[self.len_A:, :])
 
-            #Create the figure
-            plt.figure(figsize=(14, 8))
+        #     #Create the figure
+        #     plt.figure(figsize=(14, 8))
 
-            #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+        #     #Now plot the points
+        #     ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
-            #Set the title
-            ax.set_title("Predicted Labels",  fontsize = 25)
-            plt.xticks(fontsize=16)
-            plt.yticks(fontsize=16)
+        #     #Set the title
+        #     ax.set_title("Predicted Labels",  fontsize = 25)
+        #     plt.xticks(fontsize=16)
+        #     plt.yticks(fontsize=16)
+
+        #     plt.show()
+
+    def plot_all_embeddings(self, labels, **kwargs):
+        """To be called only after plot_emb.
+        
+        Plots the embedding for each domain."""
+
+        if self.embeddings == None:
+            print("Call 'plot_emb' before this fucntion.")
+            return False
+
+        #Now plot the points with correct labels
+        for emb, label, i in zip(self.embeddings, labels, range(self.domain_count)):
+            sns.scatterplot(x = emb[:, 0], y = emb[:, 1], hue = Categorical(label), s=120, style = np.repeat(("Domain " + str(i+1)), repeats = self.len_domains[i]), markers= self.markers[i%len(self.markers)], **kwargs)
 
             plt.show()
 
@@ -1134,7 +1125,7 @@ class MASH: #Manifold Alignment with Diffusion
             
             # Perform the diffusion operation
             self.t = i * rate
-            diffused_array, projectionAB, projectionBA = self.get_diffusion(self.similarity_matrix)
+            diffused_array = self.get_diffusion(self.similarity_matrix)
 
             #Calculate FOSCTTM score
             F_scores = np.append(F_scores, self.FOSCTTM(diffused_array))

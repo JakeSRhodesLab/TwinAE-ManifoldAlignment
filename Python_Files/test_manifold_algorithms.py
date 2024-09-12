@@ -10,6 +10,7 @@ Changes Log:
 2. Merged RF_DF and original df into a master df. 
 3. Added the ranking plots in comparison
 4. Added side by side method comparisons (rf to original)
+5. Built up the md_domains so the full functionality of MASh works (through testing, it seems like anchor choice matters a ton)
 
 
 FUTURE IDEAS:
