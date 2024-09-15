@@ -52,7 +52,7 @@ import igraph as ig
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, distance_measures = ["default", "default"], page_rank = "None",
+    def __init__(self, t = -1, knn = 5, distance_measures = "auto", page_rank = "None",
                  IDC = 1, density_normalization = False, DTM = "log", burn_in = 0,
                  verbose = 0, **kwargs):
         """
@@ -105,7 +105,7 @@ class MASH: #Manifold Alignment with Diffusion
                 corresponding nodes, and m is the number of domains. For each position in m,
                 it should be the anchor node within that domain that connects to the others. 
                 For example [1, 3, 5] means node 1 in the first domain corresponds to node 3 
-                in the second domain and node 5 in the third domain. If [1, _, 3] is given, 
+                in the second domain and node 5 in the third domain. If [1, np.nan, 3] is given, 
                 there is no corresponding anchor in domain two.
         """
 
@@ -119,6 +119,9 @@ class MASH: #Manifold Alignment with Diffusion
         #Add the data. Note, it will later be normalized
         self.domains = domains
         self.domain_count = len(domains)
+
+        if self.distance_measures == "auto":
+            self.distance_measures = ["default" for i in range(self.domain_count)]
 
         #Check to see if the dimensions of known anchors macth.
         if self.domain_count != known_anchors.shape[1]:
@@ -562,7 +565,7 @@ class MASH: #Manifold Alignment with Diffusion
             #Count the valid anchors
             num_valid_anchors = 0
             for pos in anchor:
-                if type(pos) != str:
+                if ~np.isnan(pos):
                     num_valid_anchors += 1
 
             #Find the neighbors for each anchor
@@ -570,10 +573,10 @@ class MASH: #Manifold Alignment with Diffusion
             for i in range(self.domain_count):
 
                 #Check to make sure this is a valid anchor
-                if type(anchor[i]) != str:
+                if ~np.isnan(anchor[i]):
 
                     #Add the neighbors for graph a
-                    neighbors.append(tuple(set(igraphs[i].neighbors(anchor[i], mode="out"))))
+                    neighbors.append(tuple(set(igraphs[i].neighbors(int(anchor[i]), mode="out")))) #Converting this to an int is so inefficient... sigh
                 
                 else: #Append an empty list if it is not an anchor
                     neighbors.append([])
@@ -583,11 +586,11 @@ class MASH: #Manifold Alignment with Diffusion
 
             for i in range(self.domain_count):
                 #Check to make sure this is a valid anchor
-                if type(anchor[i]) != str: #NOTE: We may have to encode something to add these for each array that has this as an anchor? Leaving out "_"
+                if ~np.isnan(anchor[i]): #NOTE: We may have to encode something to add these for each array that has this as an anchor? Leaving out "_"
                     weights_to_add = np.concatenate((weights_to_add,
                                                 np.repeat( #We do this one because we need to add these weights to each other domain 
                                                         self.kernals[i][neighbors[i], np.repeat( #This one is to get it so the anchor connects to each position
-                                                                                    anchor[i], len(neighbors[i])
+                                                                                    int(anchor[i]), len(neighbors[i])
                                                                                     )], 
                                                         num_valid_anchors-1
                                                 )
@@ -606,11 +609,11 @@ class MASH: #Manifold Alignment with Diffusion
                 for anchor_pos in range(self.domain_count):
                     
                     #Check to make sure its valid
-                    if type(anchor[anchor_pos]) and anchor_pos != i:
+                    if ~np.isnan(anchor[anchor_pos]) and anchor_pos != i:
 
                         #Finally add the edges
                         edges_to_add.append(
-                                            list(zip(np.full_like(neighbors[i], anchor[anchor_pos]) + sum(self.len_domains[:anchor_pos]), #We adjust this by the anchor_pos value 
+                                            list(zip(np.full_like(neighbors[i], int(anchor[anchor_pos])) + sum(self.len_domains[:anchor_pos]), #We adjust this by the anchor_pos value 
                                                         np.array(neighbors[i]) + sum(self.len_domains[:i]))
                                                     )
                                             ) #We adjsut this one by i
@@ -630,10 +633,22 @@ class MASH: #Manifold Alignment with Diffusion
         for i in range(self.domain_count): #Loop through each domain
             for j in range(i + 1, self.domain_count): #Loop through each other domain
 
-                #Check to make sure the edges do connect to each other
-                if type(self.known_anchors_adjusted[:, i]) != str and type(self.known_anchors_adjusted[:, j]) != str:
-                    merged.add_edges(list(zip(self.known_anchors_adjusted[:, i], self.known_anchors_adjusted[:, j])))
-                    merged.es[-len(self.known_anchors_adjusted):]["weight"] = np.repeat(self.IDC, len(self.known_anchors_adjusted))
+                # Check for NaN values in both arrays and create a mask
+                mask = ~np.isnan(self.known_anchors_adjusted[:, i]) & ~np.isnan(self.known_anchors_adjusted[:, j])
+
+                # Apply mask to filter out valid values (non-NaN)
+                valid_i = self.known_anchors_adjusted[:, i][mask].astype(int)
+                valid_j = self.known_anchors_adjusted[:, j][mask].astype(int)
+
+                #Check to make sure its not empty: 
+                if len(valid_i) > 0:
+
+                    # Add edges only for valid pairs
+                    merged.add_edges(list(zip(valid_i, valid_j)))
+
+                    # Set weights for the new edges
+                    merged.es[-len(valid_i):]["weight"] = np.repeat(self.IDC, len(valid_i))
+
 
         if self.verbose > 4:
 
@@ -927,10 +942,6 @@ class MASH: #Manifold Alignment with Diffusion
         #Similarity matrix
         axes[0].imshow(self.similarity_matrix)
         axes[0].set_title("Similarity Matrix")
-
-        #Projection AB
-        axes[2].imshow(self.projectionAB)
-        axes[2].set_title("Projection AB")
 
         #Diffusion matrix
         axes[1].imshow(self.int_diff_dist)
