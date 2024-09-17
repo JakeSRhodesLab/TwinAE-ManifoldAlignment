@@ -1,35 +1,22 @@
 #This tests all of our models against each other
 
 """
-Questions:
-
-
-
 Changes Log: 
-1. New Baseline Results. 
+1. New Baseline Results with OOB
 2. Added Visualization helpers
 
-
-FUTURE IDEAS:
-3. Possible with n domains?
-
 TASKS:
-3. Split RF MASH- from MASH 
+2. MD things
 4. Time data for MASH
 5. Clean MASH and DIG files and make a repository to upload with the paper
 
-0. Send Proffesor Rhodes an email of the RF for each method
-1. OOB baseline
-
 If time things:
-3. Encode multiple Domain testing
 6. Figure out how to make NaN processing faster. Use the pdist?
 7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 8. Add in the other way Marshall asked to be able to format anchors
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
--> Multiple Domains 
 -> MASH optimization function to work something like a nueral network. At the least, make it so connections are adjustable
 -> Weighting feature importance
 -> Class based feature importance (Dr. Rhodes)

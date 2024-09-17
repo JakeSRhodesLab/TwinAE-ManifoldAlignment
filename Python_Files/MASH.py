@@ -45,8 +45,8 @@ from time import time
 
 
 class MASH: #Manifold Alignment with Diffusion
-    def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", page_rank = "None",
-                 IDC = 1, density_normalization = False, DTM = "log", burn_in = 0,
+    def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", DTM = "log",
+                 page_rank = "None", IDC = 1, density_normalization = False, burn_in = 0,
                  verbose = 0, **kwargs):
         """
         Parameters:

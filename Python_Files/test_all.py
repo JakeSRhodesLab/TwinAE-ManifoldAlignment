@@ -20,9 +20,9 @@ csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinson
              "S-curve", "blobs",
              "crx.csv", "breast_cancer.csv", "titanic.csv", 
              "diabetes.csv", "tic-tac-toe.csv",
-             #'Medicaldataset.csv', "water_potability.csv", "chess.csv",
-             #'treeData.csv', 
-             #"optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
+             'Medicaldataset.csv', "water_potability.csv", "chess.csv",
+             'treeData.csv', 
+             "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
 """
@@ -47,7 +47,7 @@ state = False
 
 
 #Even
-tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG=state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -66,7 +66,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
 #Skewed
-tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1825, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [1825, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -85,7 +85,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1825, 2830, 2969],
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments"""
 
 #Random
-tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "random", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -105,7 +105,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],
 
 
 #distort
-tma.run_all_tests(csv_files = csv_files, test_random =  [42],#[1738, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -125,7 +125,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [42],#[1738, 5198, 7667]
 
 #turn
 
-tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [1738, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "turn", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments

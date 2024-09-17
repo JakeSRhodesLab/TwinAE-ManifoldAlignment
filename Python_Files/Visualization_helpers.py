@@ -82,8 +82,8 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
 
             'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].min(),
             'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].min(),
-            'BL_CE': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'BL_FOSCTTM': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
+            'RFBL2': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
+            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
 
             'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].min(),
             'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].min(),
@@ -106,8 +106,8 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
 
             'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].max(),
             'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].max(),
-            'BL_CE': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'BL_FOSCTTM': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
+            'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
+            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
 
             'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].max(),
             'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].max(),
@@ -176,12 +176,12 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
         ax = plt.scatter(y = agregate_df["MALI"], marker = 'o', label = "MALI", **key_words)
     if "SPUD_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["SPUD_RF"], label = "SPUD_RF", marker = 'o', color = "blue", **key_words)
-    if "BL_FOSCTTM" in plot_methods:
-        ax = plt.scatter(y = agregate_df["BL_FOSCTTM"], marker = '.', color = "None", edgecolor = "red", linewidth= 1.3, label = "RF Baseline FOSCTTM", **key_words)
+    if "RFBL2" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RFBL2"], marker = '.', color = "None", edgecolor = "red", linewidth= 1.3, label = "RFBS1", **key_words)
     if "KEMA_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["KEMA_RF"], marker = 'o', color = "purple", label = "KEMA", **key_words)
-    if "BL_CE" in plot_methods:
-        ax = plt.scatter(y = agregate_df["BL_CE"], marker = '.', color = "None", edgecolor = "black", linewidth= 1.3, label = "RF Baseline CE", **key_words)
+    if "RFBL1" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RFBL1"], marker = '.', color = "None", edgecolor = "black", linewidth= 1.3, label = "RFBS2", **key_words)
 
 
     #Show Legend
@@ -216,8 +216,8 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
 
         'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].mean(),
         'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].mean(),
-        'BL_CE': rf_df.groupby("csv_file")["A_Classification_Score"].mean(),
-        'BL_FOSCTTM': rf_df.groupby("csv_file")["B_Classification_Score"].mean(),
+        'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].mean(),
+        'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].mean(),
 
         'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].mean(),
         'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].mean(),
@@ -240,8 +240,8 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
 
         'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].std(),
         'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].std(),
-        'BL_CE': rf_df.groupby("csv_file")["A_Classification_Score"].std(),
-        'BL_FOSCTTM': rf_df.groupby("csv_file")["B_Classification_Score"].std(),
+        'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].std(),
+        'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].std(),
 
         'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].std(),
         'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].std(),
@@ -294,10 +294,10 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
         ax = plt.errorbar(x = agregate_df.index + 0.4, y = agregate_df["Split_A"], yerr = err_df["Split_A"], fmt = "_", label = "Split_A", **key_words) 
     if "Split_B" in plot_methods:
         ax = plt.errorbar(x = agregate_df.index - 0.4, y = agregate_df["Split_B"], yerr = err_df["Split_B"], fmt = "_", label = "Split_B", **key_words) 
-    if "BL_CE" in plot_methods:
-        ax = plt.errorbar(x = agregate_df.index + 0.4, y = agregate_df["BL_CE"], yerr = err_df["BL_CE"], fmt = "_", label = "BL_CE", **key_words) 
-    if "BL_FOSCTTM" in plot_methods:
-        ax = plt.errorbar(x = agregate_df.index - 0.4, y = agregate_df["BL_FOSCTTM"], yerr = err_df["BL_FOSCTTM"], fmt = "_", label = "BL_FOSCTTM", **key_words) 
+    if "RFBL1" in plot_methods:
+        ax = plt.errorbar(x = agregate_df.index + 0.4, y = agregate_df["RFBL1"], yerr = err_df["RFBL1"], fmt = "_", label = "RFBL1", **key_words) 
+    if "RFBL2" in plot_methods:
+        ax = plt.errorbar(x = agregate_df.index - 0.4, y = agregate_df["RFBL2"], yerr = err_df["RFBL2"], fmt = "_", label = "RFBL2", **key_words) 
 
     plt.ylim([-0.3, 1])
 
@@ -345,6 +345,9 @@ def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop 
     return csv_df
 
 def plot_ranks(scoring = "Combined_Metric", **kwargs):
+    """Kwargs are for the get_mean_std_df.
+    
+    Its parameters are: split, scoring, columns_to_drop, and kwargs for subset df"""
 
     #Create a dataframe to add too:
     agregate_df = get_mean_std_df(scoring = scoring, **kwargs).head(2)
