@@ -6,23 +6,20 @@ Questions:
 
 
 Changes Log: 
-1. Created Baseline results, and plotted them. (Tests run only on one domain)
-2. Merged RF_DF and original df into a master df. 
-3. Added the ranking plots in comparison
-4. Added side by side method comparisons (rf to original)
-5. Built up the md_domains so the full functionality of MASh works (through testing, it seems like anchor choice matters a ton)
+1. New Baseline Results. 
+2. Added Visualization helpers
 
 
 FUTURE IDEAS:
 3. Possible with n domains?
 
 TASKS:
-0.5 Figure out why MASH sometimes asks for 3.64 TiB of data
-1. Create plot method to method -> RF to Not
 3. Split RF MASH- from MASH 
 4. Time data for MASH
 5. Clean MASH and DIG files and make a repository to upload with the paper
 
+0. Send Proffesor Rhodes an email of the RF for each method
+1. OOB baseline
 
 If time things:
 3. Encode multiple Domain testing
@@ -48,11 +45,6 @@ cox - rf_mash: big mash files
 LAPLACE - KEMA: Everything KEMA.
 CARTER - SPUD: everything RF spud
 hilton - Everything rf_mash
-
-Killed Zombies
-Cox - rf_mash - Small rf mash files -- It was killed by memory overload.
-COX - MASH+: running DIG and CwDIG - One seed for every split. July 26th (3 Weeks and running). It was killed by memory overload.
-
 
 
 """
@@ -1577,57 +1569,29 @@ class test_manifold_algorithms():
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
-        
-        #Initilize Class
-        rf_class = RFGAP(prediction_type="classification", y=self.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
-
-        #Fit it for Data A and get proximities
-        rf_class.fit(self.split_A, y = self.labels)
-        dataA = rf_class.get_proximities()
-        if np.max(dataA[~np.isinf(dataA)]) != 0:
-            dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
-        dataA[np.isinf(dataA)] = 1
-        dataA = 1 - dataA
-
-        #Fit it for Data B and get proximities
-        rf_class.fit(self.split_B, y = self.labels)
-        dataB = rf_class.get_proximities()
-        if np.max(dataB[~np.isinf(dataB)]) != 0:
-            dataB = (dataB - dataB.min()) / (dataB[~np.isinf(dataB)].max() - dataB.min()) 
-        dataB[np.isinf(dataB)] = 1
-        dataB = 1 - dataB
-
-        #create squares
-        from scipy.spatial.distance import pdist, squareform
-        distsA = squareform(pdist(dataA))
-        distsB = squareform(pdist(dataB))
-
-        #Get cross embedding score
-        A_emb = self.mds.fit_transform(distsA)
-        B_emb = self.mds.fit_transform(distsB)
-
-                 
         #Create an array to store the important data in 
         scores = np.zeros(2) #Now both of these are classification scores -- one for Split A and one for Split B
 
         print("\n--------------------------------------   RF Gap Baseline Tests " + self.base_directory[53:-1] + "   --------------------------------------\n")
         
-
-        X_train, X_test, y_train, y_test = train_test_split(A_emb, self.labels, test_size=0.5, random_state=42)
-        knn = KNeighborsClassifier(n_neighbors=4)
-        knn.fit(X_train, y_train)
-        ce_score_A =  knn.score(X_test, y_test)
-
-        X_train, X_test, y_train, y_test = train_test_split(B_emb, self.labels, test_size=0.5, random_state=42)
-        knn.fit(X_train, y_train)
-        ce_score_B =  knn.score(X_test, y_test)
         
-        #Run CE and FOSCTTM
-        scores[0] = np.mean((self.FOSCTTM(dataA), self.FOSCTTM(dataB)))
-        scores[1] = np.mean((ce_score_A, ce_score_B))
+        #Initilize Class
+        rf_class = RFGAP(prediction_type="classification", y=self.labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
 
-        print(f"FOSCTTM SCORE: {scores[0]}")
-        print(f"CE SCORE: {scores[1]}")
+        #Fit it for Data A and get proximities
+        rf_class.fit(self.split_A, y = self.labels)
+
+        #GET THE SCORE
+        scores[0] = rf_class.oob_score_
+
+        #Fit it for Data B and get proximities
+        rf_class.fit(self.split_B, y = self.labels)
+        
+        #GET THE SCORE
+        scores[1] = rf_class.oob_score_
+
+        print(f"SCORE A: {scores[0]}")
+        print(f"SCORE B: {scores[1]}")
 
         #Save the numpy array
         np.save(filename, scores)
@@ -2485,17 +2449,6 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=-1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
-    if run_RF_MASH:
-        #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
-        filtered_kwargs = {}
-        if "DTM" in kwargs:
-            filtered_kwargs["DTM"] = kwargs["DTM"]
-        if "connection_limit" in kwargs:
-            filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
-    
-        #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
-
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
         filtered_kwargs = {}
@@ -2571,7 +2524,19 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     #Now run Knn tests
     if run_RF_BL_tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
+
+    if run_RF_MASH:
+        #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
+        filtered_kwargs = {}
+        if "DTM" in kwargs:
+            filtered_kwargs["DTM"] = kwargs["DTM"]
+        if "connection_limit" in kwargs:
+            filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
+    
+        #Loop through each file (Using Parralel Processing) for DIG
+        Parallel(n_jobs=1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+
 
     return manifold_instances
 

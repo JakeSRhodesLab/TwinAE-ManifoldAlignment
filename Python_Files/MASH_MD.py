@@ -949,18 +949,21 @@ class MASH: #Manifold Alignment with Diffusion
 
         plt.show()
 
-    def plot_emb(self, labels = None, n_comp = 2, show_legend = True, **kwargs): 
-        """A useful visualization function to veiw the embedding.
+    def get_scores(self, labels, n_comp = 2):
+        """ Stores the the FOSCTTM and CE scores in a cross tab table. (Is cross tab the right defintion? Check...)"""
+
+        #Check if the scores already exsist
+        if  hasattr(self, "F_scores") and hasattr(self, "CE_scores"):
+            if self.verbose > 0:
+                print("Scores have already been calculated.")
+            
+            return False
         
-        Arguments:
-            :labels: should be a tuple-like of the labes for each domain. For example (labels_domain_1, labels_domain_2, labels_domain_3...)
-            :n_comp: The amount of components or dimensions for the MDS function.
-            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
-                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
-            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
-                that is an anchor. 
-            :**kwargs: additional key word arguments for sns.scatterplot function.
-        """
+        #Create the scores
+        self.F_scores = np.zeros(shape = (self.domain_count, self.domain_count)) #To represent comparisions to themselves
+        self.CE_scores = np.ones(shape = (self.domain_count, self.domain_count))
+
+
 
         #Check to see if we already have created our embedding, else create the embedding.
         if type(self.embeddings) == type(None):
@@ -982,25 +985,51 @@ class MASH: #Manifold Alignment with Diffusion
                 #Check to make sure we have labels
                 if len(labels) == self.domain_count:
                     print(f"Scores from domain {i+1} to {k+1}: ")
+
                     try: #Will fail if the domain shapes aren't equal
-                        print(f"""    Cross Embedding: {self.cross_embedding_knn(
+                        self.CE_scores[i, k] =self.cross_embedding_knn(
                                                                                 np.vstack([self.embeddings[i], self.embeddings[k]]),
                                                                                 (labels[i], labels[k]),
                                                                                 knn_args = {'n_neighbors': 4}
-                                                                                    )}""")
+                                                                                    )
+                        self.CE_scores[k, i] = self.CE_scores[i, k]
+                        print(f"""    Cross Embedding: {self.CE_scores[i, k]}""")
                     except:
                         print("    Can't calculate the Cross Embedding score")
+
+                else: 
+                    if self.verbose > 0:
+                        print("Provided labels do not match. Will only calculate the FOSCTTM scores")
                                         
                 #Calculate FOSCTTM score
                 try:    
+                    #Show the heat map of the comparison
                     if self.verbose > 5:
                         plt.imshow(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1])])
                         plt.show()
 
-                    print(f"    FOSCTTM: {self.FOSCTTM(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1]) ])}") #This gets the off-diagonal part
+                    self.F_scores[i, k] = self.FOSCTTM(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1]) ])
+                    self.F_scores[k, i] = self.F_scores[i, k]
+                    print(f"    FOSCTTM: {self.F_scores[i, k]}") #This gets the off-diagonal part
                 except: #This will run if the domains are different shapes
                     print(f"    Can't compute FOSCTTM with different domain shapes. Domain {i + 1}: {self.domains[i].shape}. Domain {k+1}: {self.domains[k].shape}")
         
+
+    def plot_emb(self, labels = None, n_comp = 2, show_legend = True, **kwargs): 
+        """A useful visualization function to veiw the embedding.
+        
+        Arguments:
+            :labels: should be a tuple-like of the labes for each domain. For example (labels_domain_1, labels_domain_2, labels_domain_3...)
+            :n_comp: The amount of components or dimensions for the MDS function.
+            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
+                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
+            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
+                that is an anchor. 
+            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
+
+        self.get_scores(labels, n_comp)
+
         #Create artificial labels? 
         if len(labels)!= self.domain_count:
             #Set all labels to be the same

@@ -14,15 +14,15 @@ import test_manifold_algorithms as tma
 
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
-csv_files = [#"zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
-             #"segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-             #"ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             #"S-curve", "blobs",
+csv_files = ["zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+             "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
+             "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
+             "S-curve", "blobs",
              "crx.csv", "breast_cancer.csv", "titanic.csv", 
              "diabetes.csv", "tic-tac-toe.csv",
-             'Medicaldataset.csv', "water_potability.csv", "chess.csv",
-             'treeData.csv', 
-             "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
+             #'Medicaldataset.csv', "water_potability.csv", "chess.csv",
+             #'treeData.csv', 
+             #"optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
 """
@@ -47,7 +47,7 @@ state = False
 
 
 #Even
-tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG=state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -59,14 +59,14 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],# 3407
                             run_KNN_Tests=state,
                             run_PCR = state,
                             run_MALI= state,
-                            run_RF_MASH= True,
+                            run_RF_MASH= state,
                             run_RF_SPUD= state,
                             run_KEMA = state,
-                            run_RF_BL_tests = state,
+                            run_RF_BL_tests = True,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
 #Skewed
-tma.run_all_tests(csv_files = csv_files, test_random = [1825, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1825, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -78,14 +78,14 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1825, 2830, 2969],# 3407
                             run_KNN_Tests= state,
                             run_PCR = state,
                             run_MALI=state,
-                            run_RF_MASH= True,
+                            run_RF_MASH= state,
                             run_RF_SPUD= state,
                             run_KEMA = state,
-                            run_RF_BL_tests = state,
+                            run_RF_BL_tests = True,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments"""
 
 #Random
-tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "random", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -97,15 +97,15 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],#, 340
                             run_KNN_Tests=state,
                             run_PCR = state,
                             run_MALI=state,
-                            run_RF_MASH= True,
+                            run_RF_MASH= state,
                             run_RF_SPUD=state,
                             run_KEMA = state,
-                            run_RF_BL_tests = state,
+                            run_RF_BL_tests = True,
                             run_CSPUD = state, operations = ["log", "sqrt", "normalize"]) #SPUD key arguments
 
 
 #distort
-tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random =  [42],#[1738, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -117,15 +117,15 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667],# 951
                             run_KNN_Tests= state,
                             run_PCR = state,
                             run_MALI=state,
-                            run_RF_MASH= True, DTM = ("log", "hellinger"),
+                            run_RF_MASH= state, DTM = ("log", "hellinger"),
                             run_RF_SPUD= state,
                             run_KEMA = state,
-                            run_RF_BL_tests = state,
+                            run_RF_BL_tests = True,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
 #turn
 
-tma.run_all_tests(csv_files = csv_files, test_random = [1738, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = csv_files, test_random = [42],#[1738, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "turn", verbose = 0, percent_of_anchors = [0.05, 0.1, 0.2, 0.3], #Init Key arguments
                             run_DIG = state, page_ranks = ["full"], predict = False, #DIG key arguments
                             run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
@@ -137,8 +137,8 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 9515, 1825], #Gene
                             run_KNN_Tests= state,
                             run_PCR = state,
                             run_MALI=state,
-                            run_RF_MASH= True,
+                            run_RF_MASH= state,
                             run_RF_SPUD= state,
                             run_KEMA = state,
-                            run_RF_BL_tests = state,
+                            run_RF_BL_tests = True,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
