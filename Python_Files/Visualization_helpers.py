@@ -80,10 +80,10 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
             'PCR': df[df["method"] == "PCR"].groupby("csv_file")[metric].min(),
             'JLMA': df[df["method"] == "JLMA"].groupby("csv_file")[metric].min(),
 
-            'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].min(),
-            'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].min(),
-            'RFBL2': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
+            # 'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].min(), #These Don't make sense
+            # 'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].min(),
+            # 'RFBL2': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
+            # 'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
 
             'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].min(),
             'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].min(),
@@ -107,7 +107,7 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
             'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].max(),
             'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].max(),
             'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].min(),
+            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].max(),
 
             'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].max(),
             'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].max(),
@@ -177,11 +177,11 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
     if "SPUD_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["SPUD_RF"], label = "SPUD_RF", marker = 'o', color = "blue", **key_words)
     if "RFBL2" in plot_methods:
-        ax = plt.scatter(y = agregate_df["RFBL2"], marker = '.', color = "None", edgecolor = "red", linewidth= 1.3, label = "RFBS1", **key_words)
+        ax = plt.scatter(y = agregate_df["RFBL2"], marker = '.', color = "None", edgecolor = "red", linewidth= 1.3, label = "RFBL1", **key_words)
     if "KEMA_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["KEMA_RF"], marker = 'o', color = "purple", label = "KEMA", **key_words)
     if "RFBL1" in plot_methods:
-        ax = plt.scatter(y = agregate_df["RFBL1"], marker = '.', color = "None", edgecolor = "black", linewidth= 1.3, label = "RFBS2", **key_words)
+        ax = plt.scatter(y = agregate_df["RFBL1"], marker = '.', color = "None", edgecolor = "black", linewidth= 1.3, label = "RFBL2", **key_words)
 
 
     #Show Legend
@@ -297,7 +297,7 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
     if "RFBL1" in plot_methods:
         ax = plt.errorbar(x = agregate_df.index + 0.4, y = agregate_df["RFBL1"], yerr = err_df["RFBL1"], fmt = "_", label = "RFBL1", **key_words) 
     if "RFBL2" in plot_methods:
-        ax = plt.errorbar(x = agregate_df.index - 0.4, y = agregate_df["RFBL2"], yerr = err_df["RFBL2"], fmt = "_", label = "RFBL2", **key_words) 
+        ax = plt.errorbar(x = agregate_df.index - 0.2, y = agregate_df["RFBL2"], yerr = err_df["RFBL2"], fmt = "_", label = "RFBL2", **key_words) 
 
     plt.ylim([-0.3, 1])
 
@@ -308,6 +308,38 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
     plt.grid(visible=True, axis = "x")
     plt.legend()
     plt.show()
+
+def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
+    """Tells us how often our Methods are better than the Baseline
+    
+    Returns a pandas dataframe"""
+
+    #Add DF 
+    if "df" not in kwargs.keys():
+        kwargs["df"] = df
+
+    #Get resulting Df and get the split data
+    rankdf = plt_methods_by_CSV_max(df = subset_df(**kwargs), metric = scoring, return_df=True).drop(columns = "csv_file").rank(axis=1)
+
+    # Drop the columns 'Split_A', 'Split_B', 'RFBL1', 'RFBL2' as they're not to be compared
+    comparison_columns = rankdf.columns.difference(['Split_A', 'Split_B', 'RFBL1', 'RFBL2'])
+
+    # Dictionary to store the counts of values higher than both baselines
+    rf_scores = {}
+    og_scores = {}
+
+    # Iterate over each column (besides Split_A, Split_B, and baselines)
+    for col in comparison_columns:
+        # Count how many times the value in each column is higher than both RFBL1 and RFBL2
+        count = ((rankdf[col] > rankdf['RFBL1']) & (rankdf[col] > rankdf['RFBL2'])).sum()
+        rf_scores[col] = count
+
+        # Count how many times the value in each column is higher than both RFBL1 and RFBL2
+        count = ((rankdf[col] > rankdf['Split_A']) & (rankdf[col] > rankdf['Split_B'])).sum()
+        og_scores[col] = count
+
+    return pd.DataFrame((rf_scores, og_scores), index = ["Random Forest", "K-Nearest Neighbors"])
+
 
 def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop = ["MASH_RF", "MALI_RF", "KEMA_RF", "SPUD_RF", "MALI"], **kwargs):
 

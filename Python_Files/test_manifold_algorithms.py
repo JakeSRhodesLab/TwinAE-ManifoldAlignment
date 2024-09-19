@@ -4,6 +4,8 @@
 Changes Log: 
 1. New Baseline Results with OOB
 2. Added Visualization helpers
+3. Added a data table -> Top of DataVisualization file. If we look at the numeric data, it shows that DIG is very high (97% for optdigits). It also shows sometimes the NaN data of failed tests.
+4. Added Compare to Baseline tables :) This shows how many times each model outpreforms each baseline
 
 TASKS:
 2. MD things
@@ -14,6 +16,7 @@ If time things:
 6. Figure out how to make NaN processing faster. Use the pdist?
 7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 8. Add in the other way Marshall asked to be able to format anchors
+9. Compare the different method parameters within SPUD with plot_in_fig
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method

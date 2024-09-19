@@ -27,8 +27,9 @@ import seaborn as sns
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
-               OD_method = "default", agg_method = "log", IDC = 1,
-               similarity_measure = "default", float_precision = np.float32, verbose = 0, **kwargs):
+               OD_method = "default", agg_method = "log", IDC = 1, #TODO: See if its possible to get rid of either OD_method or similarity Measure
+               similarity_measure = "default", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
+               float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
         
@@ -173,7 +174,6 @@ class SPUD:
      """Returns the reconstructed distance matrix for kernal B"""
      return reconstruct_symmetric(self.kernalsB)
   
-
   """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def print_time(self, print_statement =  ""):
     """A function that times the algorithms and returns a string of how

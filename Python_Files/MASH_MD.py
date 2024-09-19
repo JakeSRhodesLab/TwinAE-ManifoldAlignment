@@ -688,7 +688,6 @@ class MASH: #Manifold Alignment with Diffusion
 
         return diffused
         
-
     def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
         """
         In an interative process, it gets the potential anchors after alignment, and then recalculates the similarity matrix and 
@@ -717,29 +716,34 @@ class MASH: #Manifold Alignment with Diffusion
 
         
         #Set pruned_connections to equal hold_out_anchhor connections if they exist, empty otherwise
-        if len(hold_out_anchors) > 0:
+        if len(hold_out_anchors) > 0: 
+
+            #Create a list of lists that will hold the anchor's neighbors (because these are also known connections)
+            hold_neighbors = [[] for i in range(self.domain_count)]
+
+            #Add in the the connections of each neighbor to each anchor by looping through each possible connection
+            for i in range(self.domain_count):
+                
+                #Cache Igraph
+                igraph = self.graphs[i].to_igraph()
+
+                #Loop through each anchor
+                for anchor_pair in self.known_anchors[:, i]:
+
+                    if not np.isnan(anchor_pair):
+
+                        #Check to see if its empty
+                        if len(hold_neighbors[i]) > 1:
+                            #Cache the data
+                            hold_neighbors[i] = np.concatenate([hold_neighbors[i], [(anchor_pair, neighbor) for neighbor in set(igraph.neighbors(int(anchor_pair), mode="out"))]], axis = 0)
+                        else:
+                            hold_neighbors[i] = [(anchor_pair, neighbor) for neighbor in set(igraph.neighbors(int(anchor_pair), mode="out"))]
 
             #First add the hold_out_anchor connections
-            pruned_connections = list(hold_out_anchors)
-
-            #Create empty lists that will hold the anchor's neighbors (because these are also known connections)
-            hold_neighbors_A = []
-            hold_neighbors_B = []
-
-            #Add in the the connections of each neighbor to each anchor
-            for anchor_pair in hold_out_anchors:
-
-                #Cache the data
-                hold_neighbors_A += [(neighbor, anchor_pair[1]) for neighbor in set(self.graph_a.to_igraph().neighbors(anchor_pair[0], mode="out"))]
-                hold_neighbors_B += [(anchor_pair[0], neighbor) for neighbor in set(self.graph_b.to_igraph().neighbors(anchor_pair[1], mode="out"))]
-
-            #Add the connections
-            pruned_connections += hold_neighbors_A
-            pruned_connections += hold_neighbors_B
-            
-            #Convert to Numpy array for advanced indexing (for later use)
-            hold_neighbors_A = np.array(hold_neighbors_A)
-            hold_neighbors_B = np.array(hold_neighbors_B)
+            pruned_connections = list(hold_out_anchors) #This is different than below.
+        
+            #Add the connections -> Loop 
+            pruned_connections += np.concatenate(hold_neighbors, axis=0)
             
         else:
             pruned_connections = []
@@ -1014,7 +1018,6 @@ class MASH: #Manifold Alignment with Diffusion
                 except: #This will run if the domains are different shapes
                     print(f"    Can't compute FOSCTTM with different domain shapes. Domain {i + 1}: {self.domains[i].shape}. Domain {k+1}: {self.domains[k].shape}")
         
-
     def plot_emb(self, labels = None, n_comp = 2, show_legend = True, **kwargs): 
         """A useful visualization function to veiw the embedding.
         
