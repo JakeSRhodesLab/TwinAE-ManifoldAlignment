@@ -2,12 +2,12 @@
 
 """
 Changes Log: 
-1. New Baseline Results with OOB
-2. Added Visualization helpers
-3. Added a data table -> Top of DataVisualization file. If we look at the numeric data, it shows that DIG is very high (97% for optdigits). It also shows sometimes the NaN data of failed tests.
-4. Added Compare to Baseline tables :) This shows how many times each model outpreforms each baseline
+
 
 TASKS:
+0. Create the code repository
+1. Take the better than baseline plot -> Create statistics for better than 1 split, and no splits, better than both. (Also, can give it as a percentage)
+2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
 5. Clean MASH and DIG files and make a repository to upload with the paper
@@ -125,7 +125,7 @@ def use_rf_proximities_MASH(self, tuple):
     
         tuple should be a tuple with position 0 being the data and position 1 being the labels"""
     #Initilize Class
-    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True) #Change Classification to regression
 
     #Fit it for Data A
     rf_class.fit(tuple[0], y = tuple[1])
@@ -2479,8 +2479,13 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
         Parallel(n_jobs=-1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
 
     if run_MALI:
+        
+        filtered_kwargs = {}
+        if "graph_distances" in kwargs:
+            filtered_kwargs["graph_distances"] = kwargs["graph_distances"]
+
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=10)(delayed(instance.run_MALI_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_MALI_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA

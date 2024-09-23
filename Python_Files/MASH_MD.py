@@ -718,8 +718,8 @@ class MASH: #Manifold Alignment with Diffusion
         #Set pruned_connections to equal hold_out_anchhor connections if they exist, empty otherwise
         if len(hold_out_anchors) > 0: 
 
-            #Create a list of lists that will hold the anchor's neighbors (because these are also known connections)
-            hold_neighbors = [[] for i in range(self.domain_count)]
+            #Create a list of dictionaries that will hold the anchor's neighbors (because these are also known connections)
+            hold_neighbors = [{} for i in range(self.domain_count)]
 
             #Add in the the connections of each neighbor to each anchor by looping through each possible connection
             for i in range(self.domain_count):
@@ -732,21 +732,58 @@ class MASH: #Manifold Alignment with Diffusion
 
                     if not np.isnan(anchor_pair):
 
-                        #Check to see if its empty
-                        if len(hold_neighbors[i]) > 1:
-                            #Cache the data
-                            hold_neighbors[i] = np.concatenate([hold_neighbors[i], [(anchor_pair, neighbor) for neighbor in set(igraph.neighbors(int(anchor_pair), mode="out"))]], axis = 0)
-                        else:
-                            hold_neighbors[i] = [(anchor_pair, neighbor) for neighbor in set(igraph.neighbors(int(anchor_pair), mode="out"))]
+                        #Convert to int
+                        anchor_pair = int(anchor_pair)
 
-            #First add the hold_out_anchor connections
-            pruned_connections = list(hold_out_anchors) #This is different than below.
-        
-            #Add the connections -> Loop 
-            pruned_connections += np.concatenate(hold_neighbors, axis=0)
+                        #This creates a list like: [[1, 25], [1, 45]], [[6, 75], [6, 87]]... Where each one is just its own neighbors
+                        hold_neighbors[i][anchor_pair] = np.array([neighbor for neighbor in set(igraph.neighbors(anchor_pair, mode="out"))]) + np.sum(self.len_domains[:i])
+
+            #Add to pruned connecitons
+            keys = []
+            values = []
+
+            for i in range(self.domain_count):
+                # Step 2: Vectorized population of keys and values
+                for key, value_array in hold_neighbors[i].items():
+                    keys.append(np.full(len(value_array), key))  # Create an array filled with the key
+                    values.append(value_array)  # Collect the value arrays
+
+            # Step 3: Convert the list of arrays into one large array using np.concatenate
+            keys = np.concatenate(keys)
+            values = np.concatenate(values)
+
+            # Step 4: Combine keys and values as a NumPy array of pairs
+            pruned_connections = np.column_stack((keys, values))
+
+            #Add connections between each domain
+            for domain_connections in range(self.domain_count):
+                #Now loop through other domain connections
+                for domain_connections2 in range(domain_connections + 1, self.domain_count):
+
+                    #Now loop from their connections
+                    connection_pair = hold_neighbors[domain_connections] #Each connection pair is a dictionary
+                    connection_pair2 = hold_neighbors[domain_connections2]
+
+                   # Step 1: Iterate over the keys in dict1
+                    for key in connection_pair.keys():
+                        if key in connection_pair2:
+
+                            # Step 2: Fetch the arrays from both dictionaries
+                            arr1 = connection_pair[key]
+                            arr2 = connection_pair2[key]
+
+                            # Step 3: Perform Cartesian product using np.meshgrid and np.column_stack
+                            a, b = np.meshgrid(arr1, arr2, indexing='ij')
+                            pairs = np.column_stack([a.ravel(), b.ravel()])  # Flatten and combine the arrays
+
+                            # Step 4: Add the result to the list
+                            pruned_connections = np.concatenate([pruned_connections, pairs])
             
         else:
-            pruned_connections = []
+            pruned_connections = []  #THIS FUNCTION MAY NOT BE FEASIBLE --> Too much memory data
+
+        #THIS IS TEMPORARY
+        return pruned_connections
 
         if threshold == "auto":
             #Set the threshold to be the 10% limit of the connections
