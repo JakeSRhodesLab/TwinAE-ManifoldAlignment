@@ -165,13 +165,6 @@ class test_manifold_algorithms():
 
         self.verbose = verbose
 
-        #Create file directory to store the information
-        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
-        if not os.path.exists(self.base_directory):
-            os.makedirs(self.base_directory) 
-
-        if self.verbose > 0:
-            print(f"\n \n \n---------------------------       Initalizing class with {csv_file} data       ---------------------------\n")
 
         self.random_state = random_state
         random.seed(self.random_state)
@@ -194,6 +187,9 @@ class test_manifold_algorithms():
 
             #Just so all of the file naming conventions remain the same
             csv_file = "S-curve.csv"
+
+        if self.verbose > 0:
+            print(f"\n \n \n---------------------------       Initalizing class with {csv_file} data       ---------------------------\n")
 
         #Create anchors
         self.anchors = self.create_anchors()
@@ -374,12 +370,26 @@ class test_manifold_algorithms():
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
         #Read in file and seperate feautres and labels
-        df = pd.read_csv(CURR_DIR + "/CSV Files/" + csv_file)
+        try: #Will fail if not there
+            df = pd.read_csv(CURR_DIR + "/CSV Files/" + csv_file)
+        except:
+            #Modify Directory Constant
+            global MANIFOLD_DATA_DIR
+            regression = True
+            MANIFOLD_DATA_DIR = CURR_DIR + "/RegressionData/"
+            df = pd.read_csv(CURR_DIR + "/smaller_regression_datasets/" + csv_file)
+
         features, self.labels = utils.dataprep(df, label_col_idx=0)
 
         #Ensure that labels are continuous
-        unique_values, inverse = np.unique(self.labels, return_inverse=True)
-        self.labels = inverse + 1
+        if not regression:
+            unique_values, inverse = np.unique(self.labels, return_inverse=True)
+            self.labels = inverse + 1
+
+        #Create file directory to store the information
+        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
+        if not os.path.exists(self.base_directory):
+            os.makedirs(self.base_directory) 
 
         #Split the features, and prep data
         self.split_A, self.split_B = self.split_features(features, self.labels)
