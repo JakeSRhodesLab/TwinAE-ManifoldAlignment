@@ -2,6 +2,12 @@
 
 """
 Changes Log: 
+1. Added the Regression_tests file. Set it up so our data prep class can handle the regression files
+2. Added second repository
+3. Created it as an editable package. 
+4. Fixed the anchor plotting error when ploting with MASH after creating additional connections
+5. Added VNE file. QUESTION: Are we giving sufficient credit to those authors?
+6. Went over and refactored the MASH code for publication. Reveiw questions at the top of the file 
 
 
 TASKS:
@@ -11,6 +17,8 @@ TASKS:
 2. MD things
 4. Time data for MASH
 5. Clean MASH and DIG files and make a repository to upload with the paper
+6. Test the prediction viability for MASH
+7. Add scoring functions to spud and mash
 
 If time things:
 6. Figure out how to make NaN processing faster. Use the pdist?
@@ -169,6 +177,9 @@ class test_manifold_algorithms():
         self.random_state = random_state
         random.seed(self.random_state)
 
+        global MANIFOLD_DATA_DIR
+        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
+
         #Since Blobs does not require a csv file, if it is chosen we make the dataset in house
         if csv_file == "blobs":
             self.create_blobs()
@@ -201,7 +212,6 @@ class test_manifold_algorithms():
         self.knn_range = tuple(self.find_knn_range())
         if verbose > 1:
             print(f"The knn values are: {self.knn_range}")
-
 
     """EVALUATION FUNCTIONS"""
     def cross_embedding_knn(self, embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
@@ -369,12 +379,18 @@ class test_manifold_algorithms():
 
     # TODO: May want to add path as an argument, with the current data path as default
     def prep_data(self, csv_file):
+
+        #Create the base directory
+        #Modify Directory Constant
+        global MANIFOLD_DATA_DIR
+        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
+
         #Read in file and seperate feautres and labels
         try: #Will fail if not there
             df = pd.read_csv(CURR_DIR + "/CSV Files/" + csv_file)
+            regression = False
         except:
-            #Modify Directory Constant
-            global MANIFOLD_DATA_DIR
+            
             regression = True
             MANIFOLD_DATA_DIR = CURR_DIR + "/RegressionData/"
             df = pd.read_csv(CURR_DIR + "/smaller_regression_datasets/" + csv_file)
@@ -387,7 +403,6 @@ class test_manifold_algorithms():
             self.labels = inverse + 1
 
         #Create file directory to store the information
-        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
         if not os.path.exists(self.base_directory):
             os.makedirs(self.base_directory) 
 
@@ -2471,7 +2486,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["agg_methods"] = kwargs["agg_methods"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-10)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
 
     if run_CSPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2499,7 +2514,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-1)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=1)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
