@@ -8,6 +8,8 @@ Changes Log:
 4. Fixed the anchor plotting error when ploting with MASH after creating additional connections
 5. Added VNE file. QUESTION: Are we giving sufficient credit to those authors?
 6. Went over and refactored the MASH code for publication. Reveiw questions at the top of the file 
+7. Added MASH demonstration files. The Seeds is a great example of divergence without anchors. However, applying density normalization moves the anchor to the center and gives a much better alignment. 
+8. Adjusted the PAGE RANK default values on MASH from 0.05 to 0.01
 
 
 TASKS:
@@ -19,6 +21,7 @@ TASKS:
 5. Clean MASH and DIG files and make a repository to upload with the paper
 6. Test the prediction viability for MASH
 7. Add scoring functions to spud and mash
+8. Added a mandatory random state to SPUD and MASH.
 
 If time things:
 6. Figure out how to make NaN processing faster. Use the pdist?
