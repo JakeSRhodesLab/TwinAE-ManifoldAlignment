@@ -356,7 +356,6 @@ class SPUD:
 
       return FOSCTTM_score, CE_score
 
-
   """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def merge_graphs(self):
         """
