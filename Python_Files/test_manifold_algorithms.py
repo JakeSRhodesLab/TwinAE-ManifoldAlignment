@@ -1,11 +1,22 @@
 #This tests all of our models against each other
 
 """
+QUESTIONS:
+1. How do I link the paper? Right now, I am just providing a link
+2. Figure out the citations (We can figure out later)
+
 Changes Log: 
+1. Changed the name of the package to gnu
+2. Updated liscense to GNU
+3. Elimanted the error messages in the demonstration files
+4. Added reference to VNE
+5. Updated the Readme
+6. Reformat all the doc strings
+7. Rename abs to absolute distance in SPUD
+8. Take the better than baseline plot -> Create statistics for better than 1 split, and no splits, better than both. (Also, can give it as a percentage)
 
 
 TASKS:
-1. Take the better than baseline plot -> Create statistics for better than 1 split, and no splits, better than both. (Also, can give it as a percentage)
 2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
@@ -13,16 +24,8 @@ TASKS:
 6. Test the prediction viability for MASH
 7. Add scoring functions to spud and mash
 8. Added a mandatory random state to SPUD and MASH.
-
-
-Package changes:
-1. All lowercase: name it like spud-and-mash
-2. Change the lisence to GNU v3.0
-3. Chagne the readme
-4. Get rid of the warnings
-5. Add the reference for VNE
-6. Reformat all the doc strings
-7. Rename abs 
+9. Test to see if I should make the graph tools functions set the precomputed = distances
+10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
 
 
 If time things:
@@ -378,6 +381,7 @@ class test_manifold_algorithms():
         self.labels_doubled = np.concatenate((self.labels, labels2))
 
         #Create the mds
+        self.n_comp = 2
         self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = 2)
 
         self.split = "None"
@@ -436,6 +440,7 @@ class test_manifold_algorithms():
         self.labels_doubled = np.concatenate((self.labels, labels2))
 
         #Set and train the mds
+        self.n_comp = 2
         self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = 2)
 
     def create_anchors(self):

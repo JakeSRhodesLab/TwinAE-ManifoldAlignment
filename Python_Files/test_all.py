@@ -46,8 +46,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738, 5198, 7667],# 951
                             run_PCR = state,
                             run_MALI=state, graph_distances = ["rf_gap"],
                             run_RF_MASH= state, DTM = ("log", "hellinger"),
-                            run_RF_SPUD= True,
-                            run_KEMA = False,
+                            run_RF_SPUD= state,
+                            run_KEMA = True,
                             run_RF_BL_tests = state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -65,8 +65,8 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],# 3407
                             run_PCR = state,
                             run_MALI= state, graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD= True,
-                            run_KEMA = False,
+                            run_RF_SPUD= state,
+                            run_KEMA = True,
                             run_RF_BL_tests = state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -84,8 +84,8 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1825, 2830, 2969],# 3407
                             run_PCR = state,
                             run_MALI=state, graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD= True,
-                            run_KEMA = False,
+                            run_RF_SPUD= False,
+                            run_KEMA = True,
                             run_RF_BL_tests = state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments"""
 
@@ -103,8 +103,8 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 1825, 2830],#, 340
                             run_PCR = state,
                             run_MALI=state, graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD=True,
-                            run_KEMA = False,
+                            run_RF_SPUD=False,
+                            run_KEMA = True,
                             run_RF_BL_tests = state,
                             run_CSPUD = state, operations = ["log", "sqrt", "normalize"]) #SPUD key arguments
 
@@ -123,7 +123,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738, 9515, 1825], #Gene
                             run_PCR = state,
                             run_MALI= state, graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD= True,
-                            run_KEMA = False,
+                            run_RF_SPUD= False,
+                            run_KEMA = True,
                             run_RF_BL_tests = state,
                             run_CSPUD = state, operations= ["log", "sqrt", "normalize"]) #SPUD key arguments

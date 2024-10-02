@@ -325,20 +325,31 @@ def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
     comparison_columns = rankdf.columns.difference(['Split_A', 'Split_B', 'RFBL1', 'RFBL2'])
 
     # Dictionary to store the counts of values higher than both baselines
-    rf_scores = {}
-    og_scores = {}
+    rf_scores_both = {}
+    og_scores_both = {}
+    rf_scores_one = {}
+    og_scores_one = {}
 
     # Iterate over each column (besides Split_A, Split_B, and baselines)
     for col in comparison_columns:
         # Count how many times the value in each column is higher than both RFBL1 and RFBL2
         count = ((rankdf[col] > rankdf['RFBL1']) & (rankdf[col] > rankdf['RFBL2'])).sum()
-        rf_scores[col] = count
+        rf_scores_both[col] = count
 
-        # Count how many times the value in each column is higher than both RFBL1 and RFBL2
+        # Count how many times the value in each column is higher than RFBL1 or RFBL2
+        count = ((rankdf[col] > rankdf['RFBL1']) | (rankdf[col] > rankdf['RFBL2'])).sum()
+        rf_scores_one[col] = count
+
+        # Count how many times the value in each column is higher than both Knn baselines
         count = ((rankdf[col] > rankdf['Split_A']) & (rankdf[col] > rankdf['Split_B'])).sum()
-        og_scores[col] = count
+        og_scores_both[col] = count
 
-    return pd.DataFrame((rf_scores, og_scores), index = ["Random Forest", "K-Nearest Neighbors"])
+        # Count how many times the value in each column is higher than one of the Knn baselines
+        count = ((rankdf[col] > rankdf['Split_A']) | (rankdf[col] > rankdf['Split_B'])).sum()
+        og_scores_one[col] = count
+
+    return pd.DataFrame((rf_scores_both, rf_scores_one, og_scores_both, og_scores_one,), 
+                        index = ["RF Better than Both", "RF Better than one",  "KNN Better than Both", "KNN Better than ONE"])
 
 
 def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop = ["MASH_RF", "MALI_RF", "KEMA_RF", "SPUD_RF", "MALI"], **kwargs):
