@@ -332,21 +332,29 @@ def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
 
     # Iterate over each column (besides Split_A, Split_B, and baselines)
     for col in comparison_columns:
-        # Count how many times the value in each column is higher than both RFBL1 and RFBL2
-        count = ((rankdf[col] > rankdf['RFBL1']) & (rankdf[col] > rankdf['RFBL2'])).sum()
-        rf_scores_both[col] = count
+        total = np.array(np.isnan(rankdf[col]) == False).sum() / 100 #To get it as a percent
+        if total == 0:
+            rf_scores_both[col] = np.nan
+            rf_scores_one[col] = np.nan
+            og_scores_both[col] = np.nan
+            og_scores_one[col] = np.nan
 
-        # Count how many times the value in each column is higher than RFBL1 or RFBL2
-        count = ((rankdf[col] > rankdf['RFBL1']) | (rankdf[col] > rankdf['RFBL2'])).sum()
-        rf_scores_one[col] = count
+        else:
+            # Count how many times the value in each column is higher than both RFBL1 and RFBL2
+            count = ((rankdf[col] > rankdf['RFBL1']) & (rankdf[col] > rankdf['RFBL2'])).sum()
+            rf_scores_both[col] = np.round(count / total, decimals = 0)
 
-        # Count how many times the value in each column is higher than both Knn baselines
-        count = ((rankdf[col] > rankdf['Split_A']) & (rankdf[col] > rankdf['Split_B'])).sum()
-        og_scores_both[col] = count
+            # Count how many times the value in each column is higher than RFBL1 or RFBL2
+            count = ((rankdf[col] > rankdf['RFBL1']) | (rankdf[col] > rankdf['RFBL2'])).sum()
+            rf_scores_one[col] = np.round(count / total, decimals = 0)
 
-        # Count how many times the value in each column is higher than one of the Knn baselines
-        count = ((rankdf[col] > rankdf['Split_A']) | (rankdf[col] > rankdf['Split_B'])).sum()
-        og_scores_one[col] = count
+            # Count how many times the value in each column is higher than both Knn baselines
+            count = ((rankdf[col] > rankdf['Split_A']) & (rankdf[col] > rankdf['Split_B'])).sum()
+            og_scores_both[col] = np.round(count / total, decimals = 0)
+
+            # Count how many times the value in each column is higher than one of the Knn baselines
+            count = ((rankdf[col] > rankdf['Split_A']) | (rankdf[col] > rankdf['Split_B'])).sum()
+            og_scores_one[col] = np.round(count / total, decimals = 0)
 
     return pd.DataFrame((rf_scores_both, rf_scores_one, og_scores_both, og_scores_one,), 
                         index = ["RF Better than Both", "RF Better than one",  "KNN Better than Both", "KNN Better than ONE"])

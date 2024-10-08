@@ -2,28 +2,18 @@
 
 """
 QUESTIONS:
-1. How do I link the paper? Right now, I am just providing a link
-2. Figure out the citations (We can figure out later)
+
 
 Changes Log: 
-1. Changed the name of the package to gnu
-2. Updated liscense to GNU
-3. Elimanted the error messages in the demonstration files
-4. Added reference to VNE
-5. Updated the Readme
-6. Reformat all the doc strings
-7. Rename abs to absolute distance in SPUD
-8. Take the better than baseline plot -> Create statistics for better than 1 split, and no splits, better than both. (Also, can give it as a percentage)
-
+1. Added features to the "Better than Baseline plots". Now plots in percents, and is sorted
 
 TASKS:
+2. Make sure adding precomputed doesn't change the code function 
+3. Make baseline scores for the regression datasets
+
 2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
-5. Clean MASH and DIG files and make a repository to upload with the paper
-6. Test the prediction viability for MASH
-7. Add scoring functions to spud and mash
-8. Added a mandatory random state to SPUD and MASH.
 9. Test to see if I should make the graph tools functions set the precomputed = distances
 10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
 
@@ -2524,7 +2514,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=1)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=5)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
