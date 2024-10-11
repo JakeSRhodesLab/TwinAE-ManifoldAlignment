@@ -6,11 +6,13 @@ QUESTIONS:
 
 Changes Log: 
 1. Added features to the "Better than Baseline plots". Now plots in percents, and is sorted
+2. Added the precomputed hyperparameter to MASH and SPUD appropiately
+3. Added the ability for all models to do regression testing :). Incorporated the BL regression tests too. 
+4. Ran the regression tests
+5. Built Pipeline file. Runs tests probably like 100 times faster. Also stores the best parameters.
+6. Added Parrelilization to pipeline. Reduced Memory requirements significanlty.  
 
 TASKS:
-2. Make sure adding precomputed doesn't change the code function 
-3. Make baseline scores for the regression datasets
-
 2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
@@ -49,7 +51,7 @@ hilton - Everything rf_mash
 import glob
 from ma_procrustes import MAprocr
 #from DIG import DIG
-from SPUD import SPUD
+from mashspud import SPUD
 #from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
@@ -59,10 +61,10 @@ import numpy as np
 import pandas as pd
 import utils
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.inspection import permutation_importance
 import random
-from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors, KNeighborsRegressor
 from sklearn.manifold import MDS
 import os
 from joblib import Parallel, delayed
@@ -71,7 +73,7 @@ import seaborn as sns
 import MAGAN
 import timeit
 from rfgap import RFGAP
-from MASH import MASH
+from mashspud import MASH
 from mali import MALI
 from scipy.spatial.distance import pdist, squareform
 
@@ -217,7 +219,13 @@ class test_manifold_algorithms():
 
         n1, n2 = len(y1), len(y2)
 
-        knn = KNeighborsClassifier(**knn_args)
+        # Determine if the task is classification or regression
+        if np.issubdtype(y1.dtype, np.integer):
+            knn = KNeighborsClassifier(**knn_args)
+            print("Using a classifier")
+        else:
+            knn = KNeighborsRegressor(**knn_args)
+            print("Using a regression model")
 
         if other_side:
             knn.fit(embedding[:n1, :], y1)
@@ -308,7 +316,11 @@ class test_manifold_algorithms():
                 X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
                 # Training the RandomForest Classifier
-                clf = RandomForestClassifier(random_state=self.random_state) #NOTE: this might take forever based on this algorithm 
+                if np.issubdtype(labels.dtype, np.integer):
+                    clf = RandomForestClassifier(random_state=self.random_state) #NOTE: this might take forever based on this algorithm 
+                else:
+                    clf = RandomForestRegressor(random_state=self.random_state)
+
                 clf.fit(X_train, y_train)
 
                 result = permutation_importance(clf, X_test, y_test, n_repeats=30, random_state=self.random_state)
@@ -382,7 +394,6 @@ class test_manifold_algorithms():
         #Create the base directory
         #Modify Directory Constant
         global MANIFOLD_DATA_DIR
-        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
 
         #Read in file and seperate feautres and labels
         try: #Will fail if not there
@@ -395,6 +406,9 @@ class test_manifold_algorithms():
             df = pd.read_csv(CURR_DIR + "/smaller_regression_datasets/" + csv_file)
 
         features, self.labels = utils.dataprep(df, label_col_idx=0)
+        
+        self.base_directory = MANIFOLD_DATA_DIR + csv_file[:-4] + "/"
+
 
         #Ensure that labels are continuous
         if not regression:
@@ -901,7 +915,8 @@ class test_manifold_algorithms():
                             
                             try:
                                 #Create our class to run the tests
-                                DIG_class = DIG(self.split_A, self.split_B, known_anchors = self.anchors[:anchor_amount], t = t, knn = knn, link = link)
+                                DIG_class = MASH(t = t, knn = knn, link = link)
+                                DIG_class.fit(self.split_A, self.split_B, known_anchors= self.anchors[:anchor_amount])
 
                             except Exception as e:
                                 print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e}  <><><><><><>")
@@ -1538,7 +1553,11 @@ class test_manifold_algorithms():
             print(f"KNN {knn}")
 
             #Initilize model
-            model = KNeighborsClassifier(n_neighbors = knn)
+            # Determine if the task is classification or regression
+            if np.issubdtype(self.labels.dtype, np.integer):
+                model = KNeighborsClassifier(n_neighbors = knn)
+            else:
+                model = KNeighborsRegressor(n_neighbors = knn)
 
             #Split data and train for split A
             try:
@@ -1807,7 +1826,13 @@ def clear_directory(text_curater = "all", not_text = None, directory = "default"
                 "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                 "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
                 "blobs", "S-curve",
-                "winequality-red", "zoo"]
+                "winequality-red", "zoo", "AirfoilSelfNoise.csv",  "AutoMPG.csv",
+                "ComputerHardware.csv",  "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
+                "IstanbulStock.csv",   "Parkinsons.csv",
+                "Automobile.csv",       "CommunityCrime.csv",
+                "ConcreteCompressiveStrength.csv",  "EnergyEfficiency.csv",   "Hydrodynamics.csv",
+                "OpticalNetwork.csv",  "SML2010.csv"
+                ]
 
     #Modify the file names to become directory names
     if directory == "default":
@@ -2539,7 +2564,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     #Now run Knn tests
     if run_KNN_Tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=15)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_RF_BL_tests:
