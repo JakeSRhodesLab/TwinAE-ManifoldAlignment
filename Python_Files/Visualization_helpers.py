@@ -9,13 +9,13 @@ from utils import subset_df, plot_in_fig
 
 
 #If there is no new data, we could just read in the old csvfile
-df = pd.read_csv(os.getcwd()[:-12] + "/All_Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/All_Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 #If there is no new data, we could just read in the old csvfile
-og_df = pd.read_csv(os.getcwd()[:-12] + "ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+og_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 #If there is no new data, we could just read in the old csvfile
-rf_df = pd.read_csv(os.getcwd()[:-12] + "ManifoldData_RF/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+rf_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData_RF/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 def create_DataFrames():
     """Uploads and creates dataframe files"""

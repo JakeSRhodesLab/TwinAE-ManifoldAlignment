@@ -2,17 +2,20 @@
 
 """
 QUESTIONS:
-
+1. The importancce of Strongly Connected Components when running the pipeline
 
 Changes Log: 
-1. Added features to the "Better than Baseline plots". Now plots in percents, and is sorted
-2. Added the precomputed hyperparameter to MASH and SPUD appropiately
-3. Added the ability for all models to do regression testing :). Incorporated the BL regression tests too. 
-4. Ran the regression tests
-5. Built Pipeline file. Runs tests probably like 100 times faster. Also stores the best parameters.
-6. Added Parrelilization to pipeline. Reduced Memory requirements significanlty.  
+1. Refactored (quickly) the old test pipeline to grind out the remaining missing tests. Hopefully will be finished within the week? 
+
 
 TASKS:
+1. Figure out a way to compare the baseline plots in a good way that show the splits well
+2. Make visualization for the regression baseline tests
+3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
+4. Save the variance of the MASH and SPUD scores
+5. Save the best parametes -> rerun those parameter set with different seeds
+
+
 2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
@@ -51,7 +54,7 @@ hilton - Everything rf_mash
 import glob
 from ma_procrustes import MAprocr
 #from DIG import DIG
-from mashspud import SPUD
+from mashspud import SPUD, MASH
 #from SPUD_Copy import SPUD_Copy
 from ssma import ssma
 from nama import NAMA
@@ -73,16 +76,23 @@ import seaborn as sns
 import MAGAN
 import timeit
 from rfgap import RFGAP
-from mashspud import MASH
 from mali import MALI
 from scipy.spatial.distance import pdist, squareform
+from Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
 
 #Simply, for my sanity
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-# Suppress TensorFlow logging (level 2: warning, level 3: error)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import tensorflow as tf
+
+# Set TensorFlow logging level
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+tf.get_logger().setLevel('ERROR')
+
+# Your existing code
+
+
 
 #Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
 if os.getcwd()[-12:] == "Python_Files":
@@ -515,7 +525,7 @@ class test_manifold_algorithms():
         return filename, AP_values
 
     """RUN TESTS FUNCTIONS"""
-    def run_RF_SPUD_tests(self, agg_methods = ["log", "normalize", "sqrt"], OD_methods = ["default", "abs", "mean"]): 
+    def run_RF_SPUD_tests(self, agg_methods = ["log"], OD_methods = ["default"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -597,7 +607,7 @@ class test_manifold_algorithms():
         #Run successful
         return True
     
-    def run_KEMA_tests(self, kernelts = ["lin", "rbf"]): 
+    def run_KEMA_tests(self, kernelts = ["lin"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
         #We are going to run test with every variation
@@ -814,7 +824,8 @@ class test_manifold_algorithms():
 
                     try:
                         #Create the class with all the arguments
-                        spud_class = SPUD_Copy(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)], knn = knn, operation = operation)
+                        spud_class = SPUD(knn = knn, agg_method = operation)
+                        spud_class.fit(self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)])
                     except Exception as e:
                         print(f"<><><><><><>   UNABLE TO CREATE CLASS BECAUSE {e} TEST FAILED   <><><><><><>")
                         spud_scores[k, l, 0] = np.NaN
@@ -849,7 +860,7 @@ class test_manifold_algorithms():
         return True
    
     #We can add t as a parameter, and run tests on that as well, but I feel like the auto is good enough for now
-    def run_DIG_tests(self, page_ranks = ("None", "off-diagonal", "full"), connection_limit = (0.1, 0.2, 1, 10, None), predict = False):  #TODO: Add a predict features evaluation 
+    def run_DIG_tests(self, page_ranks = ["None"], connection_limit = [None], predict = False):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
@@ -915,7 +926,7 @@ class test_manifold_algorithms():
                             
                             try:
                                 #Create our class to run the tests
-                                DIG_class = MASH(t = t, knn = knn, link = link)
+                                DIG_class = MASH(t = t, knn = knn, page_rank = link)
                                 DIG_class.fit(self.split_A, self.split_B, known_anchors= self.anchors[:anchor_amount])
 
                             except Exception as e:
@@ -939,7 +950,7 @@ class test_manifold_algorithms():
                             if saveMASH:
                                 #FOSCTTM Evaluation Metrics
                                 try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
                                     print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
                                 except Exception as e:
@@ -950,7 +961,7 @@ class test_manifold_algorithms():
 
                                 #Cross Embedding Evaluation Metric
                                 try:
-                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
                                     DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                                     print(f"                    CE Score: {DIG_CE}")
@@ -995,7 +1006,7 @@ class test_manifold_algorithms():
 
                                 #FOSCTTM Evaluation Metrics
                                 try:
-                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.sim_diffusion_matrix[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.sim_diffusion_matrix[:DIG_class.len_A, DIG_class.len_A:])]) 
+                                    DIG_FOSCTTM = np.mean([self.FOSCTTM(DIG_class.int_diff_dist[DIG_class.len_A:, :DIG_class.len_A]), self.FOSCTTM(DIG_class.int_diff_dist[:DIG_class.len_A, DIG_class.len_A:])]) 
                                     print(f"                    FOSCTTM: {DIG_FOSCTTM}")
 
                                 except Exception as e:
@@ -1006,7 +1017,7 @@ class test_manifold_algorithms():
 
                                 #Cross Embedding Evaluation Metric
                                 try:
-                                    emb = self.mds.fit_transform(DIG_class.sim_diffusion_matrix)
+                                    emb = self.mds.fit_transform(DIG_class.int_diff_dist)
 
                                     DIG_CE = self.cross_embedding_knn(emb, (self.labels, self.labels), knn_args = {'n_neighbors': 4})
                                     print(f"                    CE Score: {DIG_CE}")
@@ -1040,7 +1051,7 @@ class test_manifold_algorithms():
         #Run successful
         return True
 
-    def run_RF_MASH_tests(self, DTM = ("hellinger", "log")):  #TODO: Add a predict features evaluation 
+    def run_RF_MASH_tests(self, DTM = ["log"]):  #TODO: Add a predict features evaluation 
         """page_ranks should be whether or not we want to test the page_ranks
         
         predict should be a Boolean value and decide whether we want to test the amputation features. 
@@ -1714,7 +1725,7 @@ class test_manifold_algorithms():
         JLMA_block = JLMA_class.SquareDist(classes[6])
 
         #parralelise to create the embeddings
-        arg_list = [classes[0].block, classes[1].sim_diffusion_matrix, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block, 1 - classes[7]]
+        arg_list = [classes[0].block, classes[1].int_diff_dist, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block, 1 - classes[7]]
         SPUD_emb, DIG_emb, MAGAN_emb, NAMA_emb, DTA_emb, SSMA_emb, JLMA_emb, PCR_emb = Parallel(n_jobs = -3)(delayed(self.mds.fit_transform)(arg) for arg in arg_list)
 
 
@@ -1826,17 +1837,19 @@ def clear_directory(text_curater = "all", not_text = None, directory = "default"
                 "hill_valley", "ionosphere", "iris", "Medicaldataset", "mnist_test", "optdigits", "parkinsons",
                 "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
                 "blobs", "S-curve",
-                "winequality-red", "zoo", "AirfoilSelfNoise.csv",  "AutoMPG.csv",
-                "ComputerHardware.csv",  "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
-                "IstanbulStock.csv",   "Parkinsons.csv",
-                "Automobile.csv",       "CommunityCrime.csv",
-                "ConcreteCompressiveStrength.csv",  "EnergyEfficiency.csv",   "Hydrodynamics.csv",
-                "OpticalNetwork.csv",  "SML2010.csv"
+                "winequality-red", "zoo", "AirfoilSelfNoise",  "AutoMPG",
+                "ComputerHardware",  "ConcreteSlumpTest",  "FacebookMetrics",
+                "IstanbulStock",   "Parkinsons",
+                "Automobile",       "CommunityCrime",
+                "ConcreteCompressiveStrength",  "EnergyEfficiency",   "Hydrodynamics",
+                "OpticalNetwork",  "SML2010"
                 ]
 
     #Modify the file names to become directory names
     if directory == "default":
         directories = [MANIFOLD_DATA_DIR + file_name for file_name in file_names]
+    elif directory.lower() == "regression":
+        directories = [CURR_DIR + "/RegressionData/" + file_name for file_name in file_names]
     else:
         directories = [CURR_DIR + "/ManifoldData_RF/" + file_name for file_name in file_names]
 
@@ -2434,15 +2447,6 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     test_random should be a positive integer greater than 1, and is the amount of random tests we want to do. It can also be a list of seeds. TODO: Make it so each random split only occurs once
     
     Returns a dictionary of test_manifold_algorithms class instances."""
-
-    #Use all of our files
-    if csv_files == "all":
-        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
-                    "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
-                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
-                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
-                    "winequality-red.csv", "zoo.csv", 
-                    "S-curve", "blobs"] #Toy data sets -- It will automatically create them
         
     """Convert csv_files to class instances"""
     #Create the dictionary
@@ -2457,24 +2461,47 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     if "verbose" in kwargs:
         filtered_kwargs["verbose"] = kwargs["verbose"]
 
-    # Create an instance of TestManifoldAlgorithms for each CSV file.
-    for csv_file in csv_files:
+    #We can add another check in here
+    results_df = plt_methods_by_CSV_max(df = subset_df(df, split = kwargs["split"]), metric = "Cross_Embedding_KNN", return_df=True)
 
-        #Create Pseudo-Random numbers to test the randomness accorind to the test_random parameter
-        random.seed(42) #This is to ensure we get the same random numbers each time
+    def create_manifold_instances(method, results_df = results_df):
 
-        if type(test_random) == list:
-            seeds = test_random
-        else:
-            seeds = []
-            for i in range(0, test_random):
-                seeds.append(random.randint(1, 10000))
+        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
+                    "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
+                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
+                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
+                    "winequality-red.csv", "zoo.csv", 
+                    "S-curve.csv", "blobs.csv"]
 
-        for random_seed in seeds:
+        # Create an instance of TestManifoldAlgorithms for each CSV file.
+        for csv_file in csv_files:
 
-            #Create the class and then store it in our dictionary
-            manifold_instance = test_manifold_algorithms(csv_file, random_state=random_seed, **filtered_kwargs)
-            manifold_instances[csv_file + str(random_seed)] = manifold_instance
+
+            #If already run, we don't care
+            if np.isnan(results_df[results_df["csv_file"] == csv_file[:-4]][method].values):
+
+                if csv_file == "S-curve.csv":
+                    csv_file = "S-curve"
+                elif csv_file == "blobs.csv":
+                    csv_file = "blobs"
+
+                #Create Pseudo-Random numbers to test the randomness accorind to the test_random parameter
+                random.seed(42) #This is to ensure we get the same random numbers each time
+
+                if type(test_random) == list:
+                    seeds = test_random
+                else:
+                    seeds = []
+                    for i in range(0, test_random):
+                        seeds.append(random.randint(1, 10000))
+
+                for random_seed in seeds:
+
+                    #Create the class and then store it in our dictionary
+                    manifold_instance = test_manifold_algorithms(csv_file, random_state=random_seed, **filtered_kwargs)
+                    manifold_instances[csv_file + str(random_seed)] = manifold_instance
+
+        return manifold_instances
 
     
     """Preform parralell processing and run the tests"""
@@ -2487,7 +2514,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["predict"] = kwargs["predict"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-1)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in create_manifold_instances("DIG").values())
 
     if run_CwDIG:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2500,7 +2527,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=-1)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in create_manifold_instances("CwDIG").values())
 
     if run_RF_SPUD:
         #Filter out the necessary Key word arguments for SPUD
@@ -2511,7 +2538,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["agg_methods"] = kwargs["agg_methods"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=10)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_RF_SPUD_tests)(**filtered_kwargs) for instance in create_manifold_instances("SPUD_RF").values())
 
     if run_CSPUD:
         #Filter out the necessary Key word arguments for SPUD - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2522,11 +2549,11 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["kind"] = kwargs["kind"]
 
         #Loop through each file (Using Parralel Processing) for SPUD
-        Parallel(n_jobs=-1)(delayed(instance.run_CSPUD_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_CSPUD_tests)(**filtered_kwargs) for instance in create_manifold_instances("SPUD").values())
 
     if run_NAMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-1)(delayed(instance.run_NAMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_NAMA_tests)() for instance in create_manifold_instances("NAMA").values())
 
     if run_MALI:
         
@@ -2535,41 +2562,41 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["graph_distances"] = kwargs["graph_distances"]
 
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=10)(delayed(instance.run_MALI_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_MALI_tests)(**filtered_kwargs) for instance in create_manifold_instances("MALI").values())
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=5)(delayed(instance.run_KEMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_KEMA_tests)() for instance in create_manifold_instances("KEMA_RF").values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
-        Parallel(n_jobs=-1)(delayed(instance.run_DTA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_DTA_tests)() for instance in create_manifold_instances("DTA").values())
 
     if run_SSMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_SSMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_SSMA_tests)() for instance in create_manifold_instances("SSMA").values())
 
     if run_JLMA:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_JLMA_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_JLMA_tests)() for instance in create_manifold_instances("JLMA").values())
 
     if run_MAGAN:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_MAGAN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_MAGAN_tests)() for instance in create_manifold_instances("MAGAN").values())
 
     if run_PCR:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=-1)(delayed(instance.run_PCR_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_PCR_tests)() for instance in create_manifold_instances("PCR").values())
 
     #Now run Knn tests
     if run_KNN_Tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=15)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
 
     #Now run Knn tests
     if run_RF_BL_tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=5)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
 
     if run_RF_MASH:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2580,7 +2607,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=1)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in create_manifold_instances("MASH_RF").values())
 
 
     return manifold_instances

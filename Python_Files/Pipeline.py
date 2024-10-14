@@ -7,6 +7,9 @@ import json
 from joblib import Parallel, delayed
 import inspect
 
+# Set TensorFlow logging level
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 """To do:
 >Test the force parameters method"""
 
@@ -33,9 +36,31 @@ def mash_foscttm(self):
 def get_mash_block(self):
     return self.int_diff_dist
 
+def get_mash_score_connected(self, tma, **kwargs):
+    
+    import copy
+
+    #We need to copy the class as it get changed and will be parralized
+    self = copy.deepcopy(self)
+    self.optimize_by_creating_connections(**kwargs)
+
+    # Cross Embedding Evaluation Metric
+    emb = tma.mds.fit_transform(self.int_diff_dist)
+    c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
+    f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
+
+    print(f"                FOSCTTM {f_score}")
+    print(f"                CE Sore {c_score}")
+
+    #Return FOSCTTM score
+    return c_score, f_score
+
+
 #Create dictionaries for the different classes
 method_dict = {
-     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Block" : get_mash_block, "FOSCTTM" : mash_foscttm}
+     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : get_mash_block, "FOSCTTM" : mash_foscttm},
+     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : get_mash_block, "FOSCTTM" : mash_foscttm}
+
 
  }
 
@@ -44,7 +69,7 @@ class pipe():
     A class on initalize runs tests
     """
 
-    def __init__(self, method, csv_files, parallel_factor = 5,
+    def __init__(self, method, csv_files, parallel_factor = 5, seed = 42,
                 splits = ["random", "distort", "turn", "even", "skewed"],
                 percent_of_anchors = [0.05, 0.15, 0.3],
                 overide_defaults = {},
@@ -56,6 +81,7 @@ class pipe():
         self.percent_of_anchors = percent_of_anchors
         self.parameters = parameters #The parameters to test
         self.overide_defaults = overide_defaults #the parameters to overide
+        self.seed = seed
 
         #Check to make sure parameters line up
         self.defaults = get_default_parameters(self.method_data["Model"])
@@ -63,6 +89,11 @@ class pipe():
         for param in list(self.parameters.keys()) + list(self.overide_defaults.keys()):
             if param not in self.defaults.keys():
                 raise RuntimeError(f"Parameter {param} not valid for {method} class")
+            
+        #Involve random state if it exists
+        if False != self.method_data["Seed"]:  
+            self.overide_defaults[self.method_data["Seed"]] = self.seed  
+
 
         #Preform tests
 
@@ -73,21 +104,25 @@ class pipe():
             for csv_file in csv_files:
 
                 print(f"---------------------------------------------      {csv_file}     ---------------------------------------------")
-                self.tma = tma(csv_file = csv_file, split = split, percent_of_anchors = [], verbose = 0)
+                self.tma = tma(csv_file = csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
 
                 #loop for each anchor 
                 
+                #For Looping each anchor percent
                 #Parallel(n_jobs=min(self.parallel_factor, len(self.percent_of_anchors)))(delayed(self.save_tests)(anchor_percent) for anchor_percent in self.percent_of_anchors)
                 
+                #Normal looping -- Not parrelized
                 for anchor_percent in self.percent_of_anchors:
-                    self.save_tests(anchor_percent)
+                    self.save_tests(anchor_percent, csv_file)
 
     def run_single_test(self, anchor_percent, test_parameters):
         """
         Function to run a single test for a given combination of parameters.
         This will be executed in parallel using ProcessPoolExecutor.
         """
-        anchor_amount = int((len(self.tma.anchors) * anchor_percent) / 2)       
+
+        #Simply a check for MASH so its doesn't cheat with anchors
+        anchor_amount = int(len(self.tma.anchors) * anchor_percent)       
 
         try:
             method_class = self.method_data["Model"](**self.overide_defaults, **test_parameters)
@@ -122,7 +157,7 @@ class pipe():
         # Step 1: Test the KNN parameter first
         if self.method_data["KNN"]:
             knn_configs = [(anchor_percent, {"knn": knn_value}) for knn_value in self.tma.knn_range]
-            knn_results = Parallel(n_jobs=min(self.parallel_factor, 5))(delayed(self.run_single_test)(ap, params) for ap, params in knn_configs)
+            knn_results = Parallel(n_jobs=min(self.parallel_factor, 10))(delayed(self.run_single_test)(ap, params) for ap, params in knn_configs)
 
             # Process the results to find the best KNN value
             for (f_score, c_score), (_, params) in zip(knn_results, knn_configs):
@@ -158,24 +193,62 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
 
+
+        #Step 3: Run last -- Only for run MASH optimzation
+        if self.method_data["Name"] == "MASH":
+
+            #Refit with best found parameters
+            anchor_amount = int((len(self.tma.anchors) * anchor_percent)/2)       
+            method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+            method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors=self.tma.anchors[:anchor_amount])
+
+            for parameter, values in {"connection_limit": ["auto", 1000, 5000, None], "threshold" : [0.2, 0.5, 0.8, 1], "epochs" : [3, 10, 200]}.items():
+                
+                #Create flag for default being the best
+                is_default_best = True
+
+                #Get all the text cases except when it equals the default
+                param_configs = [{"hold_out_anchors" : np.array(self.tma.anchors[:int(len(self.tma.anchors) * anchor_percent)]), parameter: value} for value in values]
+
+                #NOTE: Memory scare posibilty here: This is because we have to do a deep copy of the class
+                param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, self.tma, **params) for params in param_configs)
+
+                # Process the results to find the best value for the current parameter
+                for (c_score, f_score), dictionary in zip(param_results, param_configs):
+                    if best_c_score - best_f_score < c_score - f_score:
+                        best_f_score = f_score
+                        best_c_score = c_score
+                        best_fit[parameter] = dictionary[parameter]
+                        is_default_best = False
+
+                #Set best_fit to default if necessary
+                if is_default_best:
+                    best_fit[parameter] = {"epochs" : 100, "threshold" : "auto", "connection_limit" : "auto"}[parameter]
+
+                print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
+
+                
         print(f"\n------> Best Parameters: {best_fit}")
         print(f"------------------> Best CE score {best_c_score}")
         print(f"-----------------------------> Best FOSCTTM score {best_f_score}")
 
         return best_fit, best_c_score, best_f_score
 
-    def save_tests(self, anchor_percent):
+    def save_tests(self, anchor_percent, csv_file):
+
+        #Reset the tma anchor percent values to be right
+        self.tma.percent_of_anchors = [anchor_percent]
 
         #Create file name
-        filename, AP_values = self.tma.create_filename(self.method_data["Name"])
+        filename, AP_values = self.tma.create_filename(self.method_data["Name"], **self.overide_defaults)
 
         #Remove .npy and replace with json
         filename = filename[:-4] + ".json"
 
         # #If file aready exists, then we are done :)
         if os.path.exists(filename) or len(AP_values) < 1:
-             print(f"<><><><><>    File {filename} already exists   <><><><><>")
-             #return True
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
         
         best_fit, c_score, f_score = self.run_tests(anchor_percent)
 
@@ -184,11 +257,16 @@ class pipe():
         combined_data = {
             "Best_Params": best_fit,
             "CE": c_score,
-            "FOSCTTM": f_score
+            "FOSCTTM": f_score,
+            "Percent_of_Anchors" : anchor_percent,
+            "split" : self.tma.split,
+            "csv_file" : csv_file,
+            "method" : self.method_data["Name"],
+            "seed" : self.seed
         }
 
         # # Write the combined dictionary to a JSON file
-        # with open(filename, 'w') as json_file:
-        #     json.dump(combined_data, json_file, indent=4)
+        with open(filename, 'w') as json_file:
+            json.dump(combined_data, json_file, indent=4)
 
         print(f"-      -     -   -  -  -  -  -  - - Data has been saved to {filename} - -  -   -    -     -      -      -")
