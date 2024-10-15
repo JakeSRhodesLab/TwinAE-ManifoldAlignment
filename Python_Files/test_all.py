@@ -41,30 +41,11 @@ csv_files = [
 state = True
 nope = not state
 
-
-#Skewed
-tma.run_all_tests(csv_files = csv_files, test_random = [1825],#, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
-                            split = "skewed", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
+#Even
+tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+                            split = "even", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
-                            run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
-                            run_DTA = state,
-                            run_NAMA = state,
-                            run_SSMA = state,
-                            run_MAGAN= state,
-                            run_JLMA = state,
-                            run_KNN_Tests= nope,
-                            run_PCR = state,
-                            run_MALI=state, #graph_distances = ["rf_gap"],
-                            run_RF_MASH= state,
-                            run_RF_SPUD= state,
-                            run_KEMA = state,
-                            run_RF_BL_tests = nope,
-                            run_CSPUD = state, operations= ["log"]) #SPUD key arguments
-#Random
-tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
-                            split = "random", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
-                            run_DIG = state, 
-                            run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
+                            run_CwDIG=state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
                             run_SSMA = state,
@@ -72,9 +53,9 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],#, 
                             run_JLMA = state,
                             run_KNN_Tests=nope,
                             run_PCR = state,
-                            run_MALI=state, #graph_distances = ["rf_gap"],
+                            run_MALI= state, #graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD=state,
+                            run_RF_SPUD= state,
                             run_KEMA = state,
                             run_RF_BL_tests = nope,
                             run_CSPUD = state, operations= ["log"]) #SPUD key arguments
@@ -114,14 +95,32 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
                             run_RF_MASH= state, DTM = ("log"),
                             run_RF_SPUD= state,
                             run_KEMA = state,
-                            run_RF_BL_tests = nope,
+                            run_RF_BL_tests = nope, 
                             run_CSPUD = state, operations= ["log"]) #SPUD key arguments
 
-#Even
-tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
-                            split = "even", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
+#Skewed
+tma.run_all_tests(csv_files = csv_files, test_random = [1825],#, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+                            split = "skewed", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
-                            run_CwDIG=state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
+                            run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
+                            run_DTA = state,
+                            run_NAMA = state,
+                            run_SSMA = state,
+                            run_MAGAN= state,
+                            run_JLMA = state,
+                            run_KNN_Tests= nope,
+                            run_PCR = state,
+                            run_MALI=state, #graph_distances = ["rf_gap"],
+                            run_RF_MASH= state,
+                            run_RF_SPUD= state,
+                            run_KEMA = state,
+                            run_RF_BL_tests = nope,
+                            run_CSPUD = state, operations= ["log"]) #SPUD key arguments
+#Random
+tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+                            split = "random", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
+                            run_DIG = state, 
+                            run_CwDIG= state, #connection_limit = (0.1, 0.2, 1, 10, None), #CwDIG key arguments in addition to DIG's arguments
                             run_DTA = state,
                             run_NAMA = state,
                             run_SSMA = state,
@@ -129,12 +128,14 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],# 3
                             run_JLMA = state,
                             run_KNN_Tests=nope,
                             run_PCR = state,
-                            run_MALI= state, #graph_distances = ["rf_gap"],
+                            run_MALI=state, #graph_distances = ["rf_gap"],
                             run_RF_MASH= state,
-                            run_RF_SPUD= state,
+                            run_RF_SPUD=state,
                             run_KEMA = state,
                             run_RF_BL_tests = nope,
                             run_CSPUD = state, operations= ["log"]) #SPUD key arguments
+
+
 
 
 """

@@ -2,10 +2,12 @@
 
 """
 QUESTIONS:
-1. The importancce of Strongly Connected Components when running the pipeline
+
 
 Changes Log: 
 1. Refactored (quickly) the old test pipeline to grind out the remaining missing tests. Hopefully will be finished within the week? 
+2. --- I realized that using the top command I have overloaded laplace ---
+3. Created the regression bl dataframe
 
 
 TASKS:
@@ -89,10 +91,6 @@ import tensorflow as tf
 # Set TensorFlow logging level
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('ERROR')
-
-# Your existing code
-
-
 
 #Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
 if os.getcwd()[-12:] == "Python_Files":
@@ -1919,7 +1917,7 @@ def _upload_file(file, directory = "default"):
 
     #Load in the numpy array
     try:
-        data = np.load(original_file) #allow_pickle=True
+        data = np.load(original_file, allow_pickle=True) #allow_pickle=True
     except Exception as e:
         print(f"-------------------------------------------------------------------------------------------------------\nUnable to load {file}. \nError Caught: {e} \nContinuing without uploading file\n-------------------------------------------------------------------------------------------------------")
         
@@ -2308,7 +2306,7 @@ def _upload_file(file, directory = "default"):
                 #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
                 base_df = base_df._append(data_dict, ignore_index=True)
 
-                return (df, base_df)
+            return (df, base_df)
             
         elif data_dict["method"] == "RF_BL":
             
@@ -2624,6 +2622,11 @@ def upload_to_DataFrame(directory = "default"):
                 files += [os.path.join(directory, file) for file in os.listdir(MANIFOLD_DATA_DIR + directory)]
 
         directory = "default"
+
+    elif directory == "regression": 
+        for directory in os.listdir(CURR_DIR + "/RegressionData/"):
+            if os.path.isdir(CURR_DIR + "/RegressionData/" + directory): #Check to make sure its a directory
+                files += [os.path.join(directory, file) for file in os.listdir(CURR_DIR + "/RegressionData/" + directory)]
 
     else: 
         for directory in os.listdir(CURR_DIR + "/ManifoldData_RF/"):
