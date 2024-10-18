@@ -63,19 +63,30 @@ def get_mash_score_connected(self, tma, **kwargs):
     #Return FOSCTTM score
     return c_score, f_score
 
+def Rustad_fit(self, tma, anchor_amount):
+    self.fit(tma.split_A, tma.split_B, known_anchors=tma.anchors[:anchor_amount])
 
+def Andres_fit(self, tma, anchor_amount):
+    #Reformat the anchors 
+    sharedD1 = tma.split_A[tma.anchors[:anchor_amount].T[0]] 
+    sharedD2 = tma.split_B[tma.anchors[:anchor_amount].T[1]]
+    labelsh1 = tma.labels[tma.anchors[:anchor_amount].T[0]]
+    
+    #We only need to overide the labels once otherwise it will mess up the CE score
+    if len(tma.labels) != (len(labelsh1) + len(tma.split_A)):
+        tma.labels = np.concatenate((tma.labels, labelsh1))
+
+    self.fit(tma.split_A, tma.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
+    
 #Create dictionaries for the different classes
 method_dict = {
-     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.inst_diff_dist, "FOSCTTM" : mash_foscttm},
-     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.inst_diff_dist, "FOSCTTM" : mash_foscttm},
-     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm},
-     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm},
+     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
+     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
+     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
+     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : False, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
      
-     #NOTE: Will likely have to adopt the fit
-     "DTA" : {"Name": "DTMA", "Model": DTA, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm}
-
-
-
+     #NOTE: adopted fit below
+     "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True, "Seed" : "random_state", "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit}
 
 
  }
@@ -98,6 +109,7 @@ class pipe():
         self.parameters = parameters #The parameters to test
         self.overide_defaults = overide_defaults #the parameters to overide
         self.seed = 42
+        self.param_std_dict = {}
 
         #Check to make sure parameters line up
         self.defaults = get_default_parameters(self.method_data["Model"])
@@ -131,18 +143,33 @@ class pipe():
                 for anchor_percent in self.percent_of_anchors:
                     self.save_tests(anchor_percent, csv_file)
 
+    def get_parameter_std(self, parameter, results):
+        """Finds the std from within the differing parameter tests"""
+
+        #Only save results for our own methods
+        if self.method_data["Name"] not in ["MASH-", "MASH", "SPUD", "NAMA"]:
+            return False #We don't need to run this
+        
+        #Get the combined score of F_score and C_score
+        results = np.array(results)
+        results = results[:, 1] - results[:, 0] 
+
+        #Save the std
+        self.param_std_dict[parameter] = np.std(results)
+
+        return True #We ran through it
+        
     def run_single_test(self, anchor_percent, test_parameters):
         """
         Function to run a single test for a given combination of parameters.
         This will be executed in parallel using ProcessPoolExecutor.
         """
 
-        #Simply a check for MASH so its doesn't cheat with anchors
         anchor_amount = int(len(self.tma.anchors) * anchor_percent)       
 
         try:
             method_class = self.method_data["Model"](**self.overide_defaults, **test_parameters)
-            method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors=self.tma.anchors[:anchor_amount]) #Make this part of the dictionary too :)
+            self.method_data["Fit"](method_class, self.tma, anchor_amount)
 
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
@@ -175,6 +202,8 @@ class pipe():
             knn_configs = [(anchor_percent, {"knn": knn_value}) for knn_value in self.tma.knn_range]
             knn_results = Parallel(n_jobs=min(self.parallel_factor, 10))(delayed(self.run_single_test)(ap, params) for ap, params in knn_configs)
 
+            self.get_parameter_std("knn", knn_results)
+
             # Process the results to find the best KNN value
             for (f_score, c_score), (_, params) in zip(knn_results, knn_configs):
                 if best_c_score - best_f_score < c_score - f_score:
@@ -192,8 +221,9 @@ class pipe():
 
             #Get all the text cases except when it equals the default
             param_configs = [(anchor_percent, {**best_fit, parameter: value}) for value in values if value != self.defaults[parameter]]
-
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params) for ap, params in param_configs)
+
+            self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
             for (f_score, c_score), (_, params) in zip(param_results, param_configs):
@@ -228,6 +258,8 @@ class pipe():
                 #NOTE: Memory scare posibilty here: This is because we have to do a deep copy of the class
                 param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, self.tma, **params) for params in param_configs)
 
+                self.get_parameter_std(parameter, param_results)
+
                 # Process the results to find the best value for the current parameter
                 for (c_score, f_score), dictionary in zip(param_results, param_configs):
                     if best_c_score - best_f_score < c_score - f_score:
@@ -258,7 +290,6 @@ class pipe():
 
             #Get all the text cases except when it equals the default
             param_configs = [(anchor_percent, {**best_fit, self.method_data["Seed"]: value}) for value in [1738, 5271, 9209, 1316]]
-
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params) for ap, params in param_configs)
 
             # Add the results
@@ -266,6 +297,9 @@ class pipe():
                 seed = params[self.method_data["Seed"]]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
+            
+            #Reset seed default
+            self.overide_defaults[self.method_data["Seed"]] = self.seed  
 
         return best_fit, C_scores, F_scores
 
@@ -281,7 +315,7 @@ class pipe():
         filename = filename[:-4] + ".json"
 
         # #If file aready exists, then we are done :)
-        if os.path.exists(filename) or len(AP_values) < 1:
+        if os.path.exists(filename) or len(AP_values) < 1: # NOTE: For MASH, we can instead check if MASH- has been run. If it hasn't, we can force it to run MASH- first, and then have a different off-shoot for MASH to run
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
@@ -296,7 +330,8 @@ class pipe():
             "Percent_of_Anchors" : anchor_percent,
             "split" : self.tma.split,
             "csv_file" : csv_file,
-            "method" : self.method_data["Name"]
+            "method" : self.method_data["Name"],
+            "Parameter STD": self.param_std_dict
         }
 
         # # Write the combined dictionary to a JSON file

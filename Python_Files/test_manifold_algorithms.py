@@ -11,19 +11,16 @@ Changes Log:
 4 Created the BL plots (Distort looks great --> other splits look terrible). This is found in the top part of the Reg_Visualization file
 5. Figure out a way to compare the baseline plots in a good way that show the splits well. Well, did that :) in a partial way (we can always figure out how else to plot it)
 6. Updated pipe for SPUD and Nama
+7. Added the ability to test multiple random seeds. Stores each of the results. 
+8. Added a way to find out the standard deviation of different results (CAN see results in data hardware)
 
 
 TASKS:
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
-4. Save the variance of the MASH and SPUD scores
-5. Save the best parametes -> rerun those parameter set with different seeds
+4. Enable a way to run MASH data off of MASH- not to double calculate all of MASH-
 
-
-2.5 Linear Regression problems or continuous labels
 2. MD things
 4. Time data for MASH
-9. Test to see if I should make the graph tools functions set the precomputed = distances
-10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
 
 
 If time things:
@@ -31,6 +28,7 @@ If time things:
 7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
 8. Add in the other way Marshall asked to be able to format anchors
 9. Compare the different method parameters within SPUD with plot_in_fig
+10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method

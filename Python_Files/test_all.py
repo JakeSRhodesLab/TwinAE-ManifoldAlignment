@@ -26,14 +26,15 @@ csv_files = [
               "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
-"""csv_files = [ #REGRESSION 
-    "AirfoilSelfNoise.csv",  "AutoMPG.csv",
-    "ComputerHardware.csv",  "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
-    "IstanbulStock.csv",   "Parkinsons.csv",
-    "Automobile.csv",       "CommunityCrime.csv",
-    "ConcreteCompressiveStrength.csv",  "EnergyEfficiency.csv",   "Hydrodynamics.csv",
-    "OpticalNetwork.csv",  "SML2010.csv"
-]"""
+reg_files = [ #REGRESSION 
+    #"AirfoilSelfNoise.csv",  "AutoMPG.csv",
+    "ComputerHardware.csv"
+    # "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
+    # "IstanbulStock.csv",   "Parkinsons.csv",
+    # "Automobile.csv",       "CommunityCrime.csv",
+    # "ConcreteCompressiveStrength.csv",  "EnergyEfficiency.csv",   "Hydrodynamics.csv",
+    # "OpticalNetwork.csv",  "SML2010.csv"
+    ]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -141,19 +142,30 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],#, 
 
 #Pipeline Tests
 from Pipeline import pipe
-# pipe("MASH-", csv_files=reg_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
-#      page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+import warnings
+import pandas as pd
 
-#  Figure out how to build iteratively
-# pipe("MASH", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#      page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False]
-#      )
-
-pipe("SPUD", csv_files=["iris.csv"], splits = ["random"], percent_of_anchors=[0.3], parallel_factor = 10,
-      overide_method = ["none", "similarities", "Jaccard"], OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    warnings.filterwarnings("ignore", category=pd.errors.DtypeWarning)
 
 
-# pipe("NAMA", csv_files=csv_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
-#       overide_defaults= {"overide_method" : "NAMA"},
-#       OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+    # pipe("MASH-", csv_files=reg_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
+    #      page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+
+    #Figure out how to build iteratively
+    # pipe("MASH", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
+    #     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False]
+    #     )
+
+    # pipe("SPUD", csv_files=reg_files, splits = ["random"], percent_of_anchors=[0.3], parallel_factor = 10,
+    #       overide_method = ["none", "similarities", "Jaccard"], OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+
+
+    # pipe("NAMA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
+    #       overide_defaults= {"overide_method" : "NAMA"},
+    #       OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+
+    pipe("DTA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
+           distances = ["DPT", "Not_DPT"])
 
