@@ -40,7 +40,7 @@ csv_files = [
 """
 state = True
 nope = not state
-
+"""
 #Even
 tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
@@ -136,16 +136,24 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],#, 
                             run_CSPUD = state, operations= ["log"]) #SPUD key arguments
 
 
-
-
 """
+
+
 #Pipeline Tests
 from Pipeline import pipe
-pipe("MASH-", csv_files=csv_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
-     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+# pipe("MASH-", csv_files=reg_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
+#      page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 #  Figure out how to build iteratively
-# pipe("MASH", csv_files=csv_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
+# pipe("MASH", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
 #      page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False]
 #      )
-"""
+
+pipe("SPUD", csv_files=["iris.csv"], splits = ["random"], percent_of_anchors=[0.3], parallel_factor = 10,
+      overide_method = ["none", "similarities", "Jaccard"], OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+
+
+# pipe("NAMA", csv_files=csv_files, splits = ["distort", "random", "even", "skewed", "turn"], percent_of_anchors=[0.05, 0.15, 0.3], parallel_factor = 10,
+#       overide_defaults= {"overide_method" : "NAMA"},
+#       OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+

@@ -54,6 +54,13 @@ def create_DataFrames():
     #Save the Data Frame
     df.to_csv(os.getcwd()[:-12] + "/All_Data_DataFrame.csv", index=False, na_rep='NaN')
 
+def create_regression_DataFrames():
+    """Uploads the regression data to files"""
+    global reg_df
+
+    
+
+
 def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", return_df =False, plot_methods = ["SSMA", "MAGAN", "DTA", "SPUD_D", "SPUD_M", "DIG", "CwDIG", "NAMA", "PCR", "JLMA", "Split_A", "Split_B"]):
     """df should equal the dataframe. It can be subsetted already
     
@@ -358,7 +365,6 @@ def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
 
     return pd.DataFrame((rf_scores_both, rf_scores_one, og_scores_both, og_scores_one,), 
                         index = ["RF Better than Both", "RF Better than one",  "KNN Better than Both", "KNN Better than ONE"])
-
 
 def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop = ["MASH_RF", "MALI_RF", "KEMA_RF", "SPUD_RF", "MALI"], **kwargs):
 

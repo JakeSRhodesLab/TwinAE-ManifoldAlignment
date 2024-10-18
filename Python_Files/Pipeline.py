@@ -1,14 +1,21 @@
 # Testing Pipeline 
 from test_manifold_algorithms import test_manifold_algorithms as tma
 import numpy as np
-from mashspud import MASH
+from mashspud import MASH, SPUD
 import os
 import json
 from joblib import Parallel, delayed
 import inspect
+from DTA_andres import DTA
+
 
 # Set TensorFlow logging level
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['MIN_LOG_LEVEL'] = '3'
+
+import warnings
+warnings.filterwarnings("ignore")
+
 
 """To do:
 >Test the force parameters method"""
@@ -33,8 +40,9 @@ def mash_foscttm(self):
     #Get both directions
     return np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
 
-def get_mash_block(self):
-    return self.int_diff_dist
+def spud_foscttm(self):
+    #Get both directions
+    return np.mean([self.FOSCTTM(self.block[:self.len_A, self.len_A:]), self.FOSCTTM(self.block[self.len_A:, :self.len_A])])
 
 def get_mash_score_connected(self, tma, **kwargs):
     
@@ -58,8 +66,16 @@ def get_mash_score_connected(self, tma, **kwargs):
 
 #Create dictionaries for the different classes
 method_dict = {
-     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : get_mash_block, "FOSCTTM" : mash_foscttm},
-     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : get_mash_block, "FOSCTTM" : mash_foscttm}
+     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.inst_diff_dist, "FOSCTTM" : mash_foscttm},
+     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.inst_diff_dist, "FOSCTTM" : mash_foscttm},
+     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm},
+     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm},
+     
+     #NOTE: Will likely have to adopt the fit
+     "DTA" : {"Name": "DTMA", "Model": DTA, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm}
+
+
+
 
 
  }
@@ -69,7 +85,7 @@ class pipe():
     A class on initalize runs tests
     """
 
-    def __init__(self, method, csv_files, parallel_factor = 5, seed = 42,
+    def __init__(self, method, csv_files, parallel_factor = 5, 
                 splits = ["random", "distort", "turn", "even", "skewed"],
                 percent_of_anchors = [0.05, 0.15, 0.3],
                 overide_defaults = {},
@@ -81,7 +97,7 @@ class pipe():
         self.percent_of_anchors = percent_of_anchors
         self.parameters = parameters #The parameters to test
         self.overide_defaults = overide_defaults #the parameters to overide
-        self.seed = seed
+        self.seed = 42
 
         #Check to make sure parameters line up
         self.defaults = get_default_parameters(self.method_data["Model"])
@@ -126,7 +142,7 @@ class pipe():
 
         try:
             method_class = self.method_data["Model"](**self.overide_defaults, **test_parameters)
-            method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors=self.tma.anchors[:anchor_amount])
+            method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors=self.tma.anchors[:anchor_amount]) #Make this part of the dictionary too :)
 
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
@@ -193,7 +209,6 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
 
-
         #Step 3: Run last -- Only for run MASH optimzation
         if self.method_data["Name"] == "MASH":
 
@@ -232,7 +247,27 @@ class pipe():
         print(f"------------------> Best CE score {best_c_score}")
         print(f"-----------------------------> Best FOSCTTM score {best_f_score}")
 
-        return best_fit, best_c_score, best_f_score
+        #Set the scores to be dictionaries. This is so we know what random seed lead to what score
+        C_scores = {42 : best_c_score}
+        F_scores = {42 : best_f_score}
+
+        #Step 4: Repeat the process with different seeds
+        if self.method_data["Seed"] != False:
+            #Delete the seed overide
+            self.overide_defaults.pop(self.method_data["Seed"])
+
+            #Get all the text cases except when it equals the default
+            param_configs = [(anchor_percent, {**best_fit, self.method_data["Seed"]: value}) for value in [1738, 5271, 9209, 1316]]
+
+            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params) for ap, params in param_configs)
+
+            # Add the results
+            for (f_score, c_score), (_, params) in zip(param_results, param_configs):
+                seed = params[self.method_data["Seed"]]
+                C_scores[seed] = c_score
+                F_scores[seed] = f_score
+
+        return best_fit, C_scores, F_scores
 
     def save_tests(self, anchor_percent, csv_file):
 
@@ -261,8 +296,7 @@ class pipe():
             "Percent_of_Anchors" : anchor_percent,
             "split" : self.tma.split,
             "csv_file" : csv_file,
-            "method" : self.method_data["Name"],
-            "seed" : self.seed
+            "method" : self.method_data["Name"]
         }
 
         # # Write the combined dictionary to a JSON file

@@ -8,11 +8,12 @@ Changes Log:
 1. Refactored (quickly) the old test pipeline to grind out the remaining missing tests. Hopefully will be finished within the week? 
 2. --- I realized that using the top command I have overloaded laplace ---
 3. Created the regression bl dataframe
+4 Created the BL plots (Distort looks great --> other splits look terrible). This is found in the top part of the Reg_Visualization file
+5. Figure out a way to compare the baseline plots in a good way that show the splits well. Well, did that :) in a partial way (we can always figure out how else to plot it)
+6. Updated pipe for SPUD and Nama
 
 
 TASKS:
-1. Figure out a way to compare the baseline plots in a good way that show the splits well
-2. Make visualization for the regression baseline tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 4. Save the variance of the MASH and SPUD scores
 5. Save the best parametes -> rerun those parameter set with different seeds
@@ -569,7 +570,7 @@ class test_manifold_algorithms():
                                 similarity_measure = "default"
 
                             #Create the class with all the arguments
-                            spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, similarity_measure = similarity_measure, n_pca = 100) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
+                            spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, overide_method = similarity_measure, n_pca = 100) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
                             spud_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)])
 
                         except Exception as e:
