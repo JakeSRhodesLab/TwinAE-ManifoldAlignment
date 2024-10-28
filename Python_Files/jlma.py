@@ -5,8 +5,8 @@ from sklearn.decomposition import PCA
 
 
 class JLMA:
-    def __init__(self, k=5, decay=40, mu=1, d=2, normalized_laplacian=True):
-        self.k = k
+    def __init__(self, knn=5, decay=40, mu=1, d=2, normalized_laplacian=True):
+        self.k = knn
         self.decay = decay
         self.mu = mu
         self.d = d #I'm Assuming this is dimensions

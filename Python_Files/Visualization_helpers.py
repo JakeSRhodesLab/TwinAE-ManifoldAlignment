@@ -54,13 +54,6 @@ def create_DataFrames():
     #Save the Data Frame
     df.to_csv(os.getcwd()[:-12] + "/All_Data_DataFrame.csv", index=False, na_rep='NaN')
 
-def create_regression_DataFrames():
-    """Uploads the regression data to files"""
-    global reg_df
-
-    
-
-
 def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", return_df =False, plot_methods = ["SSMA", "MAGAN", "DTA", "SPUD_D", "SPUD_M", "DIG", "CwDIG", "NAMA", "PCR", "JLMA", "Split_A", "Split_B"]):
     """df should equal the dataframe. It can be subsetted already
     

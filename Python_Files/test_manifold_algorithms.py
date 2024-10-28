@@ -2,20 +2,24 @@
 
 """
 QUESTIONS:
+1. Do we want to do RF tests with similarities?
+2. Random seeds don't seem to change anything actually (Noticed for SSMA, MASH, SPUD, PCR)
+3. MALI has a ton of parameters. Should I test them all? (Also, MALI values didn't change at all for knn?)
 
 
 Changes Log: 
-1. Refactored (quickly) the old test pipeline to grind out the remaining missing tests. Hopefully will be finished within the week? 
-2. --- I realized that using the top command I have overloaded laplace ---
-3. Created the regression bl dataframe
-4 Created the BL plots (Distort looks great --> other splits look terrible). This is found in the top part of the Reg_Visualization file
-5. Figure out a way to compare the baseline plots in a good way that show the splits well. Well, did that :) in a partial way (we can always figure out how else to plot it)
-6. Updated pipe for SPUD and Nama
-7. Added the ability to test multiple random seeds. Stores each of the results. 
-8. Added a way to find out the standard deviation of different results (CAN see results in data hardware)
-
+8. Added a bunch of graphs for regression datasets. 
+9. Added JLMA testing
+10. Added efficiency for computing MASH and MASH-
+11. Added a bar plot visual to compare the preformance against regression data
+12. Set up SPUD tests to fairly test each overide Method
+13. Added PCR
 
 TASKS:
+0. Make sure we all results RF data
+1. Baselines predict on themselves
+1.5. Run regression tests
+2. Add random seeds to the splits (Just for the pipeline) -> (Prioritize the smaller database)
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 4. Enable a way to run MASH data off of MASH- not to double calculate all of MASH-
 
@@ -47,7 +51,6 @@ cox - rf_mash: big mash files
 LAPLACE - KEMA: Everything KEMA.
 CARTER - SPUD: everything RF spud
 hilton - Everything rf_mash
-
 
 """
 
@@ -2513,19 +2516,6 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
         #Loop through each file (Using Parralel Processing) for DIG
         Parallel(n_jobs=10)(delayed(instance.run_DIG_tests)(**filtered_kwargs) for instance in create_manifold_instances("DIG").values())
 
-    if run_CwDIG:
-        #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
-        filtered_kwargs = {}
-        if "page_ranks" in kwargs:
-            filtered_kwargs["page_ranks"] = kwargs["page_ranks"]
-        if "predict" in kwargs:
-            filtered_kwargs["predict"] = kwargs["predict"]
-        if "connection_limit" in kwargs:
-            filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
-    
-        #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=10)(delayed(instance.run_DIG_Conections_tests)(**filtered_kwargs) for instance in create_manifold_instances("CwDIG").values())
-
     if run_RF_SPUD:
         #Filter out the necessary Key word arguments for SPUD
         filtered_kwargs = {}
@@ -2563,7 +2553,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=10)(delayed(instance.run_KEMA_tests)() for instance in create_manifold_instances("KEMA_RF").values())
+        Parallel(n_jobs=-15)(delayed(instance.run_KEMA_tests)() for instance in create_manifold_instances("KEMA_RF").values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA

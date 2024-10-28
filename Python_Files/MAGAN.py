@@ -125,6 +125,22 @@ class Loader(object):
             else:
                 yield [x[end:] for x in self.data]
 
+class magan():
+    def __init__(self,
+        activation= "leaky_relu",
+        learning_rate=0.0001, #Used to be 0.0001
+        restore_folder='',
+        limit_gpu_fraction=1.,
+        no_gpu=False,
+        nfilt=64,
+        known_anchors = [], #ADDED 
+        dim_1 = None, #ADDED
+        dim_2 = None #ADDED
+        ):
+    
+        self.learning_rate = learning_rate
+
+
 class MAGAN(object):
     """The MAGAN model."""
 
@@ -419,7 +435,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, anchors): 
+def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01): 
     """xb1 should be split_a
     xb2 should be split_b """
 
@@ -434,7 +450,7 @@ def run_MAGAN(xb1, xb2, anchors):
     tf.compat.v1.reset_default_graph() #NOTE: This is code I added to ensure that this can run multiple times
 
     # Build the tf graph
-    magan = MAGAN(dim_b1=xb1.shape[1], dim_1 = xb1.shape[0], dim_2=xb2.shape[0], dim_b2=xb2.shape[1], correspondence_loss=adapted_correspondence_loss, learning_rate=0.01, known_anchors=anchors)
+    magan = MAGAN(dim_b1=xb1.shape[1], dim_1 = xb1.shape[0], dim_2=xb2.shape[0], dim_b2=xb2.shape[1], correspondence_loss=adapted_correspondence_loss, known_anchors=anchors, learning_rate=learning_rate)
 
     # Train
     for i in range(1, 2500): #Used to be 100000
