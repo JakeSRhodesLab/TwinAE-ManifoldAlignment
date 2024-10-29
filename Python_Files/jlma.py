@@ -5,7 +5,7 @@ from sklearn.decomposition import PCA
 
 
 class JLMA:
-    def __init__(self, knn=5, decay=40, mu=1, d=2, normalized_laplacian=True):
+    def __init__(self, knn=5, decay=40, mu=1, d=2, normalized_laplacian=True, random_state = 42):
         self.k = knn
         self.decay = decay
         self.mu = mu

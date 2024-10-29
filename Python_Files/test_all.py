@@ -32,18 +32,18 @@ csv_files = [
               "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
-reg_files = [ #REGRESSION 
-    "EnergyEfficiency.csv", "Hydrodynamics.csv",
-      #"CommunityCrime.csv",
-    #"AirfoilSelfNoise.csv",  "AutoMPG.csv",
-    "ComputerHardware.csv",
-    # "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
-    # "IstanbulStock.csv",   "Parkinsons.csv",
-    # "Automobile.csv",       "CommunityCrime.csv",
-    # "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
-    "OpticalNetwork.csv"
-    # "SML2010.csv"
-    ]
+# csv_files = [ #REGRESSION 
+#     "EnergyEfficiency.csv", "Hydrodynamics.csv",
+#     "CommunityCrime.csv",
+#     "AirfoilSelfNoise.csv",  "AutoMPG.csv",
+#     "ComputerHardware.csv",
+#     "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
+#     "IstanbulStock.csv", "Parkinsons.csv",
+#     "Automobile.csv", "CommunityCrime.csv",
+#     "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
+#     "OpticalNetwork.csv",
+#     "SML2010.csv"
+# ]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -60,7 +60,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1825],#, 2830, 2969],# 3
                             run_SSMA = state,
                             run_MAGAN= state,
                             run_JLMA = state,
-                            run_KNN_Tests= state ,
+                            run_KNN_Tests= state,
                             run_PCR = state,
                             run_MALI=state, #graph_distances = ["rf_gap"],
                             run_RF_MASH= nope,

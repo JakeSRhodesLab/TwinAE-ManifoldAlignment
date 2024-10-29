@@ -2,18 +2,9 @@
 
 """
 QUESTIONS:
-1. Do we want to do RF tests with similarities?
-2. Random seeds don't seem to change anything actually (Noticed for SSMA, MASH, SPUD, PCR)
-3. MALI has a ton of parameters. Should I test them all? (Also, MALI values didn't change at all for knn?)
-
 
 Changes Log: 
-8. Added a bunch of graphs for regression datasets. 
-9. Added JLMA testing
-10. Added efficiency for computing MASH and MASH-
-11. Added a bar plot visual to compare the preformance against regression data
-12. Set up SPUD tests to fairly test each overide Method
-13. Added PCR
+1. Added new BaseLines -> Trained and predicted on themselves
 
 TASKS:
 0. Make sure we all results RF data
@@ -1573,7 +1564,7 @@ class test_manifold_algorithms():
             #Split data and train for split A
             try:
                 model.fit(A_emb, self.labels)
-                scores[i, 0] = model.score(B_emb, self.labels)
+                scores[i, 0] = model.score(A_emb, self.labels)
                 print(f"    Classification Score trained on A {scores[i, 0]}")
             except:
                 scores[i, 0] = np.NaN
@@ -1582,7 +1573,7 @@ class test_manifold_algorithms():
             #Split data and train for split B
             try:
                 model.fit(B_emb, self.labels)
-                scores[i, 1] = model.score(A_emb, self.labels)
+                scores[i, 1] = model.score(B_emb, self.labels)
                 print(f"    Classification Score trained on B {scores[i, 1]}")
             except:
                 scores[1, 1] = np.NaN
@@ -1903,8 +1894,11 @@ def _upload_file(file, directory = "default"):
     #Simply for error finding
     if directory == "default":
         original_file = MANIFOLD_DATA_DIR + file
+    elif directory == "regression":
+        original_file = CURR_DIR + "/RegressionData/" + file  
     else:
         original_file = CURR_DIR + "/ManifoldData_RF/" + file
+ 
 
     #Create DataFrame
     df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN",
@@ -1928,6 +1922,9 @@ def _upload_file(file, directory = "default"):
 
     #Create a dictionary to use to add rows to our DataFame
     data_dict = {}
+
+    if file[:-4] == "json":
+        return (df, base_df)
 
     #Drop the .npy
     file = file[:-4]
@@ -2501,6 +2498,27 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
                     manifold_instance = test_manifold_algorithms(csv_file, random_state=random_seed, **filtered_kwargs)
                     manifold_instances[csv_file + str(random_seed)] = manifold_instance
 
+
+        # #TODO: Return to getting baseline results
+        # csv_files = [ #REGRESSION 
+        #         "EnergyEfficiency.csv", "Hydrodynamics.csv",
+        #         "CommunityCrime.csv",
+        #         "AirfoilSelfNoise.csv",  "AutoMPG.csv",
+        #         "ComputerHardware.csv",
+        #         "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
+        #         "IstanbulStock.csv", "Parkinsons.csv",
+        #         "Automobile.csv", "CommunityCrime.csv",
+        #         "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
+        #         "OpticalNetwork.csv",
+        #         "SML2010.csv"
+        # ]
+
+        # for csv_file in csv_files:
+
+        #     #Create the class and then store it in our dictionary
+        #     manifold_instance = test_manifold_algorithms(csv_file, random_state=42, **filtered_kwargs)
+        #     manifold_instances[csv_file + str(42)] = manifold_instance
+
         return manifold_instances
 
     
@@ -2553,7 +2571,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     if run_KEMA:
         #Loop through each file (Using Parralel Processing) for NAMA
-        Parallel(n_jobs=-15)(delayed(instance.run_KEMA_tests)() for instance in create_manifold_instances("KEMA_RF").values())
+        Parallel(n_jobs=10)(delayed(instance.run_KEMA_tests)() for instance in create_manifold_instances("KEMA_RF").values())
     
     if run_DTA:
         #Loop through each file (Using Parralel Processing) for DTA
@@ -2578,12 +2596,12 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     #Now run Knn tests
     if run_KNN_Tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=10)(delayed(instance.run_KNN_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_KNN_tests)() for instance in create_manifold_instances("Split_A").values())
 
     #Now run Knn tests
     if run_RF_BL_tests:
         #Loop through each file (Using Parralel Processing) for SSMA
-        Parallel(n_jobs=10)(delayed(instance.run_RF_BL_tests)() for instance in manifold_instances.values())
+        Parallel(n_jobs=10)(delayed(instance.run_RF_BL_tests)() for instance in create_manifold_instances("RFBL1").values())
 
     if run_RF_MASH:
         #Filter out the necessary Key word arguments for DIG - NOTE: This will need to be updated based on the KW wanted to be passed
@@ -2646,7 +2664,7 @@ def upload_to_DataFrame(directory = "default"):
         for csv_file in missing_knn_df['csv_file'].unique():
             best_scores = merged_df[merged_df['csv_file'] == csv_file][['A_Classification_Score', 'B_Classification_Score']].max()
             merged_df.loc[(merged_df['csv_file'] == csv_file) & (merged_df['KNN'].isna()), ['A_Classification_Score', 'B_Classification_Score']] = best_scores.values
-            
+        
     else:
         #Prep base_df for merging
         base_df = base_df.drop(columns=["KNN"])

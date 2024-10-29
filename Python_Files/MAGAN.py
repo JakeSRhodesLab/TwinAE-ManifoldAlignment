@@ -135,7 +135,8 @@ class magan():
         nfilt=64,
         known_anchors = [], #ADDED 
         dim_1 = None, #ADDED
-        dim_2 = None #ADDED
+        dim_2 = None, #ADDED
+        random_state = 42 #Added
         ):
     
         self.learning_rate = learning_rate
@@ -435,7 +436,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01): 
+def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01, random_state = 42): 
     """xb1 should be split_a
     xb2 should be split_b """
 
@@ -450,7 +451,7 @@ def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01):
     tf.compat.v1.reset_default_graph() #NOTE: This is code I added to ensure that this can run multiple times
 
     # Build the tf graph
-    magan = MAGAN(dim_b1=xb1.shape[1], dim_1 = xb1.shape[0], dim_2=xb2.shape[0], dim_b2=xb2.shape[1], correspondence_loss=adapted_correspondence_loss, known_anchors=anchors, learning_rate=learning_rate)
+    magan = MAGAN(dim_b1=xb1.shape[1], dim_1 = xb1.shape[0], dim_2=xb2.shape[0], dim_b2=xb2.shape[1], correspondence_loss=adapted_correspondence_loss, known_anchors=anchors, learning_rate=learning_rate, random_state = random_state)
 
     # Train
     for i in range(1, 2500): #Used to be 100000

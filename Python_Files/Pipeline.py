@@ -149,8 +149,8 @@ method_dict = {
      "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True, "Seed" : "random_state", "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
      "PCR" : {"Name": "PCR", "Model": MAprocr, "KNN" : True, "Seed" : "random_state", "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
 
-     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False, "Seed" : False, "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
-     "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True, "Seed" : False, "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
+     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False, "Seed" : "random_state", "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
+     "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True, "Seed" : "random_state", "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
      
      "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True, "Seed" : "random_state", "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
 
@@ -202,8 +202,10 @@ class pipe():
             #Loop through each csv_file
             for csv_file in csv_files:
 
-                print(f"---------------------------------------------      {csv_file}     ---------------------------------------------")
-                self.tma = tma(csv_file = csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
+                self.csv_file = csv_file
+
+                print(f"---------------------------------------------      {self.csv_file}     ---------------------------------------------")
+                self.tma = tma(csv_file = self.csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
 
                 #loop for each anchor 
                 
@@ -212,7 +214,7 @@ class pipe():
                 
                 #Normal looping -- Not parrelized
                 for anchor_percent in self.percent_of_anchors:
-                    self.save_tests(anchor_percent, csv_file)
+                    self.save_tests(anchor_percent)
 
     def get_parameter_std(self, parameter, results):
         """Finds the std from within the differing parameter tests"""
@@ -230,24 +232,27 @@ class pipe():
 
         return True #We ran through it
         
-    def run_single_test(self, anchor_percent, test_parameters):
+    def run_single_test(self, anchor_percent, test_parameters, tma = None):
         """
         Function to run a single test for a given combination of parameters.
         This will be executed in parallel using ProcessPoolExecutor.
         """
 
-        anchor_amount = int(len(self.tma.anchors) * anchor_percent)       
+        if tma is None:
+            tma = self.tma
+
+        anchor_amount = int(len(tma.anchors) * anchor_percent)       
 
         try:
             method_class = self.method_data["Model"](**self.overide_defaults, **test_parameters)
-            method_class = self.method_data["Fit"](method_class, self.tma, anchor_amount) #This usually just returns self, except with MAGAN
+            method_class = self.method_data["Fit"](method_class, tma, anchor_amount) #This usually just returns self, except with MAGAN
 
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
 
             # Cross Embedding Evaluation Metric
-            emb = self.tma.mds.fit_transform(self.method_data["Block"](method_class))
-            c_score = self.tma.cross_embedding_knn(emb, (self.tma.labels, self.tma.labels), knn_args={'n_neighbors': 4})
+            emb = tma.mds.fit_transform(self.method_data["Block"](method_class))
+            c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
            
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
             print(f"                FOSCTTM {f_score}")
@@ -318,13 +323,13 @@ class pipe():
         F_scores = {42 : best_f_score}
 
         #Step 3: Repeat the process with different seeds
-        if self.method_data["Seed"] != False:
+        if self.tma.split in ["random", "turn", "distort"]:
             #Delete the seed overide
             self.overide_defaults.pop(self.method_data["Seed"])
 
             #Get all the text cases except when it equals the default
-            param_configs = [(anchor_percent, {**best_fit, self.method_data["Seed"]: value}) for value in [1738, 5271, 9209, 1316]]
-            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params) for ap, params in param_configs)
+            param_configs = [(anchor_percent, {**best_fit, self.method_data["Seed"]: value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
+            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
             for (f_score, c_score), (_, params) in zip(param_results, param_configs):
@@ -337,7 +342,7 @@ class pipe():
 
         return best_fit, C_scores, F_scores
 
-    def save_tests(self, anchor_percent, csv_file):
+    def save_tests(self, anchor_percent):
 
         #Reset the tma anchor percent values to be right
         self.tma.percent_of_anchors = [anchor_percent]
@@ -362,7 +367,7 @@ class pipe():
         # Combine them into a single dictionary
         combined_data = {
             "method" : self.method_data["Name"],
-            "csv_file" : csv_file[:-4],
+            "csv_file" : self.csv_file[:-4],
             "split" : self.tma.split,
             "Percent_of_Anchors" : anchor_percent,
             "Best_Params": best_fit,
