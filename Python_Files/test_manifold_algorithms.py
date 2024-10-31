@@ -2,9 +2,15 @@
 
 """
 QUESTIONS:
+1. Speed issues: 1. See if we can parrelize MDS for faster results. 
+2. See if we can replace MDS with PCA and not miss out on accuracy. 
+3. Other demonsionaltiy reduction methods (use of PHATE?/ OThers) 
+4. Find out how much setting n_pca can speed up the process. 
+
 
 Changes Log: 
 1. Added new BaseLines -> Trained and predicted on themselves
+2. Added the ability for seeds to test both random_states of model and data splits. 
 
 TASKS:
 0. Make sure we all results RF data
@@ -13,6 +19,9 @@ TASKS:
 2. Add random seeds to the splits (Just for the pipeline) -> (Prioritize the smaller database)
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 4. Enable a way to run MASH data off of MASH- not to double calculate all of MASH-
+5. Ability to create confusion matrix with the CE score
+6. See if I can parrelize MDS / PCA?
+7. 
 
 2. MD things
 4. Time data for MASH
@@ -1071,7 +1080,7 @@ class test_manifold_algorithms():
 
             #If file aready exists, then we are done :)
             if os.path.exists(filename) or len(AP_values) < 1:
-                print(f"    <><><><><>    File {filename} already exists for MASH-. Will not save again   <><><><><>")
+                print(f"    <><><><><>    File {filename} already exists for MASH_RF. Will not save again   <><><><><>")
                 continue
 
             #Loop through the connections

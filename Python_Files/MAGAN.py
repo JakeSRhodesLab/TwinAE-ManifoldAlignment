@@ -157,7 +157,8 @@ class MAGAN(object):
         nfilt=64,
         known_anchors = [], #ADDED 
         dim_1 = None, #ADDED
-        dim_2 = None #ADDED
+        dim_2 = None, #ADDED
+        random_state = 42 #ADDED
         ):
         
         """Initialize the model."""

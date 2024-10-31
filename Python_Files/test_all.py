@@ -32,18 +32,18 @@ csv_files = [
               "optdigits.csv", "waveform.csv", 'winequality-red.csv', 'car.csv', "artificial_tree.csv"
              ]
 
-# csv_files = [ #REGRESSION 
-#     "EnergyEfficiency.csv", "Hydrodynamics.csv",
-#     "CommunityCrime.csv",
-#     "AirfoilSelfNoise.csv",  "AutoMPG.csv",
-#     "ComputerHardware.csv",
-#     "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
-#     "IstanbulStock.csv", "Parkinsons.csv",
-#     "Automobile.csv", "CommunityCrime.csv",
-#     "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
-#     "OpticalNetwork.csv",
-#     "SML2010.csv"
-# ]
+reg_files = [ #REGRESSION 
+    # "EnergyEfficiency.csv", "Hydrodynamics.csv",
+    # "CommunityCrime.csv",
+    # "AirfoilSelfNoise.csv",  "AutoMPG.csv",
+     "ComputerHardware.csv"
+    # "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
+    # "IstanbulStock.csv", "Parkinsons.csv",
+    # "Automobile.csv", "CommunityCrime.csv",
+    # "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
+    #"OpticalNetwork.csv",
+    # "SML2010.csv"
+]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -51,7 +51,8 @@ csv_files = [
 state = False
 nope = not state
 
-#Skewed
+"""#Skewed
+
 tma.run_all_tests(csv_files = csv_files, test_random = [1825],#, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
@@ -71,7 +72,7 @@ tma.run_all_tests(csv_files = csv_files, test_random = [1825],#, 2830, 2969],# 3
 
 
 #Even
-tma.run_all_tests(csv_files = csv_files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = ['winequality-red.csv'], test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -141,46 +142,45 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
                             run_KEMA = state,
                             run_RF_BL_tests = state, 
                             run_CSPUD = state) #SPUD key argument
-
+"""
 # #Pipeline Tests
 from Pipeline import pipe
 
-# pipe("MAGAN", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#      learning_rate = [0.1, 0.01, 0.001])
+pipe("JLMA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+     normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, 10], mu = [0.01, 0.5, 1, 2])
 
-# pipe("JLMA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#      normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, 10], mu = [0.01, 0.5, 1, 2])
+pipe("MAGAN", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+     learning_rate = [0.1, 0.01, 0.001])
 
-# pipe("MASH-", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# #     #Figure out how to build iteratively
-# pipe("MASH", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# #We sorted out the overide methods between each of the spuds
-# pipe("SPUD", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         overide_defaults= {"overide_method" : "none"},
-#         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-# pipe("SPUD", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         overide_defaults= {"overide_method" : "Jaccard"},
-#         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-# pipe("SPUD", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         overide_defaults= {"overide_method" : "similarities"},
-#         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-# pipe("NAMA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         overide_defaults= {"overide_method" : "NAMA"},
-#         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+#We sorted out the overide methods between each of the spuds
+pipe("SPUD", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        overide_defaults= {"overide_method" : "none"},
+        OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+pipe("SPUD", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        overide_defaults= {"overide_method" : "Jaccard"},
+        OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+pipe("SPUD", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        overide_defaults= {"overide_method" : "similarities"},
+        OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+pipe("NAMA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        overide_defaults= {"overide_method" : "NAMA"},
+        OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
-# pipe("DTA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         distances = ["DPT", "Not_DPT"])
+pipe("DTA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        distances = ["DPT", "Not_DPT"])
 
-# pipe("SSMA", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         Uincluded = [True, False], Dincluded = [True, False])
+pipe("SSMA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        Uincluded = [True, False], Dincluded = [True, False])
 
-# pipe("PCR", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         r = [2,5,10,20, 50, 100, 1000])
+pipe("PCR", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        r = [2,5,10,20, 50, 100, 1000])
 
-# pipe("MALI", csv_files=reg_files, splits = ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
-#         mu = [0.01, 0.1, 0.3, 0.5, 0.75, 0.99], t = ["auto", "auto-I", "DPT", "DPT-I", 3, 5, 30], transition_only = [True, False],
-#         ot = [True, False], normalize_M = [True, False])
+pipe("MALI", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+        mu = [0.01, 0.1, 0.3, 0.5, 0.75, 0.99], t = ["auto", "auto-I", "DPT", "DPT-I", 3, 5, 30], transition_only = [True, False],
+        ot = [True, False], normalize_M = [True, False])

@@ -139,20 +139,20 @@ def fit_with_labels(self, tma, anchor_amount):
 
 #Create dictionaries for the different classes
 method_dict = {
-     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
-     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True, "Seed" : "random_state", "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
-     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
-     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : False, "Seed" : "random_state", "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
+     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
+     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
+     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
+     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : False,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
      
      #NOTE: adopted fit below
-     "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True, "Seed" : "random_state", "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit},
-     "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True, "Seed" : "random_state", "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
-     "PCR" : {"Name": "PCR", "Model": MAprocr, "KNN" : True, "Seed" : "random_state", "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
+     "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True,   "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit},
+     "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True,   "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
+     "PCR" : {"Name": "PCR", "Model": MAprocr, "KNN" : True,   "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
 
-     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False, "Seed" : "random_state", "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
-     "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True, "Seed" : "random_state", "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
+     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False,   "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
+     "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True,   "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
      
-     "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True, "Seed" : "random_state", "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
+     "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
 
 
  }
@@ -189,9 +189,8 @@ class pipe():
             if param not in self.defaults.keys():
                 raise RuntimeError(f"Parameter {param} not valid for {method} class")
             
-        #Involve random state if it exists
-        if False != self.method_data["Seed"]:  
-            self.overide_defaults[self.method_data["Seed"]] = self.seed  
+        #Involve random state
+        self.overide_defaults["random_state"] = self.seed  
 
 
         #Preform tests
@@ -325,20 +324,20 @@ class pipe():
         #Step 3: Repeat the process with different seeds
         if self.tma.split in ["random", "turn", "distort"]:
             #Delete the seed overide
-            self.overide_defaults.pop(self.method_data["Seed"])
+            self.overide_defaults.pop("random_state")
 
             #Get all the text cases except when it equals the default
-            param_configs = [(anchor_percent, {**best_fit, self.method_data["Seed"]: value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
+            param_configs = [(anchor_percent, {**best_fit, "random_state": value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score), (_, params) in zip(param_results, param_configs):
-                seed = params[self.method_data["Seed"]]
+            for (f_score, c_score), (_, params, _) in zip(param_results, param_configs):
+                seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
             
             #Reset seed default
-            self.overide_defaults[self.method_data["Seed"]] = self.seed  
+            self.overide_defaults["random_state"] = self.seed  
 
         return best_fit, C_scores, F_scores
 
@@ -436,5 +435,25 @@ class pipe():
                 best_fit[parameter] = {"epochs" : 100, "threshold" : "auto", "connection_limit" : "auto"}[parameter]
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
+
+        #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
+        if self.tma.split in ["random", "turn", "distort"]:
+            #Delete the seed overide
+            self.overide_defaults.pop("random_state")
+
+            #Get all the text cases except when it equals the default
+            param_configs = [(anchor_percent, {**best_fit, "random_state": value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
+            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(ap, params, tma) for ap, params, tma in param_configs)
+
+            # Add the results
+            for (f_score, c_score), (_, params, _) in zip(param_results, param_configs):
+                seed = params["random_state"]
+                C_scores[seed] = c_score
+                F_scores[seed] = f_score
+            
+            #Reset seed default
+            self.overide_defaults["random_state"] = self.seed  
+
+        return best_fit, C_scores, F_scores
 
         return best_fit, {self.seed : best_c_score}, {self.seed : best_f_score}
