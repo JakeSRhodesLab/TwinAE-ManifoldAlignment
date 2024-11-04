@@ -309,7 +309,7 @@ def plt_methods_by_CSV_mean(df, sort_by = "SPUD", metric = "Combined_Metric", re
     plt.legend()
     plt.show()
 
-def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
+def compare_with_baseline(scoring = "Combined_Metric", verbose = 0,  **kwargs):
     """Tells us how often our Methods are better than the Baseline
     
     Returns a pandas dataframe"""
@@ -319,7 +319,20 @@ def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
         kwargs["df"] = df
 
     #Get resulting Df and get the split data
-    rankdf = plt_methods_by_CSV_max(df = subset_df(**kwargs), metric = scoring, return_df=True).drop(columns = "csv_file").rank(axis=1)
+    rankdf = plt_methods_by_CSV_max(df = subset_df(**kwargs), metric = scoring, return_df=True)
+
+    #Only use applicable files
+    # Filter DataFrame to keep only rows where `csv_file` matches entries in `files_to_keep`
+    rankdf = rankdf[rankdf['csv_file'].isin(['Cancer_Data', 'balance_scale', 'breast_cancer', 'crx', 'diabetes', 'ecoli_5', 'flare1', 'glass', 'heart_disease', 'heart_failure', 'hepatitis', 'ionosphere', 'iris', 'parkinsons', 'seeds','tic-tac-toe'])]
+    
+    rankdf = rankdf.dropna()
+
+    #Print out the used csv_files
+    if verbose > 0:
+        print(list(rankdf["csv_file"]))
+        print(len(rankdf["csv_file"]))
+
+    rankdf = rankdf.drop(columns = "csv_file").rank(axis=1)
 
     # Drop the columns 'Split_A', 'Split_B', 'RFBL1', 'RFBL2' as they're not to be compared
     comparison_columns = rankdf.columns.difference(['Split_A', 'Split_B', 'RFBL1', 'RFBL2'])
@@ -356,8 +369,8 @@ def compare_with_baseline(scoring = "Combined_Metric",  **kwargs):
             count = ((rankdf[col] > rankdf['Split_A']) | (rankdf[col] > rankdf['Split_B'])).sum()
             og_scores_one[col] = np.round(count / total, decimals = 0)
 
-    return pd.DataFrame((rf_scores_both, rf_scores_one, og_scores_both, og_scores_one,), 
-                        index = ["RF Better than Both", "RF Better than one",  "KNN Better than Both", "KNN Better than ONE"])
+    return pd.DataFrame((rf_scores_one, rf_scores_both, og_scores_one, og_scores_both), 
+                        index = ["MA Exceeds a Domain (RF)", "MA Exceeds Both Domains (RF)",  "MA Exceeds a Domain (KNN)", "MA Exceeds Both Domains (KNN)"])
 
 def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop = ["MASH_RF", "MALI_RF", "KEMA_RF", "SPUD_RF", "MALI"], **kwargs):
 
@@ -369,14 +382,20 @@ def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop 
     if split == "all":
         #Create the base set
         split_df = plt_methods_by_CSV_max(df = subset_df(split = "turn", **kwargs), metric = scoring, return_df=True)
+        split_df = split_df[split_df['csv_file'].isin(['Cancer_Data', 'balance_scale', 'breast_cancer', 'crx', 'diabetes', 'ecoli_5', 'flare1', 'glass', 'heart_disease', 'heart_failure', 'hepatitis', 'ionosphere', 'iris', 'parkinsons', 'seeds','tic-tac-toe'])]
+
 
         for s_type in ["distort", "even", "skewed", "random"]:
             #Add each of the sets to the dataframe
             split_df = split_df._append(plt_methods_by_CSV_max(df = subset_df(split = s_type, **kwargs), metric = scoring, return_df=True))
+            split_df = split_df[split_df['csv_file'].isin(['Cancer_Data', 'balance_scale', 'breast_cancer', 'crx', 'diabetes', 'ecoli_5', 'flare1', 'glass', 'heart_disease', 'heart_failure', 'hepatitis', 'ionosphere', 'iris', 'parkinsons', 'seeds','tic-tac-toe'])]
+
 
     else:
         #Create the df 
         split_df = plt_methods_by_CSV_max(df = subset_df(split = split, **kwargs), metric = scoring, return_df=True)
+        split_df = split_df[split_df['csv_file'].isin(['Cancer_Data', 'balance_scale', 'breast_cancer', 'crx', 'diabetes', 'ecoli_5', 'flare1', 'glass', 'heart_disease', 'heart_failure', 'hepatitis', 'ionosphere', 'iris', 'parkinsons', 'seeds','tic-tac-toe'])]
+
 
     #Drop unneeded columns
     csv_df = split_df.drop(columns= ["SPUD_D", "csv_file", "Split_A", "Split_B"] + columns_to_drop).dropna()
@@ -445,6 +464,14 @@ def plot_ranks(scoring = "Combined_Metric", **kwargs):
                 label = "MASH"
             elif label == 'PCR':
                 label = "MAPA"
+            elif label == "MASH_RF":
+                label = "RF-MASH"
+            elif label == "MALI_RF":
+                label = "RF-MALI"
+            elif label == "SPUD_RF":
+                label = "RF-SPUD"
+            elif label == "KEMA_RF":
+                label = "KEMA"
 
             plt.errorbar(pos - 0.3, mean, yerr=std, fmt=fmt, label=label, elinewidth= 2, color = c, ms = 10, capsize=5)
 

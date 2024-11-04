@@ -9,23 +9,19 @@ QUESTIONS:
 
 
 Changes Log: 
-1. Added new BaseLines -> Trained and predicted on themselves
-2. Added the ability for seeds to test both random_states of model and data splits. 
+1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
 
 TASKS:
-0. Make sure we all results RF data
-1. Baselines predict on themselves
-1.5. Run regression tests
-2. Add random seeds to the splits (Just for the pipeline) -> (Prioritize the smaller database)
+0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
+0.5 Add logging to crashes
+1. Run regression tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
-4. Enable a way to run MASH data off of MASH- not to double calculate all of MASH-
 5. Ability to create confusion matrix with the CE score
 6. See if I can parrelize MDS / PCA?
-7. 
 
-2. MD things
-4. Time data for MASH
-
+MORE TASKS
+1. MD things
+2. Time data for MASH
 
 If time things:
 6. Figure out how to make NaN processing faster. Use the pdist?
@@ -43,14 +39,6 @@ Ideas:
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
-
-Running Zombies
-Tukey - rf_mash: small mash files
-collings - rf_mash: medium mash files
-cox - rf_mash: big mash files
-LAPLACE - KEMA: Everything KEMA.
-CARTER - SPUD: everything RF spud
-hilton - Everything rf_mash
 
 """
 
@@ -1084,7 +1072,7 @@ class test_manifold_algorithms():
                 continue
 
             #Loop through the connections
-            for i, connection in enumerate(["default", None]):
+            for i, connection in enumerate(["default"]):
                 print(f"        Connection Limit: {connection}")
 
                 #Store the data in a numpy array
@@ -2353,11 +2341,11 @@ def _upload_file(file, directory = "default"):
         #Check to make sure there is data in the file
         if np.isnan(data_dict["FOSCTTM"]) or np.isnan(data_dict["Cross_Embedding_KNN"]):
             print(f"File {original_file} is missing FOSCTTM or Cross_Embedding Score")
-            os.remove(original_file)
+            #os.remove(original_file)
 
         if data_dict["FOSCTTM"] == 0 and data_dict["Cross_Embedding_KNN"] == 0:
             print(f"File {original_file} scores are uncalculated.")
-            os.remove(original_file)
+            #os.remove(original_file)
 
         return (df, base_df)
     
@@ -2472,10 +2460,10 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     def create_manifold_instances(method, results_df = results_df):
 
-        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
+        csv_files = ["audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv",
                     "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
-                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
-                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
+                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "parkinsons.csv",
+                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv",
                     "winequality-red.csv", "zoo.csv", 
                     "S-curve.csv", "blobs.csv"]
 
@@ -2621,7 +2609,7 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
             filtered_kwargs["connection_limit"] = kwargs["connection_limit"]
     
         #Loop through each file (Using Parralel Processing) for DIG
-        Parallel(n_jobs=10)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in create_manifold_instances("MASH_RF").values())
+        Parallel(n_jobs=-10)(delayed(instance.run_RF_MASH_tests)(**filtered_kwargs) for instance in create_manifold_instances("MASH_RF").values())
 
 
     return manifold_instances
