@@ -9,13 +9,13 @@ from utils import subset_df, plot_in_fig
 
 
 #If there is no new data, we could just read in the old csvfile
-df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/All_Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/All_Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 #If there is no new data, we could just read in the old csvfile
-og_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+og_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 #If there is no new data, we could just read in the old csvfile
-rf_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/ManifoldData_RF/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
+rf_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData_RF/Data_DataFrame.csv", keep_default_na=False, na_values=['', 'NaN'], index_col= None)
 
 def create_DataFrames():
     """Uploads and creates dataframe files"""
@@ -34,7 +34,7 @@ def create_DataFrames():
     rf_df = rf_df[~(rf_df["Percent_of_Anchors"].astype(float) > 0.5)]
 
     #Save the Data Frame
-    rf_df.to_csv(os.getcwd()[:-12] + "ManifoldData_RF/Data_DataFrame.csv", index=False, na_rep='NaN')
+    rf_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData_RF/Data_DataFrame.csv", index=False, na_rep='NaN')
 
     #Veiwing with DataFrame
     og_df = tma.upload_to_DataFrame(directory = "default")
@@ -46,13 +46,13 @@ def create_DataFrames():
     og_df = og_df[~(og_df["Percent_of_Anchors"].astype(float) > 0.5)]
 
     #Save the Data Frame
-    og_df.to_csv(os.getcwd()[:-12] + "ManifoldData/Data_DataFrame.csv", index=False, na_rep='NaN')
+    og_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/Data_DataFrame.csv", index=False, na_rep='NaN')
 
     #Concat data frames
     df = pd.concat([og_df, rf_df], ignore_index=True)
 
     #Save the Data Frame
-    df.to_csv(os.getcwd()[:-12] + "/All_Data_DataFrame.csv", index=False, na_rep='NaN')
+    df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/All_Data_DataFrame.csv", index=False, na_rep='NaN')
 
 def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", return_df =False, plot_methods = ["SSMA", "MAGAN", "DTA", "SPUD_D", "SPUD_M", "DIG", "CwDIG", "NAMA", "PCR", "JLMA", "Split_A", "Split_B"]):
     """df should equal the dataframe. It can be subsetted already

@@ -84,9 +84,9 @@ tf.get_logger().setLevel('ERROR')
 
 #Logic to ensure the right directory is always used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
 if os.getcwd()[-12:] == "Python_Files":
-    CURR_DIR = os.getcwd()[:-13]
+    CURR_DIR = os.getcwd()[:-13] + "/Results"
 else:
-    CURR_DIR = os.getcwd()
+    CURR_DIR = os.getcwd() + "/Results"
 #Directory Constant
 MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
