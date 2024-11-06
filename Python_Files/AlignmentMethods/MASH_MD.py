@@ -39,7 +39,7 @@ import graphtools
 import numpy as np
 from pandas import Categorical
 import seaborn as sns
-from vne import find_optimal_t
+from Helpers.vne import find_optimal_t
 from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS

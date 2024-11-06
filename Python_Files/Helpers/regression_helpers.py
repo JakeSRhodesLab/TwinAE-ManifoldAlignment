@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from Python_Files.Helpers.utils import subset_df, plot_in_fig
+from Helpers.utils import subset_df, plot_in_fig
 import json
 
 def read_json_files_to_dataframe(directory_path):

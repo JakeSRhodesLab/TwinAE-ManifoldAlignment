@@ -10,6 +10,7 @@ QUESTIONS:
 
 Changes Log: 
 1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
+2. Refactored the code repository to make better sense. Also so I can move forwards easier with the pipeline model. 
 
 TASKS:
 0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
@@ -44,17 +45,13 @@ Resource Monitor Websitee: http://statrm.byu.edu/
 
 #Import libraries
 import glob
-from Python_Files.AlignmentMethods.ma_procrustes import MAprocr
-#from DIG import DIG
+from AlignmentMethods.ma_procrustes import MAprocr
 from mashspud import SPUD, MASH
-#from SPUD_Copy import SPUD_Copy
-from Python_Files.AlignmentMethods.ssma import ssma
-from nama import NAMA
-from Python_Files.AlignmentMethods.jlma import JLMA
-from Python_Files.AlignmentMethods.DTA_andres import DTA
+from AlignmentMethods.ssma import ssma
+from AlignmentMethods.jlma import JLMA
+from AlignmentMethods.DTA_andres import DTA
 import numpy as np
 import pandas as pd
-import Python_Files.Helpers.utils as utils
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.inspection import permutation_importance
@@ -65,12 +62,12 @@ import os
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import seaborn as sns
-import Python_Files.AlignmentMethods.MAGAN as MAGAN
+#import ..AlignmentMethods.MAGAN as MAGAN
 import timeit
-from Python_Files.Helpers.rfgap import RFGAP
-from Python_Files.AlignmentMethods.mali import MALI
+from Helpers.rfgap import RFGAP
+from AlignmentMethods.mali import MALI
 from scipy.spatial.distance import pdist, squareform
-from Python_Files.Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
+from Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
 
 #Simply, for my sanity
 import warnings

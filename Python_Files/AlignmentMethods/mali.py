@@ -5,11 +5,11 @@ from scipy.sparse.linalg import eigs, norm
 from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import MinMaxScaler
 import ot
-from vne import find_optimal_t
-from rfgap import RFGAP
+from Helpers.vne import find_optimal_t
+from Helpers.rfgap import RFGAP
 import scipy
 from icecream import ic
-from utils import col_normalize, row_normalize, label_impute
+from Helpers.utils import col_normalize, row_normalize, label_impute
 from loguru import logger
 
 # TODO: Set up for more than 2 blocks

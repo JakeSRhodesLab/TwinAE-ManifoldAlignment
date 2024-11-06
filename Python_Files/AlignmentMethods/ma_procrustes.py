@@ -3,7 +3,7 @@ import graphtools
 import numpy as np
 import scipy
 from sklearn.neighbors import NearestNeighbors
-import utils
+import Helpers.utils as utils
 
 
 

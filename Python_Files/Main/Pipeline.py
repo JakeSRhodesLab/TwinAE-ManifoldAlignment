@@ -1,20 +1,26 @@
 # Testing Pipeline 
-from Python_Files.Main.test_manifold_algorithms import test_manifold_algorithms as tma
+import test_manifold_algorithms as tma
 import numpy as np
 from mashspud import MASH, SPUD
 import os
 import json
 from joblib import Parallel, delayed
 import inspect
-from Python_Files.AlignmentMethods.jlma import JLMA
-from Python_Files.AlignmentMethods.DTA_andres import DTA
+from AlignmentMethods.jlma import JLMA
+from AlignmentMethods.DTA_andres import DTA
 from glob import glob
-from Python_Files.AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan
-from Python_Files.AlignmentMethods.ssma import ssma
-from Python_Files.AlignmentMethods.ma_procrustes import MAprocr
-from Python_Files.AlignmentMethods.mali import MALI
-from Python_Files.Helpers.regression_helpers import discretize_labels
+from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan
+from AlignmentMethods.ssma import ssma
+from AlignmentMethods.ma_procrustes import MAprocr
+from AlignmentMethods.mali import MALI
+from Helpers.regression_helpers import discretize_labels
+import logging
 
+#Start Logging:
+logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
+                     level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
+logger = logging.getLogger('Pipe')
+logger.warning(f"Test failed with parameters")
 
 # Set TensorFlow logging level
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -22,17 +28,6 @@ os.environ['MIN_LOG_LEVEL'] = '3'
 
 import warnings
 warnings.filterwarnings("ignore")
-
-
-"""To do:
->Test the force parameters method"""
-
-"""
-Idea Notes:
-parallelize the inner_function (computing the knn). Its less memory intensive, and so we only have to 
-load one dataset at a time. 
-
-"""
 
 def get_default_parameters(cls):
     signature = inspect.signature(cls.__init__)
@@ -259,6 +254,7 @@ class pipe():
 
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
+            logger.warning(f"Test failed with parameters: {test_parameters}. Why {e}")
             return (np.NaN, np.NaN)
             
         return f_score, c_score
@@ -436,6 +432,9 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
 
+        C_scores = {42 : best_c_score}
+        F_scores = {42 : best_f_score}
+
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
         if self.tma.split in ["random", "turn", "distort"]:
             #Delete the seed overide
@@ -455,5 +454,3 @@ class pipe():
             self.overide_defaults["random_state"] = self.seed  
 
         return best_fit, C_scores, F_scores
-
-        return best_fit, {self.seed : best_c_score}, {self.seed : best_f_score}

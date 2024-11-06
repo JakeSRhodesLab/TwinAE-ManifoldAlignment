@@ -6,7 +6,7 @@ os.environ['MIN_LOG_LEVEL'] = '3'
 
 import warnings
 warnings.filterwarnings("ignore")
-import Python_Files.Main.test_manifold_algorithms as tma
+import Main.test_manifold_algorithms as tma
 
 
 

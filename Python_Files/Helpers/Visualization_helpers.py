@@ -1,11 +1,10 @@
 # Visulization_Helper
 import seaborn as sns
-import Python_Files.Main.test_manifold_algorithms as tma
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from Python_Files.Helpers.utils import subset_df, plot_in_fig
+from Helpers.utils import subset_df, plot_in_fig
 
 
 #If there is no new data, we could just read in the old csvfile
@@ -19,6 +18,7 @@ rf_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldDat
 
 def create_DataFrames():
     """Uploads and creates dataframe files"""
+    import Main.test_manifold_algorithms as tma
 
     global df
     global og_df
