@@ -6,8 +6,8 @@ os.environ['MIN_LOG_LEVEL'] = '3'
 
 import warnings
 warnings.filterwarnings("ignore")
-import Main.test_manifold_algorithms as tma
-
+#import Main.test_manifold_algorithms as tma
+from Main.Pipeline import pipe
 
 
 # file_names = ["artificial_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
@@ -152,11 +152,11 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
 # pipe("MAGAN", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
 #      learning_rate = [0.1, 0.01, 0.001])
 
-# pipe("MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 # #We sorted out the overide methods between each of the spuds
 # pipe("SPUD", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,

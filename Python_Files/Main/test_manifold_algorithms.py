@@ -11,6 +11,7 @@ QUESTIONS:
 Changes Log: 
 1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
 2. Refactored the code repository to make better sense. Also so I can move forwards easier with the pipeline model. 
+3. Adding Logging to tell easier why tests fail
 
 TASKS:
 0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
@@ -65,6 +66,7 @@ import seaborn as sns
 #import ..AlignmentMethods.MAGAN as MAGAN
 import timeit
 from Helpers.rfgap import RFGAP
+import Helpers.utils as utils
 from AlignmentMethods.mali import MALI
 from scipy.spatial.distance import pdist, squareform
 from Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
@@ -392,13 +394,13 @@ class test_manifold_algorithms():
 
         #Read in file and seperate feautres and labels
         try: #Will fail if not there
-            df = pd.read_csv(CURR_DIR + "/CSV Files/" + csv_file)
+            df = pd.read_csv(os.getcwd() + "/Resources/Classification_CSV/" + csv_file)
             regression = False
         except:
             
             regression = True
             MANIFOLD_DATA_DIR = CURR_DIR + "/RegressionData/"
-            df = pd.read_csv(CURR_DIR + "/smaller_regression_datasets/" + csv_file)
+            df = pd.read_csv(os.getcwd() + "/Resources/Regression_CSV/" + csv_file)
 
         features, self.labels = utils.dataprep(df, label_col_idx=0)
         

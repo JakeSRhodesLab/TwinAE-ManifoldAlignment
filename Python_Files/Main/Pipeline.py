@@ -1,5 +1,5 @@
 # Testing Pipeline 
-import test_manifold_algorithms as tma
+from Main.test_manifold_algorithms import test_manifold_algorithms as tma
 import numpy as np
 from mashspud import MASH, SPUD
 import os
