@@ -13,14 +13,13 @@ from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan
 from AlignmentMethods.ssma import ssma
 from AlignmentMethods.ma_procrustes import MAprocr
 from AlignmentMethods.mali import MALI
-from Helpers.regression_helpers import discretize_labels
+from Helpers.regression_helpers import discretize_labels, get_RF_score
 import logging
 
 #Start Logging:
 logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
                      level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
 logger = logging.getLogger('Pipe')
-logger.warning(f"Test failed with parameters")
 
 # Set TensorFlow logging level
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -70,6 +69,7 @@ def get_mash_score_connected(self, tma, **kwargs):
     emb = tma.mds.fit_transform(self.int_diff_dist)
     c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
     f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
+    rf_score = get_RF_score(emb, tma.labels_doubled)
 
 
     if 'hold_out_anchors' in use_params:
@@ -77,10 +77,11 @@ def get_mash_score_connected(self, tma, **kwargs):
 
     print(f"MASH Parameters: {use_params}")
     print(f"                FOSCTTM {f_score}")
-    print(f"                CE Sore {c_score}")
+    print(f"                CE Score {c_score}")
+    print(f"                RF Scpre {rf_score}")
 
     #Return FOSCTTM score
-    return c_score, f_score
+    return c_score, f_score, rf_score
 
 def Rustad_fit(self, tma, anchor_amount):
     self.fit(tma.split_A, tma.split_B, tma.anchors[:anchor_amount])
@@ -244,9 +245,10 @@ class pipe():
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
 
-            # Cross Embedding Evaluation Metric
+            # Embedding Evaluation Metrics
             emb = tma.mds.fit_transform(self.method_data["Block"](method_class))
             c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
+            rf_score = get_RF_score(emb, tma.labels_doubled)
            
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
             print(f"                FOSCTTM {f_score}")
@@ -254,10 +256,10 @@ class pipe():
 
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
-            logger.warning(f"Test failed with parameters: {test_parameters}. Why {e}")
-            return (np.NaN, np.NaN)
+            logger.warning(f"Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {test_parameters}. Error: {e}")
+            return (np.NaN, np.NaN, np.NaN)
             
-        return f_score, c_score
+        return f_score, c_score, rf_score
 
     def run_tests(self, anchor_percent):
         """
@@ -267,6 +269,7 @@ class pipe():
         best_fit = {}
         best_f_score = np.NaN
         best_c_score = np.NaN
+        best_rf_score= np.NaN
 
         # Step 1: Test the KNN parameter first
         if self.method_data["KNN"]:
@@ -276,10 +279,11 @@ class pipe():
             self.get_parameter_std("knn", knn_results)
 
             # Process the results to find the best KNN value
-            for (f_score, c_score), (_, params) in zip(knn_results, knn_configs):
-                if np.isnan(best_c_score) or (c_score - f_score > best_c_score - best_f_score):
+            for (f_score, c_score, rf_score), (_, params) in zip(knn_results, knn_configs):
+                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
+                    best_rf_score = rf_score
                     best_fit["knn"] = params["knn"]
 
             print(f"----------------------------------------------->     Best KNN Value: {best_fit['knn']}")
@@ -297,10 +301,11 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (f_score, c_score), (_, params) in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (c_score - f_score > best_c_score - best_f_score):
+            for (f_score, c_score, rf_score), (_, params) in zip(param_results, param_configs):
+                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
+                    best_rf_score = rf_score
                     best_fit[parameter] = params[parameter]
                     is_default_best = False
 
@@ -316,6 +321,7 @@ class pipe():
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
+        RF_scores = {42 : best_rf_score}
 
         #Step 3: Repeat the process with different seeds
         if self.tma.split in ["random", "turn", "distort"]:
@@ -327,15 +333,16 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, rf_score), (_, params, _) in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
+                RF_scores[seed] = rf_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores
+        return best_fit, C_scores, F_scores, RF_scores
 
     def save_tests(self, anchor_percent):
 
@@ -354,9 +361,9 @@ class pipe():
             return True
         
         if self.method_data["Name"] == "MASH":
-            best_fit, c_score, f_score =self.run_MASH(anchor_percent, filename)
+            best_fit, c_score, f_score, rf_score =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score = self.run_tests(anchor_percent)
+            best_fit, c_score, f_score, rf_score = self.run_tests(anchor_percent)
 
 
         # Combine them into a single dictionary
@@ -368,6 +375,7 @@ class pipe():
             "Best_Params": best_fit,
             "CE": c_score,
             "FOSCTTM": f_score,
+            "Random Forrest": rf_score,
             "Parameter STD": self.param_std_dict
         }
 
@@ -404,6 +412,8 @@ class pipe():
         #Set score
         best_c_score = np.NaN
         best_f_score = np.NaN
+        best_rf_score = np.NaN
+
 
         for parameter, values in {"connection_limit": ["auto", 1000, 5000, None], "threshold" : [0.2, 0.5, 0.8, 1], "epochs" : [3, 10, 200]}.items():
             
@@ -419,10 +429,11 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (c_score, f_score), dictionary in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (c_score - f_score > best_c_score - best_f_score):
+            for (c_score, f_score, rf_score), dictionary in zip(param_results, param_configs):
+                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
+                    best_rf_score = rf_score
                     best_fit[parameter] = dictionary[parameter]
                     is_default_best = False
 
@@ -434,6 +445,7 @@ class pipe():
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
+        RF_scores = {42 : best_rf_score}
 
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
         if self.tma.split in ["random", "turn", "distort"]:
@@ -445,12 +457,13 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, rf_score), (_, params, _) in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
+                RF_scores[seed] = rf_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores
+        return best_fit, C_scores, F_scores, RF_scores
