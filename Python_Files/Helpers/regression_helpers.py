@@ -6,6 +6,7 @@ import os
 import numpy as np
 from Helpers.utils import subset_df, plot_in_fig
 import json
+from Helpers.rfgap import RFGAP
 
 def read_json_files_to_dataframe(directory_path):
     # List to store data from all JSON files
@@ -131,6 +132,7 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
 import numpy as np
 
 def discretize_labels(regression_labels):
+
     """
     Transforms regression labels into ten discrete labels.
     
@@ -153,3 +155,11 @@ def discretize_labels(regression_labels):
     discrete_labels = np.clip(discrete_labels, 0, 9)
     
     return discrete_labels
+
+def get_RF_score(emb, labels):
+    #Initilize Class
+    rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+
+    #Fit it for Data A and get proximities
+    rf_class.fit(emb, y = labels)
+    return rf_class.oob_score_
