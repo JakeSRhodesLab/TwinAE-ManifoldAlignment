@@ -152,8 +152,8 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
 # pipe("MAGAN", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
 #      learning_rate = [0.1, 0.01, 0.001])
 
-pipe("MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+# pipe("MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 pipe("MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])

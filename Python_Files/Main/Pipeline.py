@@ -1,20 +1,13 @@
 # Testing Pipeline 
 from Main.test_manifold_algorithms import test_manifold_algorithms as tma
 import numpy as np
-from mashspud import MASH, SPUD
 import os
 import json
 from joblib import Parallel, delayed
-import inspect
-from AlignmentMethods.jlma import JLMA
-from AlignmentMethods.DTA_andres import DTA
 from glob import glob
-from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan
-from AlignmentMethods.ssma import ssma
-from AlignmentMethods.ma_procrustes import MAprocr
-from AlignmentMethods.mali import MALI
-from Helpers.regression_helpers import discretize_labels, get_RF_score
 import logging
+from Helpers.Pipeline_Helpers import *
+
 
 #Start Logging:
 logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
@@ -27,131 +20,6 @@ os.environ['MIN_LOG_LEVEL'] = '3'
 
 import warnings
 warnings.filterwarnings("ignore")
-
-def get_default_parameters(cls):
-    signature = inspect.signature(cls.__init__)
-    defaults = {
-        param.name: param.default
-        for param in signature.parameters.values()
-        if param.default is not param.empty
-    }
-    return defaults
-
-def mash_foscttm(self):
-    #Get both directions
-    return np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
-
-def spud_foscttm(self):
-    #Get both directions
-    return np.mean([self.FOSCTTM(self.block[:self.len_A, self.len_A:]), self.FOSCTTM(self.block[self.len_A:, :self.len_A])])
-
-def jlma_foscttm(self):
-
-    len_A = len(self.X1)
-    block = self.SquareDist(self.Y)
-
-    return np.mean([tma.FOSCTTM(None, block[:len_A, len_A:]), tma.FOSCTTM(None, block[len_A:, :len_A])])
-
-def get_mash_score_connected(self, tma, **kwargs):
-    import copy
-
-    use_params = {}
-    for key in kwargs.keys():
-        if key in ["epochs", "threshold", "connection_limit", "hold_out_anchors"]:
-            use_params[key] = kwargs[key]
-
-
-    #We need to copy the class as it get changed and will be parralized
-    self = copy.deepcopy(self)
-    self.optimize_by_creating_connections(**use_params)
-
-    # Cross Embedding Evaluation Metric
-    emb = tma.mds.fit_transform(self.int_diff_dist)
-    c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
-    f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
-    rf_score = get_RF_score(emb, tma.labels_doubled)
-
-
-    if 'hold_out_anchors' in use_params:
-        del use_params['hold_out_anchors']
-
-    print(f"MASH Parameters: {use_params}")
-    print(f"                FOSCTTM {f_score}")
-    print(f"                CE Score {c_score}")
-    print(f"                RF Scpre {rf_score}")
-
-    #Return FOSCTTM score
-    return c_score, f_score, rf_score
-
-def Rustad_fit(self, tma, anchor_amount):
-    self.fit(tma.split_A, tma.split_B, tma.anchors[:anchor_amount])
-    return self
-
-def Andres_fit(self, tma, anchor_amount):
-    #Reformat the anchors 
-    sharedD1 = tma.split_A[tma.anchors[:anchor_amount].T[0]] 
-    sharedD2 = tma.split_B[tma.anchors[:anchor_amount].T[1]]
-    labelsh1 = tma.labels[tma.anchors[:anchor_amount].T[0]]
-    
-    #We only need to overide the labels once otherwise it will mess up the CE score
-    if len(tma.labels) != (len(labelsh1) + len(tma.split_A)):
-        tma.labels = np.concatenate((tma.labels, labelsh1))
-
-    self.fit(tma.split_A, tma.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
-
-    return self
-
-def MAGAN_fit(self, tma, anchor_amount):
-
-    #Fit, and initilize model
-    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, tma.anchors[:anchor_amount], self.learning_rate)
-
-    #Reshape the domains
-    domain_a, domain_b = get_pure_distance(domain_a, domain_b)
-    domain_ab, domain_ba = get_pure_distance(domain_ab, domain_ba)
-    
-    #Return a different thing back to calculate FOSCTTM and CE
-    return [domain_a, domain_b, domain_ab, domain_ba]
-
-def get_MAGAN_block(block_pieces):
-    #Return the block
-    return np.block([[block_pieces[0], block_pieces[3]], [block_pieces[3], block_pieces[1]]])
-
-def magan_foscttm(block_pieces):
-    return np.mean((tma.FOSCTTM(None, block_pieces[2]), tma.FOSCTTM(None, block_pieces[3])))
-
-def pcr_foscttm(self):
-    len_A = int(self.W.shape[0]/2)
-                    
-    return np.mean([tma.FOSCTTM(None, 1 - self.W[len_A:, :len_A]), 
-                       tma.FOSCTTM(None, 1 - self.W[:len_A, len_A:])])
-
-def fit_with_labels(self, tma, anchor_amount):
-    labels = discretize_labels(tma.labels)
-
-    self.fit((tma.split_A, tma.split_B), (labels, labels))
-
-    return self
-
-#Create dictionaries for the different classes
-method_dict = {
-     "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
-     "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
-     "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
-     "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : False,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
-     
-     #NOTE: adopted fit below
-     "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True,   "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit},
-     "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True,   "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
-     "PCR" : {"Name": "PCR", "Model": MAprocr, "KNN" : True,   "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
-
-     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False,   "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
-     "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True,   "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
-     
-     "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
-
-
- }
 
 class pipe():
     """
@@ -188,9 +56,6 @@ class pipe():
         #Involve random state
         self.overide_defaults["random_state"] = self.seed  
 
-
-        #Preform tests
-
         #Loop for each split
         for split in splits:
             
@@ -218,9 +83,9 @@ class pipe():
         if self.method_data["Name"] not in ["MASH-", "MASH", "SPUD", "NAMA"]:
             return False #We don't need to run this
         
-        #Get the combined score of F_score and C_score
+        #Get the combined score of F_score and C_score and RF_score and KNN_score
         results = np.array(results)
-        results = results[:, 1] - results[:, 0] 
+        results = results[:, 1] - results[:, 0] + results[:, 2] + results[:, 3]
 
         #Save the std
         self.param_std_dict[parameter] = np.std(results)
@@ -249,17 +114,22 @@ class pipe():
             emb = tma.mds.fit_transform(self.method_data["Block"](method_class))
             c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
             rf_score = get_RF_score(emb, tma.labels_doubled)
+            knn_score = get_KNN_score(emb, tma.labels_doubled)
            
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
             print(f"                FOSCTTM {f_score}")
-            print(f"                CE Sore {c_score}")
+            print(f"                CE Score {c_score}")
+            print(f"                RF Score {rf_score}")
+            print(f"                KNN Score {knn_score}\n")
+
+
 
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
             logger.warning(f"Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {test_parameters}. Error: {e}")
             return (np.NaN, np.NaN, np.NaN)
             
-        return f_score, c_score, rf_score
+        return f_score, c_score, rf_score, knn_score
 
     def run_tests(self, anchor_percent):
         """
@@ -270,6 +140,7 @@ class pipe():
         best_f_score = np.NaN
         best_c_score = np.NaN
         best_rf_score= np.NaN
+        best_knn_score = np.NaN
 
         # Step 1: Test the KNN parameter first
         if self.method_data["KNN"]:
@@ -279,11 +150,12 @@ class pipe():
             self.get_parameter_std("knn", knn_results)
 
             # Process the results to find the best KNN value
-            for (f_score, c_score, rf_score), (_, params) in zip(knn_results, knn_configs):
-                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
+            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(knn_results, knn_configs):
+                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
                     best_rf_score = rf_score
+                    best_knn_score = knn_score
                     best_fit["knn"] = params["knn"]
 
             print(f"----------------------------------------------->     Best KNN Value: {best_fit['knn']}")
@@ -301,11 +173,12 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (f_score, c_score, rf_score), (_, params) in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
+            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(knn_results, knn_configs):
+                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score): #Simply comparing if all of them together is better
                     best_f_score = f_score
                     best_c_score = c_score
                     best_rf_score = rf_score
+                    best_knn_score = knn_score
                     best_fit[parameter] = params[parameter]
                     is_default_best = False
 
@@ -318,10 +191,15 @@ class pipe():
         print(f"\n------> Best Parameters: {best_fit}")
         print(f"------------------> Best CE score {best_c_score}")
         print(f"-----------------------------> Best FOSCTTM score {best_f_score}")
+        print(f"----------------------------------------> Best Random Forest score {best_rf_score}")
+        print(f"---------------------------------------------------> Best Nearest Neighbor score {best_knn_score}")
+
+
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
         RF_scores = {42 : best_rf_score}
+        KNN_scores = {42 : best_knn_score}
 
         #Step 3: Repeat the process with different seeds
         if self.tma.split in ["random", "turn", "distort"]:
@@ -333,16 +211,17 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score, rf_score), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, rf_score, knn_score), (_, params, _) in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
                 RF_scores[seed] = rf_score
+                KNN_scores[seed] = knn_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_scores
+        return best_fit, C_scores, F_scores, RF_scores, KNN_scores
 
     def save_tests(self, anchor_percent):
 
@@ -361,9 +240,9 @@ class pipe():
             return True
         
         if self.method_data["Name"] == "MASH":
-            best_fit, c_score, f_score, rf_score =self.run_MASH(anchor_percent, filename)
+            best_fit, c_score, f_score, rf_score, knn_score =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score, rf_score = self.run_tests(anchor_percent)
+            best_fit, c_score, f_score, rf_score, knn_score = self.run_tests(anchor_percent)
 
 
         # Combine them into a single dictionary
@@ -376,6 +255,7 @@ class pipe():
             "CE": c_score,
             "FOSCTTM": f_score,
             "Random Forrest": rf_score,
+            "Nearest Neighbor": knn_score,
             "Parameter STD": self.param_std_dict
         }
 
@@ -413,6 +293,7 @@ class pipe():
         best_c_score = np.NaN
         best_f_score = np.NaN
         best_rf_score = np.NaN
+        best_knn_score = np.NaN
 
 
         for parameter, values in {"connection_limit": ["auto", 1000, 5000, None], "threshold" : [0.2, 0.5, 0.8, 1], "epochs" : [3, 10, 200]}.items():
@@ -429,11 +310,12 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (c_score, f_score, rf_score), dictionary in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (rf_score + c_score - f_score > best_rf_score + best_c_score - best_f_score):
+            for (c_score, f_score, rf_score, knn_score), dictionary in zip(param_results, param_configs):
+                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
                     best_rf_score = rf_score
+                    best_knn_score = knn_score
                     best_fit[parameter] = dictionary[parameter]
                     is_default_best = False
 
@@ -446,6 +328,7 @@ class pipe():
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
         RF_scores = {42 : best_rf_score}
+        KNN_scores = {42 : best_knn_score}
 
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
         if self.tma.split in ["random", "turn", "distort"]:
@@ -453,17 +336,19 @@ class pipe():
             self.overide_defaults.pop("random_state")
 
             #Get all the text cases except when it equals the default
-            param_configs = [(anchor_percent, {**best_fit, "random_state": value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
-            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(ap, params, tma) for ap, params, tma in param_configs)
+            param_configs = [{**best_fit, "hold_out_anchors" : np.array(self.tma.anchors[:int(len(self.tma.anchors) * anchor_percent)]), "random_state": value} for value in [1738, 5271, 9209, 1316]]
+            tma_configs = [tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0) for value in [1738, 5271, 9209, 1316]]
+            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, tma, **params) for params, tma in zip(param_configs, tma_configs))
 
             # Add the results
-            for (f_score, c_score, rf_score), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, rf_score, knn_score), params in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
                 RF_scores[seed] = rf_score
+                KNN_scores[seed] = knn_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_scores
+        return best_fit, C_scores, F_scores, RF_scores, KNN_scores

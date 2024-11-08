@@ -6,14 +6,22 @@ QUESTIONS:
 2. See if we can replace MDS with PCA and not miss out on accuracy. 
 3. Other demonsionaltiy reduction methods (use of PHATE?/ OThers) 
 4. Find out how much setting n_pca can speed up the process. 
+5. Should I be including RF_gap in MASHSPUD package? I will need that file, but it feels out of place
+6. I am using the new RF score to judge whether or not it is the best alignment. Does this make sense? Or should I leave it out?
 
 
 Changes Log: 
 1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
 2. Refactored the code repository to make better sense. Also so I can move forwards easier with the pipeline model. 
 3. Adding Logging to tell easier why tests fail
+4. Added ability to get the rf_score oob to MASH and SPUD
+5. Added KNN on embedding and RF score on Embeddings
 
 TASKS:
+-1. Check non_zero_diagonal should be False when you create the similarity measure for RF GAP
+-0.5 Test that the rf score returns
+-0.2 Test that the rf score higher is better or lower is better
+
 0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
 0.5 Add logging to crashes
 1. Run regression tests
@@ -76,16 +84,11 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 import tensorflow as tf
-
-# Set TensorFlow logging level
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('ERROR')
 
-#Logic to ensure the right directory is alway`s used /yunity/arusty/Graph-Manifold-Alignment/Python_Files
-if os.getcwd()[-12:] == "Python_Files":
-    CURR_DIR = os.getcwd()[:-13] + "/Results"
-else:
-    CURR_DIR = os.getcwd() + "/Results"
+CURR_DIR = "/yunity/arusty/Graph-Manifold-Alignment/Results"
+
 #Directory Constant
 MANIFOLD_DATA_DIR = CURR_DIR + "/ManifoldData/"
 
