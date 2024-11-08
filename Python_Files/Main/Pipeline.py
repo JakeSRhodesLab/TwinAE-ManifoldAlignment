@@ -127,7 +127,7 @@ class pipe():
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
             logger.warning(f"Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {test_parameters}. Error: {e}")
-            return (np.NaN, np.NaN, np.NaN)
+            return (np.NaN, np.NaN, np.NaN, np.NaN)
             
         return f_score, c_score, rf_score, knn_score
 

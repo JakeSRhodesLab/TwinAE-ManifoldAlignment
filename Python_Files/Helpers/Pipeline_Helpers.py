@@ -88,36 +88,49 @@ def jlma_foscttm(self):
 
 def get_mash_score_connected(self, tma, **kwargs):
     import copy
+    import logging
 
-    use_params = {}
-    for key in kwargs.keys():
-        if key in ["epochs", "threshold", "connection_limit", "hold_out_anchors"]:
-            use_params[key] = kwargs[key]
+    #Start Logging:
+    logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
+                        level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
+    logger = logging.getLogger('Pipe')
 
-
-    #We need to copy the class as it get changed and will be parralized
-    self = copy.deepcopy(self)
-    self.optimize_by_creating_connections(**use_params)
-
-    # Cross Embedding Evaluation Metric
-    emb = tma.mds.fit_transform(self.int_diff_dist)
-    c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
-    f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
-    rf_score = get_RF_score(emb, tma.labels_doubled)
-    knn_score = get_KNN_score(emb, tma.labels_doubled)
+    try:
+        use_params = {}
+        for key in kwargs.keys():
+            if key in ["epochs", "threshold", "connection_limit", "hold_out_anchors"]:
+                use_params[key] = kwargs[key]
 
 
-    if 'hold_out_anchors' in use_params:
-        del use_params['hold_out_anchors']
+        #We need to copy the class as it get changed and will be parralized
+        self = copy.deepcopy(self)
+        self.optimize_by_creating_connections(**use_params)
 
-    print(f"MASH Parameters: {use_params}")
-    print(f"                FOSCTTM {f_score}")
-    print(f"                CE Score {c_score}")
-    print(f"                RF Score {rf_score}")
-    print(f"                KNN Score {knn_score}")
+        # Cross Embedding Evaluation Metric
+        emb = tma.mds.fit_transform(self.int_diff_dist)
+        c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
+        f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
+        rf_score = get_RF_score(emb, tma.labels_doubled)
+        knn_score = get_KNN_score(emb, tma.labels_doubled)
 
-    #Return FOSCTTM score
-    return c_score, f_score, rf_score, knn_score
+
+        if 'hold_out_anchors' in use_params:
+            del use_params['hold_out_anchors']
+
+        print(f"MASH Parameters: {use_params}")
+        print(f"                FOSCTTM {f_score}")
+        print(f"                CE Score {c_score}")
+        print(f"                RF Score {rf_score}")
+        print(f"                KNN Score {knn_score}")
+
+        #Return FOSCTTM score
+        return c_score, f_score, rf_score, knn_score
+    
+    except Exception as e:
+        print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
+        logger.warning(f"Name: {self.method_data['Name']}. CSV: {tma.csv_file}. Parameters: {kwargs}. Error: {e}")
+        return (np.NaN, np.NaN, np.NaN, np.NaN)
+
 
 def Rustad_fit(self, tma, anchor_amount):
     self.fit(tma.split_A, tma.split_B, tma.anchors[:anchor_amount])
