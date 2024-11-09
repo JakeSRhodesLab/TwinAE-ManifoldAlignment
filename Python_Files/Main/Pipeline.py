@@ -173,7 +173,7 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(knn_results, knn_configs):
+            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(param_results, param_configs):
                 if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score): #Simply comparing if all of them together is better
                     best_f_score = f_score
                     best_c_score = c_score

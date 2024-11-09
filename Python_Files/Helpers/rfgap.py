@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from sklearn.preprocessing import normalize
 
 #sklearn imports
 from sklearn.ensemble import RandomForestClassifier
