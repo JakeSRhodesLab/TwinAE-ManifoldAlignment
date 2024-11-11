@@ -137,7 +137,6 @@ class pipe():
 
         return rf_oob_score, knn_score
 
-
     def run_tests(self, anchor_percent):
         """
         Run tests over all parameter combinations and find the best ones.
@@ -256,6 +255,10 @@ class pipe():
         else:
             best_fit, c_score, f_score, rf_oob_score, knn_score = self.run_tests(anchor_percent)
 
+        #Ensure the validation scores are not cheating when using RF methods by ensure no labels used twice
+        if self.method_data["Name"][:2] == "RF":
+            rf_base_score, knn_score = self.get_validation_scores_RF_similarity(best_fit) #Do we even want to get the KNN_score when we used the labels?
+
 
         # Combine them into a single dictionary
         combined_data = {
@@ -364,3 +367,7 @@ class pipe():
             self.overide_defaults["random_state"] = self.seed  
 
         return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores
+    
+    def get_validation_scores_RF_similarity(best_fit):
+        """ We will need a special embedding formation, and keep track of the labels and things. """
+        return None, None
