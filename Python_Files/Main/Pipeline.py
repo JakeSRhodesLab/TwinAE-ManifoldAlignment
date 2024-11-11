@@ -80,12 +80,13 @@ class pipe():
         """Finds the std from within the differing parameter tests"""
 
         #Only save results for our own methods
-        if self.method_data["Name"] not in ["MASH-", "MASH", "SPUD", "NAMA"]:
+        if self.method_data["Name"] not in ["MASH-", "MASH", "SPUD", "NAMA", "RF-MASH-", "RF-MASH"]:
             return False #We don't need to run this
         
-        #Get the combined score of F_score and C_score and RF_score and KNN_score
-        results = np.array(results)
-        results = results[:, 1] - results[:, 0] + results[:, 2] + results[:, 3]
+        result_new = np.array([result[:2] for result in results])
+        
+        #Get the combined score of F_score and C_score
+        results = result_new[:, 1] - result_new[:, 0]
 
         #Save the std
         self.param_std_dict[parameter] = np.std(results)
@@ -113,23 +114,29 @@ class pipe():
             # Embedding Evaluation Metrics
             emb = tma.mds.fit_transform(self.method_data["Block"](method_class))
             c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
-            rf_score = get_RF_score(emb, tma.labels_doubled)
-            knn_score = get_KNN_score(emb, tma.labels_doubled)
-           
+
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
             print(f"                FOSCTTM {f_score}")
             print(f"                CE Score {c_score}")
-            print(f"                RF Score {rf_score}")
-            print(f"                KNN Score {knn_score}\n")
 
-
+            
+            return f_score, c_score, emb
 
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
             logger.warning(f"Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {test_parameters}. Error: {e}")
             return (np.NaN, np.NaN, np.NaN, np.NaN)
             
-        return f_score, c_score, rf_score, knn_score
+    def get_validation_scores(self, emb, tma):
+
+        rf_oob_score = get_RF_score(emb, tma.labels_doubled)
+        knn_score = get_KNN_score(emb, tma.labels_doubled)
+
+        print(f"                Random Forest out of bag score {rf_oob_score}")
+        print(f"                CE Score {knn_score}")
+
+        return rf_oob_score, knn_score
+
 
     def run_tests(self, anchor_percent):
         """
@@ -139,7 +146,7 @@ class pipe():
         best_fit = {}
         best_f_score = np.NaN
         best_c_score = np.NaN
-        best_rf_score= np.NaN
+        best_rf_oob_score= np.NaN
         best_knn_score = np.NaN
 
         # Step 1: Test the KNN parameter first
@@ -150,18 +157,23 @@ class pipe():
             self.get_parameter_std("knn", knn_results)
 
             # Process the results to find the best KNN value
-            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(knn_results, knn_configs):
-                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score):
+            for (f_score, c_score, emb), (_, params) in zip(knn_results, knn_configs):
+                if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
-                    best_rf_score = rf_score
-                    best_knn_score = knn_score
                     best_fit["knn"] = params["knn"]
+                    best_emb = emb
+
 
             print(f"----------------------------------------------->     Best KNN Value: {best_fit['knn']}")
 
         # Step 2: Sequentially test other parameters, while using the best KNN value found
-        for parameter, values in self.parameters.items():
+        for i, (parameter, values) in enumerate(self.parameters.items()):
+            # Check if it's the last iteration
+            if i == len(self.parameters) - 1:
+                last_iteration = True
+            else:
+                last_iteration = False
 
             #Create flag for default being the best
             is_default_best = True
@@ -173,32 +185,33 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (f_score, c_score, rf_score, knn_score), (_, params) in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score): #Simply comparing if all of them together is better
+            for (f_score, c_score, emb), (_, params) in zip(param_results, param_configs):
+                if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score): #Simply comparing if all of them together is better
                     best_f_score = f_score
                     best_c_score = c_score
-                    best_rf_score = rf_score
-                    best_knn_score = knn_score
                     best_fit[parameter] = params[parameter]
                     is_default_best = False
+                    best_emb = emb
 
             #Set best_fit to default if necessary
             if is_default_best:
                 best_fit[parameter] = self.defaults[parameter]
+                best_emb = emb
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
                 
+        best_rf_oob_score, best_knn_score = self.get_validation_scores(best_emb, self.tma)
+
         print(f"\n------> Best Parameters: {best_fit}")
         print(f"------------------> Best CE score {best_c_score}")
         print(f"-----------------------------> Best FOSCTTM score {best_f_score}")
-        print(f"----------------------------------------> Best Random Forest score {best_rf_score}")
+        print(f"----------------------------------------> Best Random Forest score {best_rf_oob_score}")
         print(f"---------------------------------------------------> Best Nearest Neighbor score {best_knn_score}")
-
 
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
-        RF_scores = {42 : best_rf_score}
+        RF_oob_score = {42 : best_rf_oob_score}
         KNN_scores = {42 : best_knn_score}
 
         #Step 3: Repeat the process with different seeds
@@ -211,17 +224,16 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score, rf_score, knn_score), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, emb), (_, params, _) in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
-                RF_scores[seed] = rf_score
-                KNN_scores[seed] = knn_score
+                RF_oob_score[seed], KNN_scores[seed] = self.get_validation_scores(emb, self.tma)
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_scores, KNN_scores
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores
 
     def save_tests(self, anchor_percent):
 
@@ -239,10 +251,10 @@ class pipe():
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
-        if self.method_data["Name"] == "MASH":
-            best_fit, c_score, f_score, rf_score, knn_score =self.run_MASH(anchor_percent, filename)
+        if self.method_data["Name"] in ["MASH", "RF-MASH"]:
+            best_fit, c_score, f_score, rf_oob_score, knn_score =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score, rf_score, knn_score = self.run_tests(anchor_percent)
+            best_fit, c_score, f_score, rf_oob_score, knn_score = self.run_tests(anchor_percent)
 
 
         # Combine them into a single dictionary
@@ -254,7 +266,7 @@ class pipe():
             "Best_Params": best_fit,
             "CE": c_score,
             "FOSCTTM": f_score,
-            "Random Forrest": rf_score,
+            "Random Forrest": rf_oob_score,
             "Nearest Neighbor": knn_score,
             "Parameter STD": self.param_std_dict
         }
@@ -292,7 +304,7 @@ class pipe():
         #Set score
         best_c_score = np.NaN
         best_f_score = np.NaN
-        best_rf_score = np.NaN
+        best_rf_oob_score = np.NaN
         best_knn_score = np.NaN
 
 
@@ -310,11 +322,11 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (c_score, f_score, rf_score, knn_score), dictionary in zip(param_results, param_configs):
-                if np.isnan(best_c_score) or (rf_score + knn_score + c_score - f_score > best_rf_score + best_knn_score + best_c_score - best_f_score):
+            for (c_score, f_score, rf_oob_score, knn_score), dictionary in zip(param_results, param_configs):
+                if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
-                    best_rf_score = rf_score
+                    best_rf_oob_score = rf_oob_score
                     best_knn_score = knn_score
                     best_fit[parameter] = dictionary[parameter]
                     is_default_best = False
@@ -327,7 +339,7 @@ class pipe():
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
-        RF_scores = {42 : best_rf_score}
+        RF_oob_score = {42 : best_rf_oob_score}
         KNN_scores = {42 : best_knn_score}
 
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
@@ -341,14 +353,14 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, tma, **params) for params, tma in zip(param_configs, tma_configs))
 
             # Add the results
-            for (f_score, c_score, rf_score, knn_score), params in zip(param_results, param_configs):
+            for (f_score, c_score, rf_oob_score, knn_score), params in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
-                RF_scores[seed] = rf_score
+                RF_oob_score[seed] = rf_oob_score
                 KNN_scores[seed] = knn_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_scores, KNN_scores
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores

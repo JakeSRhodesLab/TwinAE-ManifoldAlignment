@@ -10,6 +10,7 @@ from AlignmentMethods.ma_procrustes import MAprocr
 from AlignmentMethods.mali import MALI
 from AlignmentMethods.DTA_andres import DTA
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.model_selection import train_test_split
 
 
 def discretize_labels(regression_labels):
@@ -40,9 +41,9 @@ def discretize_labels(regression_labels):
 def get_RF_score(emb, labels):
 
     if np.issubdtype(labels.dtype, np.integer):
-        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True)
     else:
-        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True)
         
     #Fit it for Data A and get proximities
     rf_class.fit(emb, y = labels)
@@ -59,8 +60,10 @@ def get_KNN_score(emb, labels):
     else:
         model = KNeighborsRegressor(n_neighbors = knn)
 
-    model.fit(emb, labels)
-    return model.score(emb, labels)
+    X_train, X_test, y_train, y_test = train_test_split(emb, labels, test_size=0.2, random_state=42)
+
+    model.fit(X_train, y_train)
+    return model.score(X_test, y_test)
 
 def get_default_parameters(cls):
     signature = inspect.signature(cls.__init__)
@@ -131,9 +134,54 @@ def get_mash_score_connected(self, tma, **kwargs):
         logger.warning(f"Name: {self.method_data['Name']}. CSV: {tma.csv_file}. Parameters: {kwargs}. Error: {e}")
         return (np.NaN, np.NaN, np.NaN, np.NaN)
 
-
 def Rustad_fit(self, tma, anchor_amount):
     self.fit(tma.split_A, tma.split_B, tma.anchors[:anchor_amount])
+    return self
+
+def get_rf_proximites(self, tuple):
+    """Creates RF proximities similarities
+    
+        tuple should be a tuple with position 0 being the data and position 1 being the labels"""
+    
+    if np.issubdtype(np.array(tuple[1]).dtype, np.integer):
+        rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+    else:
+        rf_class = RFGAP(prediction_type="regression", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        
+    #Fit it for Data A
+    rf_class.fit(tuple[0], y = tuple[1])
+
+    #Get promities
+    dataA = rf_class.get_proximities()
+
+    #Reset len_A and other varables
+    if self.len_A == 2:
+        self.len_A = len(tuple[0]) 
+
+        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+    elif self.len_B == 2:
+        self.len_B = len(tuple[0])
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(dataA[~np.isinf(dataA)]) != 0:
+
+      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+
+    #Reset inf values
+    dataA[np.isinf(dataA)] = 1
+
+    return 1 - dataA
+
+def Rhodes_fit(self, tma, anchor_amount):
+    """RF Gap Fit for the methods"""
+
+    #Reset these variables
+    self.distance_measure_A = get_rf_proximites
+    self.distance_measure_B = get_rf_proximites
+
+    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=tma.anchors[:int(len(tma.anchors) * anchor_amount)])
     return self
 
 def Andres_fit(self, tma, anchor_amount):
@@ -184,11 +232,19 @@ def fit_with_labels(self, tma, anchor_amount):
 
 #Create dictionaries for the different classes
 method_dict = {
+     #Default
      "MASH-" : {"Name": "MASH-", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
      "MASH" : {"Name": "MASH", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rustad_fit},
      "SPUD" : {"Name": "SPUD", "Model": SPUD, "KNN" : True,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
      "NAMA" : {"Name": "NAMA", "Model": SPUD, "KNN" : False,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rustad_fit},
      
+     #RFGAP
+     "RF-MASH-" : {"Name": "RF-MASH-", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rhodes_fit},
+     "RF-MASH" : {"Name": "RF-MASH", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rhodes_fit},
+     "RF-SPUD" : {"Name": "RF-SPUD", "Model": SPUD, "KNN" : True,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rhodes_fit},
+     "RF-NAMA" : {"Name": "RF-NAMA", "Model": SPUD, "KNN" : False,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rhodes_fit},
+     
+
      #NOTE: adopted fit below
      "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True,   "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit},
      "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True,   "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},

@@ -2,11 +2,6 @@
 
 """
 QUESTIONS:
-1. Speed issues: 1. See if we can parrelize MDS for faster results. 
-2. See if we can replace MDS with PCA and not miss out on accuracy. 
-3. Other demonsionaltiy reduction methods (use of PHATE?/ OThers) 
-4. Find out how much setting n_pca can speed up the process. 
-5. Should I be including RF_gap in MASHSPUD package? I will need that file, but it feels out of place
 6. I am using the new RF score to judge whether or not it is the best alignment. Does this make sense? Or should I leave it out?
 
 
@@ -16,18 +11,22 @@ Changes Log:
 3. Adding Logging to tell easier why tests fail
 4. Added ability to get the rf_score oob to MASH and SPUD
 5. Added KNN on embedding and RF score on Embeddings
+6. Updated it to save more efficiently when running pipeline
+7. Added the ability to test RF methods
+8. Updated the KNN scores to use train test splits so they aren't techniquecally cheating anymore. 
+9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
+
 
 TASKS:
--1. Check non_zero_diagonal should be False when you create the similarity measure for RF GAP
--0.5 Test that the rf score returns
--0.2 Test that the rf score higher is better or lower is better
+-2: We want oob rf results, rf test results, and knn test results
 
 0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
-0.5 Add logging to crashes
 1. Run regression tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 5. Ability to create confusion matrix with the CE score
 6. See if I can parrelize MDS / PCA?
+7. Set n_pca default to eqaul 100
+8. Compare and contrast the scores for PCA and MDS and also ISOMAP (probably not faster) and UMAP (Really fast potentially)
 
 MORE TASKS
 1. MD things
@@ -39,6 +38,7 @@ If time things:
 8. Add in the other way Marshall asked to be able to format anchors
 9. Compare the different method parameters within SPUD with plot_in_fig
 10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
+11. Shared embedding bottle neck nueral networks to extend points the embedding was not trained on. 
 
 Ideas:
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
@@ -99,7 +99,7 @@ def use_rf_proximities(self, tuple):
     
         tuple should be a tuple with position 0 being the data and position 1 being the labels"""
     #Initilize Class
-    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
 
     #Fit it for Data A
     rf_class.fit(tuple[0], y = tuple[1])
@@ -397,13 +397,13 @@ class test_manifold_algorithms():
 
         #Read in file and seperate feautres and labels
         try: #Will fail if not there
-            df = pd.read_csv(os.getcwd() + "/Resources/Classification_CSV/" + csv_file)
+            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Classification_CSV/" + csv_file)
             regression = False
         except:
             
             regression = True
             MANIFOLD_DATA_DIR = CURR_DIR + "/RegressionData/"
-            df = pd.read_csv(os.getcwd() + "/Resources/Regression_CSV/" + csv_file)
+            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
 
         features, self.labels = utils.dataprep(df, label_col_idx=0)
         
@@ -558,7 +558,7 @@ class test_manifold_algorithms():
                                 print("            Using NAMA approach.")
                                 similarity_measure = "NAMA"
                             else:
-                                similarity_measure = "default"
+                                similarity_measure = "distances"
 
                             #Create the class with all the arguments
                             spud_class = SPUD(knn = knn, agg_method = agg_method, OD_method = OD_method, distance_measure_A = use_rf_proximities, distance_measure_B = use_rf_proximities, overide_method = similarity_measure, n_pca = 100) #self.split_A, self.split_B, known_anchors=self.anchors[:int(len(self.anchors) * anchor_percent)]
