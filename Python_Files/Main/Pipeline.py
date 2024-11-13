@@ -8,6 +8,10 @@ from glob import glob
 import logging
 from Helpers.Pipeline_Helpers import *
 
+"""
+Return to editing MASH with the get_calidation scores
+-> I think this file could be simplified more
+"""
 
 #Start Logging:
 logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
@@ -102,11 +106,11 @@ class pipe():
         if tma is None:
             tma = self.tma
 
-        anchor_amount = int(len(tma.anchors) * anchor_percent)       
+        anchors = self.tma.anchors[:int(len(tma.anchors) * anchor_percent)]       
 
         try:
             method_class = self.method_data["Model"](**self.overide_defaults, **test_parameters)
-            method_class = self.method_data["Fit"](method_class, tma, anchor_amount) #This usually just returns self, except with MAGAN
+            method_class = self.method_data["Fit"](method_class, tma, anchors) #This usually just returns self, except with MAGAN
 
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
@@ -125,17 +129,42 @@ class pipe():
         except Exception as e:
             print(f"<><><>      Tests failed for: {test_parameters}. Why {e}        <><><>")
             logger.warning(f"Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {test_parameters}. Error: {e}")
-            return (np.NaN, np.NaN, np.NaN, np.NaN)
+            return (np.NaN, np.NaN, np.NaN)
             
-    def get_validation_scores(self, emb, tma):
+    def get_validation_scores(self, emb, tma, seed, best_fit):
 
-        rf_oob_score = get_RF_score(emb, tma.labels_doubled)
-        knn_score = get_KNN_score(emb, tma.labels_doubled)
+        rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
 
-        print(f"                Random Forest out of bag score {rf_oob_score}")
+        if self.method_data["Name"][:2] == "RF":
+
+            #To avoid using the data on the text and Train, we will need to split it
+            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
+            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
+
+            #Create model
+            rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+
+            #Fit it. Should work for all that can use the Rhodes Test Fit Model
+            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), tma.anchors[:tma.len_A* tma.percent_of_anchors[0]]) #This works because we garuntee the tests are the same size
+
+            emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
+        
+        else:
+            #We want to test 80/20 still, but it doesn't matter which part because we didn't use any labels this time
+            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(emb[:int(len(emb)/2)], tma.labels, test_size=0.2, random_state=seed)
+            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[int(len(emb)/2):], tma.labels, test_size=0.2, random_state=seed)
+            
+            #Resticth the embedding 
+            emb = np.hstack((X_A_train, X_A_test, X_B_train, X_B_test))
+
+        #Get scores
+        knn_score, rf_score = get_KNN_and_RF_score(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
+        
         print(f"                CE Score {knn_score}")
+        print(f"                RF on embedding Score {rf_score}")
+        print(f"                Random Forest out of bag score {rf_oob_score}")
 
-        return rf_oob_score, knn_score
+        return rf_oob_score, knn_score, rf_score
 
     def run_tests(self, anchor_percent):
         """
@@ -199,7 +228,7 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
                 
-        best_rf_oob_score, best_knn_score = self.get_validation_scores(best_emb, self.tma)
+        best_rf_oob_score, best_knn_score, best_rf_score = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
 
         print(f"\n------> Best Parameters: {best_fit}")
         print(f"------------------> Best CE score {best_c_score}")
@@ -212,6 +241,7 @@ class pipe():
         F_scores = {42 : best_f_score}
         RF_oob_score = {42 : best_rf_oob_score}
         KNN_scores = {42 : best_knn_score}
+        RF_score = {42: best_rf_score}
 
         #Step 3: Repeat the process with different seeds
         if self.tma.split in ["random", "turn", "distort"]:
@@ -227,12 +257,12 @@ class pipe():
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
-                RF_oob_score[seed], KNN_scores[seed] = self.get_validation_scores(emb, self.tma)
+                RF_oob_score[seed], KNN_scores[seed], RF_score[seed] = self.get_validation_scores(emb, self.tma, seed, best_fit)
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score
 
     def save_tests(self, anchor_percent):
 
@@ -251,14 +281,9 @@ class pipe():
             return True
         
         if self.method_data["Name"] in ["MASH", "RF-MASH"]:
-            best_fit, c_score, f_score, rf_oob_score, knn_score =self.run_MASH(anchor_percent, filename)
+            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score, rf_oob_score, knn_score = self.run_tests(anchor_percent)
-
-        #Ensure the validation scores are not cheating when using RF methods by ensure no labels used twice
-        if self.method_data["Name"][:2] == "RF":
-            rf_base_score, knn_score = self.get_validation_scores_RF_similarity(best_fit) #Do we even want to get the KNN_score when we used the labels?
-
+            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score = self.run_tests(anchor_percent)
 
         # Combine them into a single dictionary
         combined_data = {
@@ -269,7 +294,8 @@ class pipe():
             "Best_Params": best_fit,
             "CE": c_score,
             "FOSCTTM": f_score,
-            "Random Forrest": rf_oob_score,
+            "Random Forest OOB": rf_oob_score,
+            "Random Forest Emb": rf_emb_score,
             "Nearest Neighbor": knn_score,
             "Parameter STD": self.param_std_dict
         }
@@ -300,16 +326,14 @@ class pipe():
         best_fit = data["Best_Params"]
         
         #Refit with best found parameters
-        anchor_amount = int((len(self.tma.anchors) * anchor_percent)/2)       
+        anchors = self.tma.anchors[:int((len(self.tma.anchors) * anchor_percent)/2)]     
         method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
-        method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors=self.tma.anchors[:anchor_amount])
+        method_class.fit(self.tma.split_A, self.tma.split_B, known_anchors= anchors)
 
         #Set score
         best_c_score = np.NaN
         best_f_score = np.NaN
-        best_rf_oob_score = np.NaN
-        best_knn_score = np.NaN
-
+        best_emb = np.NaN
 
         for parameter, values in {"connection_limit": ["auto", 1000, 5000, None], "threshold" : [0.2, 0.5, 0.8, 1], "epochs" : [3, 10, 200]}.items():
             
@@ -325,12 +349,11 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (c_score, f_score, rf_oob_score, knn_score), dictionary in zip(param_results, param_configs):
+            for (emb, c_score, f_score), dictionary in zip(param_results, param_configs):
                 if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
-                    best_rf_oob_score = rf_oob_score
-                    best_knn_score = knn_score
+                    best_emb = emb
                     best_fit[parameter] = dictionary[parameter]
                     is_default_best = False
 
@@ -340,10 +363,14 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
 
+
+        rf_oob_score, knn_score, rf_score = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
+
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
-        RF_oob_score = {42 : best_rf_oob_score}
-        KNN_scores = {42 : best_knn_score}
+        RF_oob_score = {42 : rf_oob_score}
+        KNN_scores = {42 : knn_score}
+        RF_score = {42: rf_score}
 
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
         if self.tma.split in ["random", "turn", "distort"]:
@@ -356,18 +383,19 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, tma, **params) for params, tma in zip(param_configs, tma_configs))
 
             # Add the results
-            for (f_score, c_score, rf_oob_score, knn_score), params in zip(param_results, param_configs):
+            for (emb, f_score, c_score), params in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
+
+                rf_oob_score, knn_score, rf_score = self.get_validation_scores(emb, self.tma, seed, params)
+
                 RF_oob_score[seed] = rf_oob_score
                 KNN_scores[seed] = knn_score
+                RF_score[seed] = rf_score
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score
     
-    def get_validation_scores_RF_similarity(best_fit):
-        """ We will need a special embedding formation, and keep track of the labels and things. """
-        return None, None

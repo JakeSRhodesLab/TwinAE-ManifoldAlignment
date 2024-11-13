@@ -10,6 +10,7 @@ from AlignmentMethods.ma_procrustes import MAprocr
 from AlignmentMethods.mali import MALI
 from AlignmentMethods.DTA_andres import DTA
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
 
@@ -38,32 +39,50 @@ def discretize_labels(regression_labels):
     
     return discrete_labels
 
-def get_RF_score(emb, labels):
+def get_RF_score(emb, labels, seed):
 
     if np.issubdtype(labels.dtype, np.integer):
-        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True)
+        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True, random_state=seed)
     else:
-        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True)
+        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True, random_state=seed)
         
     #Fit it for Data A and get proximities
     rf_class.fit(emb, y = labels)
     return rf_class.oob_score_
 
-def get_KNN_score(emb, labels):
+def get_KNN_and_RF_score(emb, labels, seed, data):
 
-    #Determine knn to be 1/30 dataset size. This way we can be consistent
-    knn = int(len(labels)/30)
+    #We need to match the following model
+    y_A_train, y_A_test, y_B_train, y_B_test = data
+
+    X_train = np.hstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): -len(y_B_test)]))
+    X_test = np.hstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):]))
+
+    labels = np.hstack((y_A_train, y_A_test, y_B_train, y_B_test))
+
+    # Determine knn to be 1/30 dataset size. This way we can be consistent
+    knn = int(len(labels) / 30)
 
     # Determine if the task is classification or regression
     if np.issubdtype(labels.dtype, np.integer):
-        model = KNeighborsClassifier(n_neighbors = knn)
+        knn_model = KNeighborsClassifier(n_neighbors=knn)
+        rf_model = RandomForestClassifier(random_state=seed)
     else:
-        model = KNeighborsRegressor(n_neighbors = knn)
+        knn_model = KNeighborsRegressor(n_neighbors=knn)
+        rf_model = RandomForestRegressor(random_state=seed)
 
-    X_train, X_test, y_train, y_test = train_test_split(emb, labels, test_size=0.2, random_state=42)
+    y_train = np.hstack((y_A_train, y_B_train))
+    y_test = np.hstack((y_A_test, y_B_test))
 
-    model.fit(X_train, y_train)
-    return model.score(X_test, y_test)
+    # Fit and score KNN model
+    knn_model.fit(X_train, y_train)
+    knn_score = knn_model.score(X_test, y_test)
+
+    # Fit and score Random Forest model
+    rf_model.fit(X_train, y_train)
+    rf_score = rf_model.score(X_test, y_test)
+
+    return knn_score, rf_score
 
 def get_default_parameters(cls):
     signature = inspect.signature(cls.__init__)
@@ -104,7 +123,6 @@ def get_mash_score_connected(self, tma, **kwargs):
             if key in ["epochs", "threshold", "connection_limit", "hold_out_anchors"]:
                 use_params[key] = kwargs[key]
 
-
         #We need to copy the class as it get changed and will be parralized
         self = copy.deepcopy(self)
         self.optimize_by_creating_connections(**use_params)
@@ -113,21 +131,16 @@ def get_mash_score_connected(self, tma, **kwargs):
         emb = tma.mds.fit_transform(self.int_diff_dist)
         c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
         f_score = np.mean([self.FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:]), self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])])
-        rf_score = get_RF_score(emb, tma.labels_doubled)
-        knn_score = get_KNN_score(emb, tma.labels_doubled)
-
-
+        
         if 'hold_out_anchors' in use_params:
             del use_params['hold_out_anchors']
 
         print(f"MASH Parameters: {use_params}")
         print(f"                FOSCTTM {f_score}")
         print(f"                CE Score {c_score}")
-        print(f"                RF Score {rf_score}")
-        print(f"                KNN Score {knn_score}")
 
         #Return FOSCTTM score
-        return c_score, f_score, rf_score, knn_score
+        return emb, c_score, f_score
     
     except Exception as e:
         print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
@@ -174,6 +187,60 @@ def get_rf_proximites(self, tuple):
 
     return 1 - dataA
 
+def rf_test_proximities(self, data_tuple):
+    """Create on Train label and not Test"""
+
+    X_train, X_test, y_train = data_tuple
+    
+    if np.issubdtype(np.array(y_train).dtype, np.integer):
+        rf_class = RFGAP(prediction_type="classification", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+    else:
+        rf_class = RFGAP(prediction_type="regression", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        
+    #Fit it for Data A
+    rf_class.fit(X_train, y =y_train)
+
+    #Get promities
+    data_partial = rf_class.get_proximities()
+    data_extend = rf_class.prox_extend(X_test)
+
+    # Create the new  matrix filled with ones (as it will be swapped to 0s later)
+    n = len(data_partial)
+    m = len(data_extend)
+
+    data = np.zeros((n + m, n + m))
+
+    # Place the n x n matrix in the top-left corner
+    data[:n, :n] = data_partial
+
+    # Place the n x m matrix in the top-right corner
+    data[:n, n:] = data_extend.T
+
+    # Place the n x m matrix in the bottom-left corner
+    data[n:, :n] = data_extend
+
+    #Reset len_A and other varables
+    if self.len_A < 6:
+        self.len_A = n + m
+
+        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+    elif self.len_B < 6:
+        self.len_B = n + m
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(data[~np.isinf(data)]) != 0:
+
+      data = (data - data.min()) / (data[~np.isinf(data)].max() - data.min()) 
+
+    #Reset inf values
+    data[np.isinf(data)] = 0
+
+    np.fill_diagonal(data, 1)
+
+    return 1 - data
+
 def Rhodes_fit(self, tma, anchor_amount):
     """RF Gap Fit for the methods"""
 
@@ -181,7 +248,17 @@ def Rhodes_fit(self, tma, anchor_amount):
     self.distance_measure_A = get_rf_proximites
     self.distance_measure_B = get_rf_proximites
 
-    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=tma.anchors[:int(len(tma.anchors) * anchor_amount)])
+    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=tma.anchors[:anchor_amount])
+    return self
+
+def Rhodes_test_fit(self, data_tupleA, data_tupleB, anchors):
+    """RF Gap Fit for the methods"""
+
+    #Reset these variables
+    self.distance_measure_A = rf_test_proximities
+    self.distance_measure_B = rf_test_proximities
+
+    self.fit(dataA = data_tupleA, dataB = data_tupleB, known_anchors=anchors)
     return self
 
 def Andres_fit(self, tma, anchor_amount):

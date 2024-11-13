@@ -147,14 +147,14 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
 # #Pipeline Tests
 from Pipeline import pipe
 
-# pipe("RF-MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("RF-MASH-", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("RF-MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("RF-MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("JLMA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#      normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, 10], mu = [0.01, 0.5, 1, 2])
+pipe("JLMA", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
+     normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, 10], mu = [0.01, 0.5, 1, 2])
 
 # pipe("MAGAN", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
 #      learning_rate = [0.01, 0.005, 0.001])
@@ -162,8 +162,8 @@ from Pipeline import pipe
 pipe("MASH-", csv_files=reg_files, splits =  ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("MASH", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH", csv_files=reg_files, splits =  ["distort"], percent_of_anchors=[0.3], parallel_factor = 10,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 # # #We sorted out the overide methods between each of the spuds
 # pipe("SPUD", csv_files=reg_files, splits =  ["random", "skewed"], percent_of_anchors=[0.3], parallel_factor = 10,

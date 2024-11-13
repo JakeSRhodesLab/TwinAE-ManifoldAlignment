@@ -2,8 +2,7 @@
 
 """
 QUESTIONS:
-6. I am using the new RF score to judge whether or not it is the best alignment. Does this make sense? Or should I leave it out?
-
+1. Do we want the inclusion of RMSE and F1 scores?
 
 Changes Log: 
 1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
@@ -15,6 +14,9 @@ Changes Log:
 7. Added the ability to test RF methods
 8. Updated the KNN scores to use train test splits so they aren't techniquecally cheating anymore. 
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
+10. Adjusted the anchor check
+11. Added the RF test fit functionality to the RF_GAP_TESTS file -> demonstrated how it works and fine tuned it.
+12. Added the autonomy to Pipeline 
 
 
 TASKS:
