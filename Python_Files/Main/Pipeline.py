@@ -142,16 +142,37 @@ class pipe():
         rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
 
         if self.method_data["Name"][:2] == "RF":
+            #To avoid it changing outside of the class
+            from copy import deepcopy
+            best_fit = deepcopy(best_fit)
 
             #To avoid using the data on the text and Train, we will need to split it
             X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
             X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
 
+            #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
+            if self.method_data["Name"] == "RF-MASH":
+                anchors = tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                optimize_dict = {"hold_out_anchors": tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]}
+                for param in ["connection_limit", "threshold", "epochs"]:
+                    optimize_dict[param] = best_fit[param]
+                    del best_fit[param]
+
+                #Delete hold out anchors
+                if "hold_out_anchors" in best_fit.keys():
+                    del best_fit["hold_out_anchors"]
+                
+            else:
+                anchors = tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]
+
             #Create model
             rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
 
             #Fit it. Should work for all that can use the Rhodes Test Fit Model
-            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]) #This works because we garuntee the tests are the same size
+            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
+
+            if self.method_data["Name"] == "RF-MASH":
+                rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
             emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
         
@@ -161,7 +182,7 @@ class pipe():
             X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[int(len(emb)/2):], tma.labels, test_size=0.2, random_state=seed)
             
             #Resticth the embedding 
-            emb = np.hstack((X_A_train, X_A_test, X_B_train, X_B_test))
+            emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
 
         #Get scores
         knn_score, rf_score = get_KNN_and_RF_score(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
@@ -355,7 +376,7 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (c_score, f_score, emb), dictionary in zip(param_results, param_configs):
+            for (f_score, c_score, emb), dictionary in zip(param_results, param_configs):
                 if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
@@ -368,7 +389,6 @@ class pipe():
                 best_fit[parameter] = {"epochs" : 100, "threshold" : "auto", "connection_limit" : "auto"}[parameter]
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
-
 
         rf_oob_score, knn_score, rf_score = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
 
