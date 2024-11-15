@@ -50,13 +50,15 @@ def get_RF_score(emb, labels, seed):
     rf_class.fit(emb, y = labels)
     return rf_class.oob_score_
 
-def get_KNN_and_RF_score(emb, labels, seed, data):
+def get_KNN_and_RF_score(emb, seed, data):
 
     #We need to match the following model
     y_A_train, y_A_test, y_B_train, y_B_test = data
 
-    X_train = np.hstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): -len(y_B_test)]))
-    X_test = np.hstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):]))
+    # Create X_train and X_test
+    X_train = np.vstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): len(y_A_train) + len(y_A_test) + len(y_B_train)]))
+    X_test = np.vstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):]))
+
 
     labels = np.hstack((y_A_train, y_A_test, y_B_train, y_B_test))
 
@@ -140,15 +142,15 @@ def get_mash_score_connected(self, tma, **kwargs):
         print(f"                CE Score {c_score}")
 
         #Return FOSCTTM score
-        return emb, c_score, f_score
+        return c_score, f_score, emb
     
     except Exception as e:
         print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
         logger.warning(f"Name: {self.method_data['Name']}. CSV: {tma.csv_file}. Parameters: {kwargs}. Error: {e}")
         return (np.NaN, np.NaN, np.NaN, np.NaN)
 
-def Rustad_fit(self, tma, anchor_amount):
-    self.fit(tma.split_A, tma.split_B, tma.anchors[:anchor_amount])
+def Rustad_fit(self, tma, anchors):
+    self.fit(tma.split_A, tma.split_B, anchors)
     return self
 
 def get_rf_proximites(self, tuple):
@@ -241,14 +243,14 @@ def rf_test_proximities(self, data_tuple):
 
     return 1 - data
 
-def Rhodes_fit(self, tma, anchor_amount):
+def Rhodes_fit(self, tma, anchors):
     """RF Gap Fit for the methods"""
 
     #Reset these variables
     self.distance_measure_A = get_rf_proximites
     self.distance_measure_B = get_rf_proximites
 
-    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=tma.anchors[:anchor_amount])
+    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=anchors)
     return self
 
 def Rhodes_test_fit(self, data_tupleA, data_tupleB, anchors):
@@ -261,11 +263,11 @@ def Rhodes_test_fit(self, data_tupleA, data_tupleB, anchors):
     self.fit(dataA = data_tupleA, dataB = data_tupleB, known_anchors=anchors)
     return self
 
-def Andres_fit(self, tma, anchor_amount):
+def Andres_fit(self, tma, anchors):
     #Reformat the anchors 
-    sharedD1 = tma.split_A[tma.anchors[:anchor_amount].T[0]] 
-    sharedD2 = tma.split_B[tma.anchors[:anchor_amount].T[1]]
-    labelsh1 = tma.labels[tma.anchors[:anchor_amount].T[0]]
+    sharedD1 = tma.split_A[anchors.T[0]] 
+    sharedD2 = tma.split_B[anchors.T[1]]
+    labelsh1 = tma.labels[anchors.T[0]]
     
     #We only need to overide the labels once otherwise it will mess up the CE score
     if len(tma.labels) != (len(labelsh1) + len(tma.split_A)):
@@ -275,10 +277,10 @@ def Andres_fit(self, tma, anchor_amount):
 
     return self
 
-def MAGAN_fit(self, tma, anchor_amount):
+def MAGAN_fit(self, tma, anchors):
 
     #Fit, and initilize model
-    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, tma.anchors[:anchor_amount], self.learning_rate)
+    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate)
 
     #Reshape the domains
     domain_a, domain_b = get_pure_distance(domain_a, domain_b)
@@ -300,7 +302,7 @@ def pcr_foscttm(self):
     return np.mean([tma.FOSCTTM(None, 1 - self.W[len_A:, :len_A]), 
                        tma.FOSCTTM(None, 1 - self.W[:len_A, len_A:])])
 
-def fit_with_labels(self, tma, anchor_amount):
+def fit_with_labels(self, tma, anchors):
     labels = discretize_labels(tma.labels)
 
     self.fit((tma.split_A, tma.split_B), (labels, labels))

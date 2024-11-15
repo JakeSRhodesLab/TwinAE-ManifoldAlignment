@@ -60,25 +60,31 @@ class pipe():
         #Involve random state
         self.overide_defaults["random_state"] = self.seed  
 
-        #Loop for each split
-        for split in splits:
-            
-            #Loop through each csv_file
-            for csv_file in csv_files:
-
-                self.csv_file = csv_file
-
-                print(f"---------------------------------------------      {self.csv_file}     ---------------------------------------------")
-                self.tma = tma(csv_file = self.csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
-
-                #loop for each anchor 
+        try:
+            #Loop for each split
+            for split in splits:
                 
-                #For Looping each anchor percent
-                #Parallel(n_jobs=min(self.parallel_factor, len(self.percent_of_anchors)))(delayed(self.save_tests)(anchor_percent) for anchor_percent in self.percent_of_anchors)
-                
-                #Normal looping -- Not parrelized
-                for anchor_percent in self.percent_of_anchors:
-                    self.save_tests(anchor_percent)
+                #Loop through each csv_file
+                for csv_file in csv_files:
+
+                    self.csv_file = csv_file
+
+                    print(f"---------------------------------------------      {self.csv_file}     ---------------------------------------------")
+                    self.tma = tma(csv_file = self.csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
+
+                    #loop for each anchor 
+                    
+                    #For Looping each anchor percent
+                    #Parallel(n_jobs=min(self.parallel_factor, len(self.percent_of_anchors)))(delayed(self.save_tests)(anchor_percent) for anchor_percent in self.percent_of_anchors)
+                    
+                    #Normal looping -- Not parrelized
+                    for anchor_percent in self.percent_of_anchors:
+                        self.save_tests(anchor_percent)
+        
+        except Exception as e:
+            logger.warning(f"Unexpected Failure with {self.method_data['Name']}. Error: {e}")
+            raise Exception(e)
+
 
     def get_parameter_std(self, parameter, results):
         """Finds the std from within the differing parameter tests"""
@@ -145,7 +151,7 @@ class pipe():
             rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
 
             #Fit it. Should work for all that can use the Rhodes Test Fit Model
-            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), tma.anchors[:tma.len_A* tma.percent_of_anchors[0]]) #This works because we garuntee the tests are the same size
+            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]) #This works because we garuntee the tests are the same size
 
             emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
         
@@ -349,7 +355,7 @@ class pipe():
             self.get_parameter_std(parameter, param_results)
 
             # Process the results to find the best value for the current parameter
-            for (emb, c_score, f_score), dictionary in zip(param_results, param_configs):
+            for (c_score, f_score, emb), dictionary in zip(param_results, param_configs):
                 if np.isnan(best_c_score) or (c_score - f_score >  best_c_score - best_f_score):
                     best_f_score = f_score
                     best_c_score = c_score
@@ -383,7 +389,7 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, tma, **params) for params, tma in zip(param_configs, tma_configs))
 
             # Add the results
-            for (emb, f_score, c_score), params in zip(param_results, param_configs):
+            for (f_score, c_score, emb), params in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score

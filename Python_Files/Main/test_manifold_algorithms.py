@@ -17,10 +17,11 @@ Changes Log:
 10. Adjusted the anchor check
 11. Added the RF test fit functionality to the RF_GAP_TESTS file -> demonstrated how it works and fine tuned it.
 12. Added the autonomy to Pipeline 
+13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
 
 
 TASKS:
--2: We want oob rf results, rf test results, and knn test results
+-2: We want oob rf results, rf test results, and knn test results (Still need to debug MASH+)
 
 0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
 1. Run regression tests
