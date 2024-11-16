@@ -24,7 +24,6 @@ Changes Log:
 
 
 TASKS:
--1. Fix imports to be more localized
 1. Run regression tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 5. Ability to create confusion matrix with the CE score
@@ -57,39 +56,21 @@ Resource Monitor Websitee: http://statrm.byu.edu/
 """
 #I should fix these imports to be more localized
 #Import libraries
-import glob
-from AlignmentMethods.ma_procrustes import MAprocr
-from mashspud import SPUD, MASH
-from AlignmentMethods.ssma import ssma
-from AlignmentMethods.jlma import JLMA
-from AlignmentMethods.DTA_andres import DTA
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.inspection import permutation_importance
 import random
 from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors, KNeighborsRegressor
 from sklearn.manifold import MDS
 import os
 from joblib import Parallel, delayed
-import matplotlib.pyplot as plt
-import seaborn as sns
-#import ..AlignmentMethods.MAGAN as MAGAN
-import timeit
 from Helpers.rfgap import RFGAP
 import Helpers.utils as utils
-from AlignmentMethods.mali import MALI
 from scipy.spatial.distance import pdist, squareform
 from Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
 
 #Simply, for my sanity
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-
-import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-tf.get_logger().setLevel('ERROR')
 
 CURR_DIR = "/yunity/arusty/Graph-Manifold-Alignment/Results"
 
@@ -317,9 +298,11 @@ class test_manifold_algorithms():
             else: 
         
                 # Splitting the dataset into training and testing sets
+                from sklearn.model_selection import train_test_split
                 X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
                 # Training the RandomForest Classifier
+                from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
                 if np.issubdtype(labels.dtype, np.integer):
                     clf = RandomForestClassifier(random_state=self.random_state) #NOTE: this might take forever based on this algorithm 
                 else:
@@ -327,6 +310,7 @@ class test_manifold_algorithms():
 
                 clf.fit(X_train, y_train)
 
+                from sklearn.inspection import permutation_importance
                 result = permutation_importance(clf, X_test, y_test, n_repeats=30, random_state=self.random_state)
                 # Get the indices that would sort the importances
                 sorted_idx = result.importances_mean.argsort()
@@ -490,6 +474,7 @@ class test_manifold_algorithms():
         filename += "_AP(" #Short for Anchor Percent
 
         #Now check to see if we have run these tests with some anchor percents already
+        import glob
         matching_files = glob.glob(filename + "*")
 
         #Loop through and see what anchor percents we have already used
@@ -521,6 +506,8 @@ class test_manifold_algorithms():
     """RUN TESTS FUNCTIONS"""
     def run_RF_SPUD_tests(self, agg_methods = ["log"], OD_methods = ["default"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+
+        from mashspud import SPUD
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    SPUD RF Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
@@ -715,6 +702,7 @@ class test_manifold_algorithms():
     
     def run_MALI_tests(self, graph_distances = ["rf_gap", "default"]): #interclass distance set to be RF-Gap
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
+        from AlignmentMethods.mali import MALI
 
         #We are going to run test with every variation
         print(f"\n-------------------------------------    MALI Tests " + self.base_directory[53:-1] + "   -------------------------------------\n")
@@ -795,6 +783,8 @@ class test_manifold_algorithms():
     def run_CSPUD_tests(self, operations = ["log"]): 
         """Operations should be a tuple of the different operations wanted to run. All are included by default. """
 
+        from mashspud import SPUD
+
         #We are going to run test with every variation
         print(f"\n-------------------------------------    SPUD Tests " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for operation in operations:
@@ -861,6 +851,8 @@ class test_manifold_algorithms():
         NOTE: This assumes a 1 to 1 correspondance with the variables. ThE MAE doesn't make sense if they aren't the same
         
         t is the percent of values you want covered by that many steps"""
+
+        from mashspud import MASH
 
         #Run through the tests with every variatioin
         print("\n-------------------------------------   DIG TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
@@ -1053,6 +1045,9 @@ class test_manifold_algorithms():
         
         t is the percent of values you want covered by that many steps"""
 
+        from mashspud import MASH
+
+
         #Run through the tests with every variatioin
         print("\n-------------------------------------   MASH TESTS " + self.base_directory[52:-1] + "   -------------------------------------\n")
         for link in DTM:
@@ -1198,6 +1193,8 @@ class test_manifold_algorithms():
 
     def run_DTA_tests(self):
         """Needs no additional parameters"""
+        from AlignmentMethods.DTA_andres import DTA
+
 
         #Create file name
         filename, AP_values = self.create_filename("DTA")
@@ -1288,6 +1285,7 @@ class test_manifold_algorithms():
             print(f"KNN {knn}")
 
             #Initialize the class with the correct KNN
+            from AlignmentMethods.ma_procrustes import MAprocr
             PCR_class = MAprocr(knn = knn, random_state = self.random_state, n_jobs = 1)
 
             #Loop through each anchor. 
@@ -1344,6 +1342,7 @@ class test_manifold_algorithms():
 
     def run_SSMA_tests(self):
         """ No Additional arguments needed"""
+        from AlignmentMethods.ssma import ssma
 
         #Add the last index for knn range so we know what knn values were used
         filename, AP_values = self.create_filename("SSMA")
@@ -1411,6 +1410,7 @@ class test_manifold_algorithms():
 
     def run_MAGAN_tests(self):
         """Needs no additional parameters"""
+        import AlignmentMethods.MAGAN as MAGAN
 
         #Create file name
         filename, AP_values = self.create_filename("MAGAN")
@@ -1465,6 +1465,7 @@ class test_manifold_algorithms():
 
     def run_JLMA_tests(self):
         """Needs no additional parameters"""
+        from AlignmentMethods.jlma import JLMA
 
         #Create file name
         filename, AP_values = self.create_filename("JLMA")
@@ -1637,156 +1638,6 @@ class test_manifold_algorithms():
 
         #Run successful
         return True
-
-    """Visualization"""
-    def plot_embeddings(self, knn = "auto", anchor_percent = "auto", **kwargs):
-        """Shows the embeddings of each graph in a plot"""
-
-        #Set the Knn
-        if knn == "auto":
-            knn = self.knn_range[2] #This seems to generally be a good KNN percent -- its about 5% knn
-
-        #Choose the most anchors given
-        if anchor_percent == "auto":
-            anchor_percent = self.percent_of_anchors[-1]
-
-        #Print the Metrics
-        if self.verbose > 0:
-            print(f"Percent of anchors used: {anchor_percent}")
-            print(f"The amount of Nearest Neighbors: {knn}")
-
-        #Filter kwargs for SPUD
-        SPUD_kwargs = {"dataA": self.split_A, "dataB" : self.split_B, "known_anchors": self.anchors[:int(len(self.anchors) * anchor_percent)], "knn": knn}
-        if "operation" in kwargs:
-            SPUD_kwargs["operation"] = kwargs["operation"]
-        if "kind" in kwargs:
-            SPUD_kwargs["kind"] = kwargs["kind"]
-
-        #DIG Key Words
-        DIG_kwargs = {"dataA": self.split_A, "dataB" : self.split_B, "known_anchors": self.anchors[:int(len(self.anchors) * anchor_percent)], "knn": knn, "t": -1}
-        if "link" in kwargs:
-            DIG_kwargs["link"] =  kwargs["link"]
-        else:
-            DIG_kwargs["link"] = "None"
-
-        #Prep Nama
-        nama = NAMA(ot_reg = 0.001)
-
-        #Prep JLMA
-        JLMA_class = JLMA(k = knn, d = max(min(len(self.split_B[1]), len(self.split_A[1])), 2))
-
-
-        #Prep Shared Data points
-        sharedD1 = self.split_A[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
-        sharedD2 = self.split_B[self.anchors[:int(len(self.anchors)*anchor_percent)].T[1]]
-        labelsh1 = self.labels[self.anchors[:int(len(self.anchors)*anchor_percent)].T[0]] 
-        labels_extended = np.concatenate((np.concatenate((self.labels, labelsh1)), np.concatenate((self.labels, labelsh1)))) #This is the extended labels (meaning the labels, and then the shared labels) multiplied by two
-        DTA_SSMA_kwargs = {"domain1": self.split_A, "domain2": self.split_B, "sharedD1" : sharedD1, "sharedD2" : sharedD2}
-
-        #Prep DTA
-        DTA_class = DTA(knn = knn, entR=0.001, verbose = 0)
-
-        #Prep SSMA
-        SSMA_class = ssma(knn = knn, verbose = 0, r = 2) #R can also be = to this: (self.split_A.shape[1] + self.split_B.shape[1])
-
-        #Prep Procrustees
-        PCR_class = MAprocr(knn = knn, random_state = self.random_state, n_jobs = 1)
-
-
-        #Create a task list to parrelel function all of the embeddings
-        tasks = [
-            (SPUD_Copy, SPUD_kwargs),
-            (DIG, DIG_kwargs),
-            (MAGAN.run_MAGAN, {"xb1": self.split_A, "xb2": self.split_B, "anchors": self.anchors[:int(len(self.anchors)*anchor_percent)]}),
-            (NAMA.fit, {"self": nama, "known_anchors": self.anchors[:int(len(self.anchors)*anchor_percent)], "x": self.split_A, "y": self.split_B}),
-            (DTA_class.fit, DTA_SSMA_kwargs),
-            (SSMA_class.fit, DTA_SSMA_kwargs),
-            (JLMA_class.fit, {"X1":self.split_A, "X2": self.split_B, "correspondences": self.anchors[:int(len(self.anchors)*anchor_percent)]}),
-            (PCR_class.fit, DTA_SSMA_kwargs)
-        ]
-
-        # Use Parallel to run tasks concurrently
-        classes = Parallel(n_jobs=-3)(delayed(func)(**args) for func, args in tasks)
-
-        #Post-prep MAGAN
-        domain_a, domain_b, domain_ab, domain_ba = classes[2]
-        domain_a, domain_b = MAGAN.get_pure_distance(domain_a, domain_b)
-        domain_ab, domain_ba = MAGAN.get_pure_distance(domain_ab, domain_ba)
-        magan_block = np.block([[domain_a, domain_ba],
-                                [domain_ba, domain_b]])
-
-        #Post prep JMLA
-        JLMA_block = JLMA_class.SquareDist(classes[6])
-
-        #parralelise to create the embeddings
-        arg_list = [classes[0].block, classes[1].int_diff_dist, magan_block, classes[3], 1 - self.normalize_0_to_1(classes[4]), 1 -  classes[5], JLMA_block, 1 - classes[7]]
-        SPUD_emb, DIG_emb, MAGAN_emb, NAMA_emb, DTA_emb, SSMA_emb, JLMA_emb, PCR_emb = Parallel(n_jobs = -3)(delayed(self.mds.fit_transform)(arg) for arg in arg_list)
-
-
-        """Now Plot the Embeddings"""
-        #Create the figure and set titles
-        fig, axes = plt.subplots(5, 2, figsize = (10, 25))
-        axes[0,0].set_title("NAMA")
-        axes[1,0].set_title("SPUD")
-        axes[0,1].set_title("DIG")
-        axes[2, 0].set_title("SSMA")
-        axes[1,1].set_title("DTA")
-        axes[2,1].set_title("MAGAN")
-        axes[3,0].set_title("JLMA")
-        axes[3,1].set_title("Procrutes")
-        axes[4,0].set_title("Split A Baseline")
-        axes[4,1].set_title("Split B Baseline")
-
-        #Prepare Baseline Data
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=min(len(self.split_A[1]), 2))
-        A_emb = pca.fit_transform(self.split_A)
-        pca = PCA(n_components=min(len(self.split_B[1]), 2))
-        B_emb = pca.fit_transform(self.split_B)
-
-        #Create keywords for DIG, SPUD, NAMA
-        keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
-                    "hue" : pd.Categorical(self.labels_doubled),
-                    "style" : ['Graph1' if i < len(DIG_emb[:]) / 2 else 'Graph2' for i in range(len(DIG_emb[:]))]
-        
-        }
-
-        #Now the plotting
-        sns.scatterplot(x = NAMA_emb[:, 0], y = NAMA_emb[:, 1], ax = axes[0,0], **keywords)
-        sns.scatterplot(x = SPUD_emb[:, 0], y = SPUD_emb[:, 1], ax = axes[1,0], **keywords)
-        sns.scatterplot(x = DIG_emb[:, 0], y = DIG_emb[:, 1], ax = axes[0,1], **keywords)
-        sns.scatterplot(x = MAGAN_emb[:, 0], y = MAGAN_emb[:, 1], ax = axes[2,1], **keywords)
-        sns.scatterplot(x = JLMA_emb[:, 0], y = JLMA_emb[:, 1], ax = axes[3,0], **keywords)
-
-
-        #Make sure we have enough dimensions 
-        if min(len(self.split_A[1]), 2) < 2:
-            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 0], ax = axes[4,0], hue = pd.Categorical(self.labels), markers = "^")
-        else:
-            sns.scatterplot(x = A_emb[:, 0], y = A_emb[:, 1], ax = axes[4,0], hue = pd.Categorical(self.labels), markers = "^")
-
-        if min(len(self.split_B[1]), 2) < 2:
-            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 0], ax = axes[4,1], hue = pd.Categorical(self.labels), markers = "o")
-        else:
-            sns.scatterplot(x = B_emb[:, 0], y = B_emb[:, 1], ax = axes[4,1], hue = pd.Categorical(self.labels), markers = "o")
-
-
-
-
-
-        #Create keywords for DTA and SSMA
-        keywords = {"markers" : {"Graph1": "^", "Graph2" : "o"},
-                    "hue" : pd.Categorical(labels_extended),
-                    "style" : ['Graph1' if i < len(DTA_emb[:]) / 2 else 'Graph2' for i in range(len(DTA_emb[:]))]
-        
-        }
-
-        #Now the plotting
-        sns.scatterplot(x = DTA_emb[:, 0], y = DTA_emb[:, 1], ax = axes[1,1], **keywords)
-        sns.scatterplot(x = SSMA_emb[:, 0], y = SSMA_emb[:, 1], ax = axes[2,0], **keywords)
-        sns.scatterplot(x = PCR_emb[:, 0], y = PCR_emb[:, 1], ax = axes[3,1], **keywords)
-
-        plt.plot()
 
 """
 ------------------------------------------------------------------------------------------------------------------------------
@@ -2363,83 +2214,7 @@ def _upload_file(file, directory = "default"):
         #It will be empty
         return (df, base_df)
 
-def _run_time_trials(csv_file = "iris.csv"):
-    #Create file path
-    DIR = "/yunity/arusty/Graph-Manifold-Alignment/ManifoldData/Time_DataFrame.csv"
-
-    #Test to see if data already exists
-    if os.path.exists(DIR):
-        old_data = pd.read_csv(DIR, index_col= None)
-
-        #Check to see if we already have timing for the csv file
-        if csv_file in old_data.columns:
-            print("Test has already been calculated")
-            return True
-
-    #Preform the timing functions
-    test = test_manifold_algorithms(csv_file=csv_file, split = "random", percent_of_anchors = [0.1], random_state=9876, verbose = 0)
-
-    # Time the execution of the function -- 10 KNN + 3 page rank methods
-    execution_time = {}
-    execution_time["DIG"] =  timeit.timeit(test.run_DIG_tests, number=1)/30 #To account for the 3 Page Rank Methods
-
-    #DTA
-    execution_time["DTA"] = timeit.timeit(test.run_DTA_tests, number=1)/10 #To account for the 10 knn
-
-    #JLMA
-    execution_time["JMLA"] = timeit.timeit(test.run_JMLA_tests, number=1)/10 #To account for the 10 knn
-
-    #SSMA
-    execution_time["SSMA"] = timeit.timeit(test.run_SSMA_tests, number=1) / 10 #To account for the 10 knn
-
-    #MAGAN
-    execution_time["MAGAN"] = timeit.timeit(test.run_MAGAN_tests, number=1)
-
-    #SPUD
-    execution_time["SPUD"] = timeit.timeit(test.run_SPUD_tests, number = 1)/60 #To account for 10 knn, 2 operations and 3 algorithms to test
-
-    #NAMA
-    execution_time["NAMA"] = timeit.timeit(test.run_NAMA_tests,  number = 1)
-
-    #Convert to DF
-    df_executions = pd.DataFrame(list(execution_time.items()), columns = ["Methods", str(csv_file)])
-
-    #Append to old data
-    if os.path.exists(DIR):
-        #We reget the old data so we always have the freshest version of the DF (meaning, if it was added to while the program ran)
-        old_data = pd.read_csv(DIR, index_col= None)
-
-        #Combine the two dataframes together
-        df_executions = pd.concat([old_data, df_executions[str(csv_file)]], axis=1)
-
-    #Save to file
-    df_executions.to_csv(DIR,  index= False)
-
-    #Print out the results
-    print("------------------------------------------------------------------------------    Time Comparisions     ------------------------------------------------------------------------------")
-    print(df_executions.sort_values(by = str(csv_file)))
-
-    #Function completed
-    return True
-
 """IMPORTANT FUNCTIONS"""
-def time_all_files(csv_files = "all"):
-    """Creates a dataframe that stores the time complexity for each method against 1 iteration. Also includes the calculation time
-    to calculate FOSCTTM and CE"""
-
-    #Use all of our files
-    if csv_files == "all":
-        csv_files = ["artificial_tree.csv", "audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv", "chess.csv", 
-                    "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
-                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "optdigits.csv", "parkinsons.csv",
-                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv", "waveform.csv",
-                    "winequality-red.csv", "zoo.csv", 
-                    "S-curve", "blobs"] #Toy data sets -- It will automatically create them
-
-    Parallel(n_jobs=-3)(delayed(_run_time_trials)(csv_file) for csv_file in csv_files)
-
-    return True
-
 def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, run_RF_MASH = False, run_KEMA = False, run_DIG = True, run_CSPUD = False, run_CwDIG = False, run_MALI = False, run_NAMA = True, run_DTA = True, run_SSMA = True, run_MAGAN = False, run_JLMA = False, run_PCR = False, run_KNN_Tests = False, run_RF_SPUD = False, **kwargs):
     """Loops through the tests and files specified. If all csv_files want to be used, let it equal all. Else, 
     specify the csv file names in a list.
