@@ -18,12 +18,13 @@ Changes Log:
 11. Added the RF test fit functionality to the RF_GAP_TESTS file -> demonstrated how it works and fine tuned it.
 12. Added the autonomy to Pipeline 
 13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
+14. Added rmse and f1 scores
+15. Added RF MALI
+16. Created new graphs to visuzlise
 
 
 TASKS:
--2: We want oob rf results, rf test results, and knn test results (Still need to debug MASH+)
-
-0. Run RF and KNN tests on a seperate embedding. Adjust pipeline to store that data (the RF baseline score and the KNN baseline Score across entire model)
+-1. Fix imports to be more localized
 1. Run regression tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 5. Ability to create confusion matrix with the CE score
@@ -54,7 +55,7 @@ Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 
 """
-
+#I should fix these imports to be more localized
 #Import libraries
 import glob
 from AlignmentMethods.ma_procrustes import MAprocr

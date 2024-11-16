@@ -11,7 +11,7 @@ from AlignmentMethods.mali import MALI
 from AlignmentMethods.DTA_andres import DTA
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, mean_squared_error
 
 
 def discretize_labels(regression_labels):
@@ -50,41 +50,54 @@ def get_RF_score(emb, labels, seed):
     rf_class.fit(emb, y = labels)
     return rf_class.oob_score_
 
-def get_KNN_and_RF_score(emb, seed, data):
-
-    #We need to match the following model
+def get_embedding_scores(emb, seed, data):
+    # Unpack data
     y_A_train, y_A_test, y_B_train, y_B_test = data
 
     # Create X_train and X_test
     X_train = np.vstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): len(y_A_train) + len(y_A_test) + len(y_B_train)]))
     X_test = np.vstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):]))
 
-
     labels = np.hstack((y_A_train, y_A_test, y_B_train, y_B_test))
 
     # Determine knn to be 1/30 dataset size. This way we can be consistent
-    knn = int(len(labels) / 30)
+    knn = max(1, int(len(labels) / 30))  # Ensure knn >= 1
 
     # Determine if the task is classification or regression
     if np.issubdtype(labels.dtype, np.integer):
+        # Classification task
         knn_model = KNeighborsClassifier(n_neighbors=knn)
         rf_model = RandomForestClassifier(random_state=seed)
+        classification_task = True
     else:
+        # Regression task
         knn_model = KNeighborsRegressor(n_neighbors=knn)
         rf_model = RandomForestRegressor(random_state=seed)
+        classification_task = False
 
     y_train = np.hstack((y_A_train, y_B_train))
     y_test = np.hstack((y_A_test, y_B_test))
 
     # Fit and score KNN model
     knn_model.fit(X_train, y_train)
+    knn_predictions = knn_model.predict(X_test)
     knn_score = knn_model.score(X_test, y_test)
 
     # Fit and score Random Forest model
     rf_model.fit(X_train, y_train)
+    rf_predictions = rf_model.predict(X_test)
     rf_score = rf_model.score(X_test, y_test)
 
-    return knn_score, rf_score
+    if classification_task:
+        # Compute F1-score for classification
+        knn_f1 = f1_score(y_test, knn_predictions, average="weighted")
+        rf_f1 = f1_score(y_test, rf_predictions, average="weighted")
+        return knn_score, rf_score, knn_f1, rf_f1
+    else:
+        # Compute RMSE for regression
+        knn_rmse = np.sqrt(mean_squared_error(y_test, knn_predictions))
+        rf_rmse = np.sqrt(mean_squared_error(y_test, rf_predictions))
+        return knn_score, rf_score, knn_rmse, rf_rmse
 
 def get_default_parameters(cls):
     signature = inspect.signature(cls.__init__)
@@ -142,7 +155,7 @@ def get_mash_score_connected(self, tma, **kwargs):
         print(f"                CE Score {c_score}")
 
         #Return FOSCTTM score
-        return c_score, f_score, emb
+        return f_score, c_score, emb
     
     except Exception as e:
         print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
@@ -272,6 +285,8 @@ def Andres_fit(self, tma, anchors):
     #We only need to overide the labels once otherwise it will mess up the CE score
     if len(tma.labels) != (len(labelsh1) + len(tma.split_A)):
         tma.labels = np.concatenate((tma.labels, labelsh1))
+        tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
+
 
     self.fit(tma.split_A, tma.split_B, sharedD1 = sharedD1, sharedD2 = sharedD2)
 
@@ -322,15 +337,18 @@ method_dict = {
      "RF-MASH" : {"Name": "RF-MASH", "Model": MASH, "KNN" : True,   "Block" : lambda mash: mash.int_diff_dist, "FOSCTTM" : mash_foscttm, "Fit" : Rhodes_fit},
      "RF-SPUD" : {"Name": "RF-SPUD", "Model": SPUD, "KNN" : True,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rhodes_fit},
      "RF-NAMA" : {"Name": "RF-NAMA", "Model": SPUD, "KNN" : False,   "Block" : lambda spud: spud.block, "FOSCTTM" : spud_foscttm, "Fit" : Rhodes_fit},
+     "RF-MALI" : {"Name": "MALI-RF", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels},
+
      
 
      #NOTE: adopted fit below
      "DTA" : {"Name": "DTA", "Model": DTA, "KNN" : True,   "Block" : lambda dta: 1 - tma.normalize_0_to_1(None, dta.W), "FOSCTTM" : lambda dta : tma.FOSCTTM(None, 1 - tma.normalize_0_to_1(None, dta.W12)), "Fit": Andres_fit},
      "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True,   "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
-     "PCR" : {"Name": "PCR", "Model": MAprocr, "KNN" : True,   "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
+     "MAPA" : {"Name": "MAPA", "Model": MAprocr, "KNN" : True,   "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
 
      "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False,   "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
      "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True,   "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
      
-     "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
+     "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels},
+     #Not worth doing KEMA. It only uses knn, and so we can just use the old testing way. :) "KEMA" : {"Name": "KEMA", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels}
 }
