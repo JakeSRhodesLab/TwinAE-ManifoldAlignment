@@ -2,28 +2,18 @@
 
 """
 QUESTIONS:
-1. Do we want the inclusion of RMSE and F1 scores?
 
 Changes Log: 
-1. Added the ability for seeds to test both random_states of model and data splits for the pipeline
-2. Refactored the code repository to make better sense. Also so I can move forwards easier with the pipeline model. 
 3. Adding Logging to tell easier why tests fail
-4. Added ability to get the rf_score oob to MASH and SPUD
-5. Added KNN on embedding and RF score on Embeddings
 6. Updated it to save more efficiently when running pipeline
-7. Added the ability to test RF methods
 8. Updated the KNN scores to use train test splits so they aren't techniquecally cheating anymore. 
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
-10. Adjusted the anchor check
-11. Added the RF test fit functionality to the RF_GAP_TESTS file -> demonstrated how it works and fine tuned it.
 12. Added the autonomy to Pipeline 
 13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
-14. Added rmse and f1 scores
 15. Added RF MALI
-16. Created new graphs to visuzlise
-
 
 TASKS:
+0. Implement GRAE scores (Keep the other scores)
 1. Run regression tests
 3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 5. Ability to create confusion matrix with the CE score
