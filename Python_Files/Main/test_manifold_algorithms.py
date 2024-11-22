@@ -11,6 +11,7 @@ Changes Log:
 12. Added the autonomy to Pipeline 
 13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
 15. Added RF MALI
+16. Reduced this import time significantly!!! 
 
 TASKS:
 0. Implement GRAE scores (Keep the other scores)
@@ -56,7 +57,6 @@ from joblib import Parallel, delayed
 from Helpers.rfgap import RFGAP
 import Helpers.utils as utils
 from scipy.spatial.distance import pdist, squareform
-from Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
 
 #Simply, for my sanity
 import warnings
@@ -2214,6 +2214,8 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
     Returns a dictionary of test_manifold_algorithms class instances."""
         
     """Convert csv_files to class instances"""
+    from Helpers.Visualization_helpers import plt_methods_by_CSV_max, subset_df, df
+
     #Create the dictionary
     manifold_instances = {}
 
