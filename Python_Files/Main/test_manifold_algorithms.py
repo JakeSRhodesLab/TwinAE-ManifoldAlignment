@@ -12,6 +12,7 @@ Changes Log:
 13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
 15. Added RF MALI
 16. Reduced this import time significantly!!! 
+17. Added GRAE testing so it works all great!
 
 TASKS:
 0. Implement GRAE scores (Keep the other scores)

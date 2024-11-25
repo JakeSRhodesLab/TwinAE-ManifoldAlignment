@@ -1,13 +1,13 @@
 import numpy as np
 from Helpers.rfgap import RFGAP
-#from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan #INCOMPATIBLE WITH GRAE
+from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan #TF import INCOMPATIBLE WITH GRAE
 from Main.test_manifold_algorithms import test_manifold_algorithms as tma
 import inspect
 from mashspud import MASH, SPUD
 from AlignmentMethods.jlma import JLMA
 from AlignmentMethods.ssma import ssma
 from AlignmentMethods.ma_procrustes import MAprocr
-from AlignmentMethods.mali import MALI
+from AlignmentMethods.mali import MALI #TF import INCOMPATIBLE WITH GRAE
 from AlignmentMethods.DTA_andres import DTA
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -346,7 +346,7 @@ method_dict = {
      "SSMA" : {"Name": "SSMA", "Model": ssma, "KNN" : True,   "Block" : lambda ssma: 1 - tma.normalize_0_to_1(None, ssma.W), "FOSCTTM" : lambda ssma : tma.FOSCTTM(None, 1 - ssma.W[len(ssma.domain1):, :len(ssma.domain1)]), "Fit": Andres_fit},
      "MAPA" : {"Name": "MAPA", "Model": MAprocr, "KNN" : True,   "Block" : lambda pcr: 1 - tma.normalize_0_to_1(None, pcr.W), "FOSCTTM" : pcr_foscttm, "Fit": Andres_fit},
 
-     #"MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False,   "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
+     "MAGAN" : {"Name": "MAGAN", "Model": magan, "KNN" : False,   "Block" : get_MAGAN_block, "FOSCTTM" : magan_foscttm, "Fit": MAGAN_fit},
      "JLMA" : {"Name": "JLMA", "Model": JLMA, "KNN" : True,   "Block" : lambda jlma: jlma.SquareDist(jlma.Y), "FOSCTTM" : jlma_foscttm, "Fit": Rustad_fit},
      
      "MALI" : {"Name": "MALI", "Model": MALI, "KNN" : True,  "Block" : lambda mali: ((1 - mali.W.toarray()) + (1 - mali.W.toarray()).T) /2, "FOSCTTM" : lambda mali: tma.FOSCTTM(None, 1 - mali.W_cross.toarray()), "Fit": fit_with_labels},
