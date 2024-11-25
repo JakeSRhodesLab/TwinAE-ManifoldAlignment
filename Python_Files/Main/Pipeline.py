@@ -249,7 +249,7 @@ class pipe():
         tma.split_B = X_B_train
         tma.labels = y_A_train # y_A_train will equal y_B_train
         
-        rf_method_class = self.method_data["fit"](rf_method_class, tma, anchors)
+        rf_method_class = self.method_data["Fit"](rf_method_class, tma, anchors)
 
         #Optimize for RF-MASH
         if self.method_data["Name"] == "RF-MASH":

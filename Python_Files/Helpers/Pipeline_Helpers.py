@@ -339,7 +339,7 @@ def create_unique_pairs(max_num, num_pairs):
     # Create pairs from the list of unique numbers
     pairs = [[numbers[i], numbers[i]] for i in range(0, len(numbers))]
     
-    return pairs
+    return np.array(pairs)
 
 #Create dictionaries for the different classes
 method_dict = {
