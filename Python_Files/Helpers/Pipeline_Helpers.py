@@ -75,6 +75,7 @@ def get_embedding_scores(emb, seed, data):
         rf_model = RandomForestRegressor(random_state=seed)
         classification_task = False
 
+    # Create X_train and X_test
     y_train = np.hstack((y_A_train, y_B_train))
     y_test = np.hstack((y_A_test, y_B_test))
 
@@ -326,7 +327,7 @@ def fit_with_labels(self, tma, anchors):
 
 def create_unique_pairs(max_num, num_pairs):
     import random 
-    
+
     # Ensure there are enough numbers for unique selection
     if num_pairs * 2 > max_num:
         raise ValueError("Not enough unique numbers to create the specified number of pairs.")

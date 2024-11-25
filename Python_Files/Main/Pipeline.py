@@ -209,69 +209,78 @@ class pipe():
         Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
         """
 
-        #Update tma labels if needed for Andres fit methods
-        if len(emb) != len(tma.labels_doubled):
-            labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
-            tma.labels = np.concatenate((tma.labels, labelsh1))
-            tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
-
-
-        if self.method_data["Name"][:2] == "RF":
-            #To avoid it changing outside of the class
-            from copy import deepcopy
-            best_fit = deepcopy(best_fit)
-
-            #To avoid using the data on the text and Train, we will need to split it
-            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
-            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
-
-            #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
-            if self.method_data["Name"] == "RF-MASH":
-
-                optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
-
-                #Select half of the anchors for training
-                anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
-                
-                for param in ["connection_limit", "threshold", "epochs"]:
-                    optimize_dict[param] = best_fit[param]
-                    del best_fit[param]
-
-                #Delete hold out anchors
-                if "hold_out_anchors" in best_fit.keys():
-                    del best_fit["hold_out_anchors"]
-                
-            else:
-                anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
-
-            #Create model
-            rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
-
-            #Fit it. Should work for all that can use the Rhodes Test Fit Model
-            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
-
-            #Calculate GRAE variant
-
-            if self.method_data["Name"] == "RF-MASH":
-                rf_method_class.optimize_by_creating_connections(**optimize_dict)
-
-            emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
-        
-        else:
+    
+        if not self.method_data["Name"][:2] == "RF":
             #No need to calculate GRAE
             return None, None, None, None, None
 
-        #Get scores
-        knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
+        #To avoid it changing outside of the class
+        from copy import deepcopy
+        best_fit = deepcopy(best_fit)
+
+        #To avoid using the data on the text and Train, we will need to split it
+        X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
+        X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
+
+        #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
+        if self.method_data["Name"] == "RF-MASH":
+
+            optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+
+            #Select half of the anchors for training
+            anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+            
+            for param in ["connection_limit", "threshold", "epochs"]:
+                optimize_dict[param] = best_fit[param]
+                del best_fit[param]
+
+            #Delete hold out anchors
+            if "hold_out_anchors" in best_fit.keys():
+                del best_fit["hold_out_anchors"]
+            
+        else:
+            anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+
+        #Create model
+        rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+
+        #Fit using x train
+        tma.split_A = X_A_train
+        tma.split_B = X_B_train
+        tma.labels = y_A_train # y_A_train will equal y_B_train
         
+        rf_method_class = self.method_data["fit"](rf_method_class, tma, anchors)
+
+        #Optimize for RF-MASH
+        if self.method_data["Name"] == "RF-MASH":
+            rf_method_class.optimize_by_creating_connections(**optimize_dict)
+
+        #Get the embedding
+        emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
+
+        #GRAE on domain A
+        myGrae = GRAEBase()
+        split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = seed, split = "none")
+        myGrae.fit(split_A, emb=emb)
+        testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = seed, split = "none")
+        pred_A = myGrae.score(testA)
+
+        #Grae on domain B 
+        split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
+        myGrae.fit(split_B, emb=emb)
+        testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
+        pred_B = myGrae.score(testB)
+        
+        #Grab the scores
+        emb = np.vstack([X_A_train, pred_A, X_B_train, pred_B])
+        knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
         rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
 
-        
-        print(f"                KNN Score {knn_score}")
-        print(f"                RF on embedding Score {rf_score}")
-        print(f"                Random Forest out of bag score {rf_oob_score}")
-        print(f"                KNN's f1 or Root mean square error score {rf_score}")
-        print(f"                Random Forest f1 or Root mean square error score {rf_oob_score}")
+        print(f"                GRAE KNN Score {knn_score}")
+        print(f"                GRAE RF on embedding Score {rf_score}")
+        print(f"                GRAE Random Forest out of bag score {rf_oob_score}")
+        print(f"                GRAE KNN's f1 or Root mean square error score {rf_score}")
+        print(f"                GRAE Random Forest f1 or Root mean square error score {rf_oob_score}")
 
         return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
 
@@ -347,6 +356,8 @@ class pipe():
         print(f"--------------------------------------------------------------> Best KNN metric score {best_knn_metric}")
         print(f"-----------------------------------------------------------------------> Best random Forest score {best_rf_metric}")
 
+        grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
@@ -355,6 +366,12 @@ class pipe():
         RF_score = {42: best_rf_score}
         KNN_metric = {42: best_knn_metric}
         RF_metric = {42: best_rf_metric}
+        GRAE_results = { 42 : {"RF-OOB" : grae_rf_oob_score,
+                        "KNN" :grae_knn_score, 
+                        "RF" : grae_rf_score,
+                        "KNN-metric" : grae_knn_metric,
+                        "RF-metric": grae_rf_metric}
+        }
 
         #Step 3: Repeat the process with different seeds
         if self.tma.split in ["random", "turn", "distort"]:
@@ -371,11 +388,18 @@ class pipe():
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
                 RF_oob_score[seed], KNN_scores[seed], RF_score[seed], KNN_metric[seed], RF_metric[seed] = self.get_validation_scores(emb, self.tma, seed, best_fit)
+                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+                GRAE_results[seed] = {"RF-OOB" : grae_rf_oob_score,
+                        "KNN" :grae_knn_score, 
+                        "RF" : grae_rf_score,
+                        "KNN-metric" : grae_knn_metric,
+                        "RF-metric": grae_rf_metric}
+                        
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric, GRAE_results
 
     def save_tests(self, anchor_percent):
 
@@ -396,7 +420,7 @@ class pipe():
         if self.method_data["Name"] in ["MASH", "RF-MASH"]:
             best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric = self.run_tests(anchor_percent)
+            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric, grae_results = self.run_tests(anchor_percent)
 
         # Combine them into a single dictionary
         combined_data = {
@@ -412,6 +436,7 @@ class pipe():
             "Nearest Neighbor": knn_score,
             "Nearest Neighbor (F1 score or RMSE)": knn_metric,
             "Random Forest (F1 score or RMSE)": rf_metric,
+            "GRAE" : grae_results,
             "Parameter STD": self.param_std_dict
         }
 
@@ -488,6 +513,13 @@ class pipe():
         KNN_metric = {42: knn_metric}
         RF_metric = {42: rf_metric}
 
+        grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+        GRAE_results = {42: {"RF-OOB" : grae_rf_oob_score,
+                        "KNN" :grae_knn_score, 
+                        "RF" : grae_rf_score,
+                        "KNN-metric" : grae_knn_metric,
+                        "RF-metric": grae_rf_metric}}
+
         #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
         if self.tma.split in ["random", "turn", "distort"]:
             #Delete the seed overide
@@ -511,6 +543,13 @@ class pipe():
                 RF_score[seed] = rf_score
                 KNN_metric[seed] = knn_metric
                 RF_metric[seed] = rf_metric
+
+                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+                GRAE_results[seed] = {"RF-OOB" : grae_rf_oob_score,
+                        "KNN" :grae_knn_score, 
+                        "RF" : grae_rf_score,
+                        "KNN-metric" : grae_knn_metric,
+                        "RF-metric": grae_rf_metric}
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
