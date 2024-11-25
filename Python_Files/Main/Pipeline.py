@@ -9,6 +9,7 @@ import logging
 from Helpers.Pipeline_Helpers import *
 from sklearn.model_selection import train_test_split
 from Helpers.Grae import *
+from sklearn.manifold import MDS
 
 """
 Return to editing MASH with the get_calidation scores
@@ -50,6 +51,7 @@ class pipe():
         self.overide_defaults = overide_defaults #the parameters to overide
         self.seed = 42
         self.param_std_dict = {}
+        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.seed, n_components = 2)
 
         #Check to make sure parameters line up
         self.defaults = get_default_parameters(self.method_data["Model"])
@@ -123,7 +125,7 @@ class pipe():
             f_score = self.method_data["FOSCTTM"](method_class)
 
             # Embedding Evaluation Metrics
-            emb = tma.mds.fit_transform(self.method_data["Block"](method_class))
+            emb = self.mds.fit_transform(self.method_data["Block"](method_class))
             c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
 
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
@@ -159,8 +161,12 @@ class pipe():
 
             #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
             if self.method_data["Name"] == "RF-MASH":
-                anchors = tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
-                optimize_dict = {"hold_out_anchors": tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]}
+            
+                optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+
+                #Select half of the anchors for training
+                anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                
                 for param in ["connection_limit", "threshold", "epochs"]:
                     optimize_dict[param] = best_fit[param]
                     del best_fit[param]
@@ -170,7 +176,7 @@ class pipe():
                     del best_fit["hold_out_anchors"]
                 
             else:
-                anchors = tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])]
+                anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
 
             #Create model
             rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
@@ -183,7 +189,7 @@ class pipe():
             if self.method_data["Name"] == "RF-MASH":
                 rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
-            emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
+            emb = self.mds.fit_transform(self.method_data["Block"](rf_method_class))
         
         else:
             #We want to test 80/20 still, but it doesn't matter which part because we didn't use any labels this time
@@ -249,6 +255,7 @@ class pipe():
         tma.split_B = X_B_train
         tma.labels = y_A_train # y_A_train will equal y_B_train
         
+        
         rf_method_class = self.method_data["Fit"](rf_method_class, tma, anchors)
 
         #Optimize for RF-MASH
@@ -256,25 +263,28 @@ class pipe():
             rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
         #Get the embedding
-        emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
+        emb = self.mds.fit_transform(self.method_data["Block"](rf_method_class)) # This might have to be reduced to 2 components
 
         #GRAE on domain A
         myGrae = GRAEBase()
         split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = seed, split = "none")
         myGrae.fit(split_A, emb=emb)
         testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = seed, split = "none")
-        pred_A = myGrae.score(testA)
+        pred_A, _ = myGrae.score(testA)
 
         #Grae on domain B 
+        myGrae = GRAEBase()
         split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
         myGrae.fit(split_B, emb=emb)
         testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
-        pred_B = myGrae.score(testB)
+        pred_B, _ = myGrae.score(testB)
         
         #Grab the scores
-        emb = np.vstack([X_A_train, pred_A, X_B_train, pred_B])
+        A_train = emb[:int(len(emb)/2)]
+        B_train = emb[int(len(emb)/2):]
+        emb = np.vstack([A_train, pred_A, B_train, pred_B])
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
-        rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
+        rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
 
         print(f"                GRAE KNN Score {knn_score}")
         print(f"                GRAE RF on embedding Score {rf_score}")

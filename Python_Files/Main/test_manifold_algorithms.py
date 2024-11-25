@@ -13,6 +13,7 @@ Changes Log:
 15. Added RF MALI
 16. Reduced this import time significantly!!! 
 17. Added GRAE testing so it works all great!
+18. For GRAE to work it has to be 2 components for MDS. I changed the archeticture to always use two components
 
 TASKS:
 0. Implement GRAE scores (Keep the other scores)
