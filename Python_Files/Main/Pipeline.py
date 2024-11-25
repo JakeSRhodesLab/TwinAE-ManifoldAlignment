@@ -8,6 +8,8 @@ from glob import glob
 import logging
 from Helpers.Pipeline_Helpers import *
 from sklearn.model_selection import train_test_split
+from Helpers.Grae import *
+
 """
 Return to editing MASH with the get_calidation scores
 -> I think this file could be simplified more
@@ -176,6 +178,8 @@ class pipe():
             #Fit it. Should work for all that can use the Rhodes Test Fit Model
             rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
 
+            #Calculate GRAE variant
+
             if self.method_data["Name"] == "RF-MASH":
                 rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
@@ -191,6 +195,77 @@ class pipe():
 
         #Get scores
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
+        
+        print(f"                KNN Score {knn_score}")
+        print(f"                RF on embedding Score {rf_score}")
+        print(f"                Random Forest out of bag score {rf_oob_score}")
+        print(f"                KNN's f1 or Root mean square error score {rf_score}")
+        print(f"                Random Forest f1 or Root mean square error score {rf_oob_score}")
+
+        return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
+
+    def get_GRAE_validation_scores(self, emb, tma, seed, best_fit):
+        """
+        Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
+        """
+
+        #Update tma labels if needed for Andres fit methods
+        if len(emb) != len(tma.labels_doubled):
+            labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
+            tma.labels = np.concatenate((tma.labels, labelsh1))
+            tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
+
+
+        if self.method_data["Name"][:2] == "RF":
+            #To avoid it changing outside of the class
+            from copy import deepcopy
+            best_fit = deepcopy(best_fit)
+
+            #To avoid using the data on the text and Train, we will need to split it
+            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
+            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
+
+            #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
+            if self.method_data["Name"] == "RF-MASH":
+
+                optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+
+                #Select half of the anchors for training
+                anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                
+                for param in ["connection_limit", "threshold", "epochs"]:
+                    optimize_dict[param] = best_fit[param]
+                    del best_fit[param]
+
+                #Delete hold out anchors
+                if "hold_out_anchors" in best_fit.keys():
+                    del best_fit["hold_out_anchors"]
+                
+            else:
+                anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+
+            #Create model
+            rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+
+            #Fit it. Should work for all that can use the Rhodes Test Fit Model
+            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
+
+            #Calculate GRAE variant
+
+            if self.method_data["Name"] == "RF-MASH":
+                rf_method_class.optimize_by_creating_connections(**optimize_dict)
+
+            emb = tma.mds.fit_transform(self.method_data["Block"](rf_method_class))
+        
+        else:
+            #No need to calculate GRAE
+            return None, None, None, None, None
+
+        #Get scores
+        knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
+        
+        rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
+
         
         print(f"                KNN Score {knn_score}")
         print(f"                RF on embedding Score {rf_score}")

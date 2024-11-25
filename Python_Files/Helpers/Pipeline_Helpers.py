@@ -324,6 +324,22 @@ def fit_with_labels(self, tma, anchors):
 
     return self
 
+def create_unique_pairs(max_num, num_pairs):
+    import random 
+    
+    # Ensure there are enough numbers for unique selection
+    if num_pairs * 2 > max_num:
+        raise ValueError("Not enough unique numbers to create the specified number of pairs.")
+    
+    # Generate a pool of unique numbers
+    random.seed(42)
+    numbers = random.sample(range(max_num), num_pairs)
+    
+    # Create pairs from the list of unique numbers
+    pairs = [[numbers[i], numbers[i]] for i in range(0, len(numbers))]
+    
+    return pairs
+
 #Create dictionaries for the different classes
 method_dict = {
      #Default
