@@ -428,7 +428,7 @@ class pipe():
             return True
         
         if self.method_data["Name"] in ["MASH", "RF-MASH"]:
-            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric =self.run_MASH(anchor_percent, filename)
+            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric, grae_results =self.run_MASH(anchor_percent, filename)
         else:
             best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric, grae_results = self.run_tests(anchor_percent)
 
@@ -564,5 +564,5 @@ class pipe():
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric, GRAE_results
     
