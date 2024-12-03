@@ -51,7 +51,7 @@ class pipe():
         self.overide_defaults = overide_defaults #the parameters to overide
         self.seed = 42
         self.param_std_dict = {}
-        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.seed, n_components = 2)
+
 
         #Check to make sure parameters line up
         self.defaults = get_default_parameters(self.method_data["Model"])
@@ -124,8 +124,12 @@ class pipe():
             # FOSCTTM Evaluation Metrics
             f_score = self.method_data["FOSCTTM"](method_class)
 
+            #Create a custom MDS where we keep only 1 job (Not to have nested parrelization and lower n_init)
+            mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 1,
+                      n_jobs=1, random_state = self.random_state, n_components = tma.n_comp)
+            emb = mds.fit_transform(self.method_data["Block"](method_class))
+
             # Embedding Evaluation Metrics
-            emb = self.mds.fit_transform(self.method_data["Block"](method_class))
             c_score = tma.cross_embedding_knn(emb, (tma.labels, tma.labels), knn_args={'n_neighbors': 4})
 
             print(f"Results with {self.method_data['Name']} with parameters: {test_parameters}")
@@ -147,8 +151,6 @@ class pipe():
             labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
             tma.labels = np.concatenate((tma.labels, labelsh1))
             tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
-
-        rf_oob_score = get_RF_score(emb, tma.labels_doubled, seed)
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
@@ -189,17 +191,22 @@ class pipe():
             if self.method_data["Name"] == "RF-MASH":
                 rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
-            emb = self.mds.fit_transform(self.method_data["Block"](rf_method_class))
+            #Create a custom MDS where we can run a higher n_init and n_jobs
+            mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
+                      n_jobs=self.parallel_factor, random_state = self.random_state, n_components = tma.n_comp)
+            emb = mds.fit_transform(self.method_data["Block"](rf_method_class))
         
         else:
             #We want to test 80/20 still, but it doesn't matter which part because we didn't use any labels this time
-            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(emb[:int(len(emb)/2)], tma.labels, test_size=0.2, random_state=seed)
-            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[int(len(emb)/2):], tma.labels, test_size=0.2, random_state=seed)
+            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(emb[:len(tma.labels)], tma.labels, test_size=0.2, random_state=seed)
+            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[len(tma.labels):], tma.labels, test_size=0.2, random_state=seed)
             
             #Resticth the embedding 
             emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
 
         #Get scores
+        #rf_oob_score = get_RF_score(np.vstack((X_A_test, X_B_test)), np.hstack(y_A_test, y_B_test), seed)
+        rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
         
         print(f"                KNN Score {knn_score}")
@@ -215,21 +222,17 @@ class pipe():
         Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
         """
 
-    
-        if not self.method_data["Name"][:2] == "RF":
-            #No need to calculate GRAE
-            return None, None, None, None, None
-
         #To avoid it changing outside of the class
         from copy import deepcopy
         best_fit = deepcopy(best_fit)
+        tma = deepcopy(tma)
 
         #To avoid using the data on the text and Train, we will need to split it
         X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
         X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
 
         #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
-        if self.method_data["Name"] == "RF-MASH":
+        if self.method_data["Name"][-4:] == "MASH":
 
             optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
 
@@ -247,44 +250,45 @@ class pipe():
         else:
             anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
 
-        #Create model
-        rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
-
         #Fit using x train
         tma.split_A = X_A_train
         tma.split_B = X_B_train
         tma.labels = y_A_train # y_A_train will equal y_B_train
         
-        
+        #Create model
+        rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
         rf_method_class = self.method_data["Fit"](rf_method_class, tma, anchors)
 
         #Optimize for RF-MASH
-        if self.method_data["Name"] == "RF-MASH":
+        if self.method_data["Name"][-4:] == "MASH":
             rf_method_class.optimize_by_creating_connections(**optimize_dict)
 
-        #Get the embedding
-        emb = self.mds.fit_transform(self.method_data["Block"](rf_method_class)) # This might have to be reduced to 2 components
+        ##Create a custom MDS where we can run a higher n_init and n_jobs
+        mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
+                 n_jobs=self.parallel_factor, random_state = self.random_state, n_components = tma.n_comp)
+        emb = mds.fit_transform(self.method_data["Block"](rf_method_class)) 
 
         #GRAE on domain A
-        myGrae = GRAEBase()
+        myGrae = GRAEBase(n_components = tma.n_comp)
         split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = seed, split = "none")
-        myGrae.fit(split_A, emb=emb)
+        myGrae.fit(split_A, emb=emb[:len(X_A_train)])
         testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = seed, split = "none")
         pred_A, _ = myGrae.score(testA)
 
         #Grae on domain B 
-        myGrae = GRAEBase()
+        myGrae = GRAEBase(n_components = tma.n_comp)
         split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
-        myGrae.fit(split_B, emb=emb)
+        myGrae.fit(split_B, emb=emb[:len(X_A_train)])
         testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
         pred_B, _ = myGrae.score(testB)
         
         #Grab the scores
         A_train = emb[:int(len(emb)/2)]
         B_train = emb[int(len(emb)/2):]
-        emb = np.vstack([A_train, pred_A, B_train, pred_B])
+        emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
         rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
+        #rf_oob_score = get_RF_score(np.vstack((pred_A, pred_B)), np.hstack(y_A_test, y_B_test), seed)
 
         print(f"                GRAE KNN Score {knn_score}")
         print(f"                GRAE RF on embedding Score {rf_score}")
@@ -393,12 +397,12 @@ class pipe():
             param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
-            for (f_score, c_score, emb), (_, params, _) in zip(param_results, param_configs):
+            for (f_score, c_score, emb), (_, params, tma_config) in zip(param_results, param_configs):
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
-                RF_oob_score[seed], KNN_scores[seed], RF_score[seed], KNN_metric[seed], RF_metric[seed] = self.get_validation_scores(emb, self.tma, seed, best_fit)
-                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+                RF_oob_score[seed], KNN_scores[seed], RF_score[seed], KNN_metric[seed], RF_metric[seed] = self.get_validation_scores(emb, tma_config, seed, best_fit)
+                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, tma_config, 42, best_fit)
                 GRAE_results[seed] = {"RF-OOB" : grae_rf_oob_score,
                         "KNN" :grae_knn_score, 
                         "RF" : grae_rf_score,

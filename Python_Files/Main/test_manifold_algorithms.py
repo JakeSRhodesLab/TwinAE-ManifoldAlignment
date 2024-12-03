@@ -2,27 +2,28 @@
 
 """
 QUESTIONS:
+1. CHECK RF - OOB scores
+2. CHECK MALI-RF on test-all for interclass distance
 
 Changes Log: 
 3. Adding Logging to tell easier why tests fail
-6. Updated it to save more efficiently when running pipeline
-8. Updated the KNN scores to use train test splits so they aren't techniquecally cheating anymore. 
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
-12. Added the autonomy to Pipeline 
-13. Ensured tests work across everything. Added Logging to a general scale to prevent server crashes (and Provide data on fail)
 15. Added RF MALI
-16. Reduced this import time significantly!!! 
-17. Added GRAE testing so it works all great!
-18. For GRAE to work it has to be 2 components for MDS. I changed the archeticture to always use two components
+19. Fully automized the GRAE process
+20. Implemented GRAE testing for non-RF methods
+21. Allow GRAE to test with different mds
+22. Added GRAE testing for MASH optimization
+23. Changed RF_OOB scores to only be on test data. CHECK this - I feel like the idea is wrong
+24. Changed n_init and n_jobs on MDS for faster results
+25. We can speed up the MDS for SPUD and MASH get_scores by doing the following hyperparameters: n_init, and n_jobs
+
 
 TASKS:
-0. Implement GRAE scores (Keep the other scores)
 1. Run regression tests
-3. For MALI and KEMA -> make a function to discretize the regression labels into classes || Check to see if how it scores it will be the same against the other methods
 5. Ability to create confusion matrix with the CE score
-6. See if I can parrelize MDS / PCA?
 7. Set n_pca default to eqaul 100
 8. Compare and contrast the scores for PCA and MDS and also ISOMAP (probably not faster) and UMAP (Really fast potentially)
+9. Freeze layer of GRAE and building and A to B projection
 
 MORE TASKS
 1. MD things
@@ -364,7 +365,7 @@ class test_manifold_algorithms():
 
         #Create the mds
         self.n_comp = 2
-        self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = 2)
+        self.mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 1, random_state = self.random_state, n_components = 2)
 
         self.split = "None"
 

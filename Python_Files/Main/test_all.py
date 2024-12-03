@@ -33,11 +33,11 @@ csv_files = [
              ]
 
 reg_files = [ #REGRESSION 
-    #"EnergyEfficiency.csv"#, 
-    #"Hydrodynamics.csv"#,
+    "EnergyEfficiency.csv",#, 
+    "Hydrodynamics.csv"#,
     # "CommunityCrime.csv",
     # "AirfoilSelfNoise.csv",  "AutoMPG.csv",
-     "ComputerHardware.csv"
+     #"ComputerHardware.csv"
     # "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
     # "IstanbulStock.csv", "Parkinsons.csv",
     # "Automobile.csv", "CommunityCrime.csv",
@@ -153,6 +153,7 @@ PF = 10
 """
 RF Methods Below -> \/
 """
+
 pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 

@@ -161,7 +161,7 @@ def get_mash_score_connected(self, tma, **kwargs):
     except Exception as e:
         print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
         logger.warning(f"Name: {self.method_data['Name']}. CSV: {tma.csv_file}. Parameters: {kwargs}. Error: {e}")
-        return (np.NaN, np.NaN, np.NaN, np.NaN)
+        return (np.NaN, np.NaN, np.NaN)
 
 def Rustad_fit(self, tma, anchors):
     self.fit(tma.split_A, tma.split_B, anchors)
