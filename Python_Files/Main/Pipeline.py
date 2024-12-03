@@ -126,7 +126,7 @@ class pipe():
 
             #Create a custom MDS where we keep only 1 job (Not to have nested parrelization and lower n_init)
             mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 1,
-                      n_jobs=1, random_state = self.random_state, n_components = tma.n_comp)
+                      n_jobs=1, random_state = self.seed, n_components = tma.n_comp)
             emb = mds.fit_transform(self.method_data["Block"](method_class))
 
             # Embedding Evaluation Metrics
@@ -193,7 +193,7 @@ class pipe():
 
             #Create a custom MDS where we can run a higher n_init and n_jobs
             mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
-                      n_jobs=self.parallel_factor, random_state = self.random_state, n_components = tma.n_comp)
+                      n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
             emb = mds.fit_transform(self.method_data["Block"](rf_method_class))
         
         else:
@@ -265,7 +265,7 @@ class pipe():
 
         ##Create a custom MDS where we can run a higher n_init and n_jobs
         mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
-                 n_jobs=self.parallel_factor, random_state = self.random_state, n_components = tma.n_comp)
+                 n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
         emb = mds.fit_transform(self.method_data["Block"](rf_method_class)) 
 
         #GRAE on domain A
