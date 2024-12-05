@@ -4,6 +4,12 @@
 QUESTIONS:
 1. CHECK RF - OOB scores
 2. CHECK MALI-RF on test-all for interclass distance
+3. MDS - n_init values. It might be too risky and affect scores too much with n_init = 1: meaning it only samples 1 possible minimum. 
+
+Strategy for Doing Grae A to B:
+Grae doesn't have an embedding layer, but only a bottleneck layer z. It uses the embedding to calculate loss, which makes it look similar to 
+the embedding eventually. Because of this, we should train one of the Graes, then maybe turn down the learning rate and train the other grae?
+Then we can take the resulting Z layer, input it to both graes, and then retrain them both. 
 
 Changes Log: 
 3. Adding Logging to tell easier why tests fail
@@ -14,7 +20,7 @@ Changes Log:
 21. Allow GRAE to test with different mds
 22. Added GRAE testing for MASH optimization
 23. Changed RF_OOB scores to only be on test data. CHECK this - I feel like the idea is wrong
-24. Changed n_init and n_jobs on MDS for faster results
+24. Changed n_init and n_jobs on MDS for faster results. 
 25. We can speed up the MDS for SPUD and MASH get_scores by doing the following hyperparameters: n_init, and n_jobs
 
 

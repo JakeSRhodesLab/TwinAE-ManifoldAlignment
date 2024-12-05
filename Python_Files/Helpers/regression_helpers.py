@@ -28,6 +28,87 @@ def read_json_files_to_dataframe(directory_path):
     
     return df
 
+def plot_radial(df, columns):
+    unique_methods = df["method"].unique()
+
+    # Calculate the sum of scores for each method for sorting
+    method_scores = {}
+    for method_name in unique_methods:
+        method_data = df[df["method"] == method_name][columns]
+
+        if "FOSCTTM" in columns:
+            method_data["FOSCTTM"] = 1 - method_data["FOSCTTM"]
+        if "Nearest Neighbor (F1 score or RMSE)" in columns:
+            method_data["Nearest Neighbor (F1 score or RMSE)"] = 1 - method_data["Nearest Neighbor (F1 score or RMSE)"]
+        if "Random Forest (F1 score or RMSE)" in columns:
+            method_data["Random Forest (F1 score or RMSE)"] = 1 - method_data["Random Forest (F1 score or RMSE)"]
+        if "Grae-KNN-metric" in columns:
+            method_data["Grae-KNN-metric"] = 1 - method_data["Grae-KNN-metric"]
+        if "Grae-RF-metric" in columns:
+            method_data["Grae-RF-metric"] = 1 - method_data["Grae-RF-metric"]
+
+        score_sum = method_data.values.sum()#.sum()
+        method_scores[method_name] = score_sum
+
+    # Sort methods by total scores (descending order)
+    sorted_methods = sorted(method_scores.items(), key=lambda x: x[1], reverse=True)
+    sorted_method_names = [item[0] for item in sorted_methods]
+
+    # Define a color palette
+    colors = sns.color_palette("dark", n_colors=len(unique_methods))
+
+    # Calculate grid size
+    grid_size = int(len(unique_methods)**0.5) + 1
+
+    # Create polar subplots
+    fig, axes = plt.subplots(nrows=grid_size, ncols=grid_size, figsize=(20, 20), subplot_kw=dict(polar=True))
+    axes = axes.flatten()
+
+    # Loop through each sorted method
+    for i, (method_name, color) in enumerate(zip(sorted_method_names, colors)):
+        # Select and preprocess data
+        method_data = df[df["method"] == method_name][columns]
+
+        if "FOSCTTM" in columns:
+            method_data["FOSCTTM"] = 1 - method_data["FOSCTTM"]
+        if "Nearest Neighbor (F1 score or RMSE)" in columns:
+            method_data["Nearest Neighbor (F1 score or RMSE)"] = 1 - method_data["Nearest Neighbor (F1 score or RMSE)"]
+        if "Random Forest (F1 score or RMSE)" in columns:
+            method_data["Random Forest (F1 score or RMSE)"] = 1 - method_data["Random Forest (F1 score or RMSE)"]
+        if "Grae-KNN-metric" in columns:
+            method_data["Grae-KNN-metric"] = 1 - method_data["Grae-KNN-metric"]
+        if "Grae-RF-metric" in columns:
+            method_data["Grae-RF-metric"] = 1 - method_data["Grae-RF-metric"]
+
+        method_data = method_data.mean()  # Take the mean for radar chart values
+
+        # Prepare radar chart data
+        categories = columns  # Use the column names for categories
+        values = method_data.tolist()
+        values += values[:1]  # Close the loop
+
+        angles = [n / float(len(categories)) * 2 * np.pi for n in range(len(categories))]
+        angles += angles[:1]
+
+        # Plot the radar chart
+        ax = axes[i]
+        ax.plot(angles, values, label=method_name, color=color)
+        ax.fill(angles, values, color=color, alpha=0.3)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(categories, fontsize=8)
+        ax.set_ylim(-0.5, 1)
+        ax.set_title(f"Method: {method_name}\nTotal Score: {method_scores[method_name]:.2f}", 
+                    fontsize=10, color=color)
+
+
+    # Turn off unused subplots
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    # Adjust layout and display
+    plt.tight_layout()
+    plt.show()
+
 move_index = -0.03
 def get_index_pos(agregate_df):
     global move_index
