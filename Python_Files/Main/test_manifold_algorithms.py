@@ -22,6 +22,7 @@ Changes Log:
 23. Changed RF_OOB scores to only be on test data. CHECK this - I feel like the idea is wrong
 24. Changed n_init and n_jobs on MDS for faster results. 
 25. We can speed up the MDS for SPUD and MASH get_scores by doing the following hyperparameters: n_init, and n_jobs
+26. Created visuals for the grae results
 
 
 TASKS:

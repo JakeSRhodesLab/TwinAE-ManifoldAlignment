@@ -35,6 +35,7 @@ def plot_radial(df, columns):
     method_scores = {}
     for method_name in unique_methods:
         method_data = df[df["method"] == method_name][columns]
+        method_data = method_data.mean()
 
         if "FOSCTTM" in columns:
             method_data["FOSCTTM"] = 1 - method_data["FOSCTTM"]
@@ -47,7 +48,7 @@ def plot_radial(df, columns):
         if "Grae-RF-metric" in columns:
             method_data["Grae-RF-metric"] = 1 - method_data["Grae-RF-metric"]
 
-        score_sum = method_data.values.sum()#.sum()
+        score_sum = method_data.sum()
         method_scores[method_name] = score_sum
 
     # Sort methods by total scores (descending order)
@@ -55,7 +56,7 @@ def plot_radial(df, columns):
     sorted_method_names = [item[0] for item in sorted_methods]
 
     # Define a color palette
-    colors = sns.color_palette("dark", n_colors=len(unique_methods))
+    colors = sns.color_palette("husl", n_colors=len(unique_methods))
 
     # Calculate grid size
     grid_size = int(len(unique_methods)**0.5) + 1
