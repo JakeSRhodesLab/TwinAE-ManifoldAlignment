@@ -147,10 +147,7 @@ class pipe():
     def get_validation_scores(self, emb, tma, seed, best_fit):
 
         #Update tma labels if needed for Andres fit methods
-        if len(emb) != len(tma.labels_doubled):
-            labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
-            tma.labels = np.concatenate((tma.labels, labelsh1))
-            tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
+        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
@@ -221,6 +218,9 @@ class pipe():
         """
         Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
         """
+
+        #Update tma labels if needed for Andres fit methods
+        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
         #To avoid it changing outside of the class
         from copy import deepcopy

@@ -293,6 +293,15 @@ def Andres_fit(self, tma, anchors):
 
     return self
 
+def adjust_tma_labels(emb, tma):
+    #Update tma labels if needed for Andres fit methods
+    if len(emb) != len(tma.labels_doubled):
+        labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
+        tma.labels = np.concatenate((tma.labels, labelsh1))
+        tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
+    
+    return tma.labels, tma.labels_doubled
+
 def MAGAN_fit(self, tma, anchors):
 
     #Fit, and initilize model
