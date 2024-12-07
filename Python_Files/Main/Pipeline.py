@@ -150,7 +150,7 @@ class pipe():
         tma = deepcopy(tma)
 
         #Update tma labels if needed for Andres fit methods
-        #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
+        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
