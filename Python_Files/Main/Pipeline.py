@@ -146,8 +146,11 @@ class pipe():
             
     def get_validation_scores(self, emb, tma, seed, best_fit):
 
+        from copy import deepcopy
+        tma = deepcopy(tma)
+
         #Update tma labels if needed for Andres fit methods
-        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
+        #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
@@ -220,7 +223,7 @@ class pipe():
         """
 
         #Update tma labels if needed for Andres fit methods
-        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
+        #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
         #To avoid it changing outside of the class
         from copy import deepcopy
@@ -228,8 +231,8 @@ class pipe():
         tma = deepcopy(tma)
 
         #To avoid using the data on the text and Train, we will need to split it
-        X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
-        X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
+        X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels[:len(tma.split_A)], test_size=0.2, random_state=seed)
+        X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels[:len(tma.split_B)], test_size=0.2, random_state=seed)
 
         #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
         if self.method_data["Name"][-4:] == "MASH":
@@ -278,7 +281,7 @@ class pipe():
         #Grae on domain B 
         myGrae = GRAEBase(n_components = tma.n_comp)
         split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
-        myGrae.fit(split_B, emb=emb[:len(X_A_train)])
+        myGrae.fit(split_B, emb=emb[int(len(emb)/2):])
         testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
         pred_B, _ = myGrae.score(testB)
         
@@ -287,8 +290,12 @@ class pipe():
         B_train = emb[int(len(emb)/2):]
         emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
-        rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
-        #rf_oob_score = get_RF_score(np.vstack((pred_A, pred_B)), np.hstack(y_A_test, y_B_test), seed)
+
+        #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
+        if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
+            rf_oob_score = get_RF_score(emb, np.hstack((tma.labels, y_A_test, tma.labels, y_B_test)), seed)
+        else:
+            rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
 
         print(f"                GRAE KNN Score {knn_score}")
         print(f"                GRAE RF on embedding Score {rf_score}")
