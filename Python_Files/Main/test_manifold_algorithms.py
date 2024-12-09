@@ -2,9 +2,6 @@
 
 """
 QUESTIONS:
-1. CHECK RF - OOB scores
-2. CHECK MALI-RF on test-all for interclass distance
-3. MDS - n_init values. It might be too risky and affect scores too much with n_init = 1: meaning it only samples 1 possible minimum. 
 
 Strategy for Doing Grae A to B:
 Grae doesn't have an embedding layer, but only a bottleneck layer z. It uses the embedding to calculate loss, which makes it look similar to 
@@ -26,6 +23,7 @@ Changes Log:
 
 
 TASKS:
+0. Run RF - OOB (only use train data for the results)
 1. Run regression tests
 5. Ability to create confusion matrix with the CE score
 7. Set n_pca default to eqaul 100
