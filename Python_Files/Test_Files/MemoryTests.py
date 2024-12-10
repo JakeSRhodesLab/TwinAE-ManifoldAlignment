@@ -2,27 +2,37 @@
 Designed to test memory usages of MASH
 
 Run with following command:
-python -m memory_profiler /yunity/arusty/Graph-Manifold-Alignment/mashspud/mashspud/MemoryTests.py
+python -m memory_profiler /yunity/arusty/Graph-Manifold-Alignment/Python_Files/Test_Files/MemoryTests.py
 """
 
-print{"Process running..."}
+print("Process running...")
 
 #Imports 
 from Main.test_manifold_algorithms import test_manifold_algorithms as tma
 from mashspud.MASH import MASH
 
 #Create Data class to fit the data later
-dc = tma("SML2010.csv", split = "random", verbose = 1)
+dc = tma("waveform.csv", split = "distort", verbose = 1)
 
-#Fit the data
-optimized = MASH(DTM = "kl_optimized", verbose = 4)
+try: 
+    #Fit the data
+    optimized = MASH(DTM = "kl_optimized", verbose = 4, random_state = 42)
+    optimized.fit(dc.split_A, dc.split_B, dc.anchors[:40])
+    print("\nFinished fitting the optimized...")
+    print(f"Optimized scores {optimized.get_scores(n_jobs = 5, n_init = 5)} \n\n")
 
-optimized.fit(dc.split_A, dc.split_B, dc.anchors[:40])
-print("\nFinished fitting the optimized...")
-print(f"Optimized scores {optimized.get_scores(n_jobs = 5, n_init = 4)} \n\n")
+except Exception as e:
+    print("Error" + e)
 
-#Do this for comparison
-natural = MASH(DTM = "kl", verbose = 4)
-natural.fit(dc.split_A, dc.split_B, dc.anchors[:40])
-print("\nFinished fitting the natural kl...")
-print(f"Optimized scores {natural.get_scores(n_jobs = 5, n_init = 4)} \n\n")
+print("\n<><><><><><><><><>>>>><><><><><><><><><><><><><><<<<<<<><><><><><><><><><><><>\n")
+
+try:
+    #Do this for comparison
+    natural = MASH(DTM = "kl", verbose = 4, random_state = 42)
+    natural.fit(dc.split_A, dc.split_B, dc.anchors[:40])
+    print("\nFinished fitting the natural kl...")
+    print(f"Optimized scores {natural.get_scores(n_jobs = 5, n_init = 5)} \n\n")
+
+except Exception as e:
+    print("Error" + e)
+
