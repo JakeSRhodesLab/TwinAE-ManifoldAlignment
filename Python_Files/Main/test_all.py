@@ -1,3 +1,4 @@
+print("Process Running...\n")
 
 import os
 # Set TensorFlow logging level
@@ -222,8 +223,8 @@ pipe("MALI", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], pa
 
 pipe("RF-MALI", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         mu = [0.01, 0.1, 0.3, 0.5, 0.75, 0.99], t = ["auto", "auto-I", "DPT", "DPT-I", 3, 5, 30], transition_only = [True, False],
-        ot = [True, False], normalize_M = [True, False],
-        overide_defaults= {"interclass_distance" : "rfgap"}) #CHECK with professor Rhodes on this
+        ot = [True, False], normalize_M = [True, False], interclass_distance = ["rfgap", "cosine"],
+        overide_defaults= {"graph_distance" : "rfgap"}) 
 
 pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      learning_rate = [0.01, 0.005, 0.001])

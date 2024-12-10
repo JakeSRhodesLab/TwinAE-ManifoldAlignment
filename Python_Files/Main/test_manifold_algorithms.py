@@ -11,15 +11,8 @@ Then we can take the resulting Z layer, input it to both graes, and then retrain
 Changes Log: 
 3. Adding Logging to tell easier why tests fail
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
-15. Added RF MALI
-19. Fully automized the GRAE process
-20. Implemented GRAE testing for non-RF methods
-21. Allow GRAE to test with different mds
-22. Added GRAE testing for MASH optimization
-23. Changed RF_OOB scores to only be on test data. CHECK this - I feel like the idea is wrong
-24. Changed n_init and n_jobs on MDS for faster results. 
-25. We can speed up the MDS for SPUD and MASH get_scores by doing the following hyperparameters: n_init, and n_jobs
-26. Created visuals for the grae results
+28. Added A to B domain on Grae testing -> See Grae Tests for visualization
+
 
 
 TASKS:

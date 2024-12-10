@@ -40,6 +40,12 @@ def discretize_labels(regression_labels):
     return discrete_labels
 
 def get_RF_score(emb, labels, seed):
+    """
+    We want to get the test scores on the training data
+    """
+
+    y_A_train, y_A_test, y_B_train, _ = labels
+    X_train = np.vstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): len(y_A_train) + len(y_A_test) + len(y_B_train)]))
 
     if np.issubdtype(labels.dtype, np.integer):
         rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True, random_state=seed)
@@ -47,12 +53,12 @@ def get_RF_score(emb, labels, seed):
         rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False, oob_score = True, random_state=seed)
         
     #Fit it for Data A and get proximities
-    rf_class.fit(emb, y = labels)
+    rf_class.fit(X_train, y = np.hstack([y_A_train, y_B_train]))
     return rf_class.oob_score_
 
-def get_embedding_scores(emb, seed, data):
+def get_embedding_scores(emb, seed, labels):
     # Unpack data
-    y_A_train, y_A_test, y_B_train, y_B_test = data
+    y_A_train, y_A_test, y_B_train, y_B_test = labels
 
     # Create X_train and X_test
     X_train = np.vstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): len(y_A_train) + len(y_A_test) + len(y_B_train)]))

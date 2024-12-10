@@ -205,8 +205,7 @@ class pipe():
             emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
 
         #Get scores
-        #rf_oob_score = get_RF_score(np.vstack((X_A_test, X_B_test)), np.hstack(y_A_test, y_B_test), seed)
-        rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
+        rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
         knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
         
         print(f"                KNN Score {knn_score}")
@@ -293,9 +292,10 @@ class pipe():
 
         #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
         if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
-            rf_oob_score = get_RF_score(emb, np.hstack((tma.labels, y_A_test, tma.labels, y_B_test)), seed)
+            rf_oob_score = get_RF_score(emb, (tma.labels, y_A_test, tma.labels, y_B_test), seed)
         else:
-            rf_oob_score = get_RF_score(emb, np.hstack((y_A_train, y_A_test, y_B_train, y_B_test)), seed)
+            rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
+
 
         print(f"                GRAE KNN Score {knn_score}")
         print(f"                GRAE RF on embedding Score {rf_score}")
