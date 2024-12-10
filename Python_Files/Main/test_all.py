@@ -36,15 +36,18 @@ csv_files = [
 reg_files = [ #REGRESSION 
     "EnergyEfficiency.csv", 
     "Hydrodynamics.csv",
-    "CommunityCrime.csv",
-    "AirfoilSelfNoise.csv",  "AutoMPG.csv",
-     "ComputerHardware.csv"
-    # "ConcreteSlumpTest.csv",  "FacebookMetrics.csv",
-    # "IstanbulStock.csv", "Parkinsons.csv",
-    # "Automobile.csv", "CommunityCrime.csv",
-    # "ConcreteCompressiveStrength.csv",   "Hydrodynamics.csv",
-    #"OpticalNetwork.csv",
-    # "SML2010.csv"
+    "AirfoilSelfNoise.csv",  
+      #"AutoMPG.csv",
+#      "ComputerHardware.csv"
+#     "ConcreteSlumpTest.csv", 
+        # "FacebookMetrics.csv",
+        # "Parkinsons.csv",
+#     "IstanbulStock.csv",
+    #"Automobile.csv",
+    # "CommunityCrime.csv"
+#     "ConcreteCompressiveStrength.csv",
+#     "OpticalNetwork.csv",
+#     "SML2010.csv"
 ]
 
 """
@@ -148,12 +151,12 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
 # #Pipeline Tests
 from Pipeline import pipe
 
-SPLITS = ["distort"]
+SPLITS = ["distort", "even", "random", "skewed", "turn"]
 PF = 10
 
 """
 RF Methods Below -> \/
-
+"""
 
 pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
@@ -175,9 +178,9 @@ pipe("RF-NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3],
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
 
-
+"""
 Our methods below -> \/
-
+"""
 
 
 pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
@@ -201,7 +204,7 @@ pipe("NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], pa
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
 
-
+"""
 Other methods below -> \/
 """
 

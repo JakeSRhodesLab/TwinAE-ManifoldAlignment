@@ -12,11 +12,11 @@ Changes Log:
 3. Adding Logging to tell easier why tests fail
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
 28. Added A to B domain on Grae testing -> See Grae Tests for visualization
+29. Fixed RF-oob scores to only be on train data
 
 
 
 TASKS:
-0. Run RF - OOB (only use train data for the results)
 1. Run regression tests
 5. Ability to create confusion matrix with the CE score
 7. Set n_pca default to eqaul 100
