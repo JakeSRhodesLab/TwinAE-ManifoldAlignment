@@ -16,13 +16,13 @@ dc = tma("waveform.csv", split = "distort", verbose = 1)
 
 try: 
     #Fit the data
-    optimized = MASH(DTM = "kl_optimized", verbose = 4, random_state = 42)
+    optimized = MASH(DTM = "kl_optimized", verbose = 4, random_state = 42, chunk_size= 100)
     optimized.fit(dc.split_A, dc.split_B, dc.anchors[:40])
     print("\nFinished fitting the optimized...")
     print(f"Optimized scores {optimized.get_scores(n_jobs = 5, n_init = 5)} \n\n")
 
 except Exception as e:
-    print("Error" + e)
+    print("Error" + str(e))
 
 print("\n<><><><><><><><><>>>>><><><><><><><><><><><><><><<<<<<<><><><><><><><><><><><>\n")
 
@@ -34,5 +34,5 @@ try:
     print(f"Optimized scores {natural.get_scores(n_jobs = 5, n_init = 5)} \n\n")
 
 except Exception as e:
-    print("Error" + e)
+    print("Error" + str(e))
 

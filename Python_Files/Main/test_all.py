@@ -34,20 +34,20 @@ csv_files = [
              ]
 
 reg_files = [ #REGRESSION 
-    "EnergyEfficiency.csv", 
-    "Hydrodynamics.csv",
-    "AirfoilSelfNoise.csv",  
-      #"AutoMPG.csv",
-#      "ComputerHardware.csv"
+#     "EnergyEfficiency.csv", 
+#     "Hydrodynamics.csv",
+#     "AirfoilSelfNoise.csv",  
+#       "AutoMPG.csv",
+#      "ComputerHardware.csv",
 #     "ConcreteSlumpTest.csv", 
-        # "FacebookMetrics.csv",
-        # "Parkinsons.csv",
+#         "FacebookMetrics.csv",
+#         "Parkinsons.csv",
 #     "IstanbulStock.csv",
-    #"Automobile.csv",
-    # "CommunityCrime.csv"
+#     "Automobile.csv",
+#     "CommunityCrime.csv"
 #     "ConcreteCompressiveStrength.csv",
-#     "OpticalNetwork.csv",
-#     "SML2010.csv"
+    "OpticalNetwork.csv",
+    "SML2010.csv"
 ]
 
 """
@@ -158,12 +158,6 @@ PF = 10
 RF Methods Below -> \/
 """
 
-pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
-
-pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
-
 pipe("RF-SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
@@ -177,17 +171,10 @@ pipe("RF-NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3],
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
-
 """
 Our methods below -> \/
 """
 
-
-pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
-
-pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 #We sorted out the overide methods between each of the spuds
 pipe("SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
@@ -231,3 +218,22 @@ pipe("RF-MALI", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3],
 
 pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      learning_rate = [0.01, 0.005, 0.001])
+
+
+"""
+Mash Methods Below \/
+"""
+
+pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+
+pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+
+
+pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+
+pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+

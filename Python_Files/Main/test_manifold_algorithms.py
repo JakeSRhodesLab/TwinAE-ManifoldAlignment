@@ -13,6 +13,7 @@ Changes Log:
 9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
 28. Added A to B domain on Grae testing -> See Grae Tests for visualization
 29. Fixed RF-oob scores to only be on train data
+30. Fixed Errors in get_scores functions when labels aren't provided for MASH and SPUD
 
 
 
