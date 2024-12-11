@@ -31,7 +31,7 @@ try:
     natural = MASH(DTM = "kl", verbose = 4, random_state = 42)
     natural.fit(dc.split_A, dc.split_B, dc.anchors[:40])
     print("\nFinished fitting the natural kl...")
-    print(f"Optimized scores {natural.get_scores(n_jobs = 5, n_init = 5)} \n\n")
+    print(f"Natural scores {natural.get_scores(n_jobs = 5, n_init = 5)} \n\n")
 
 except Exception as e:
     print("Error" + str(e))
