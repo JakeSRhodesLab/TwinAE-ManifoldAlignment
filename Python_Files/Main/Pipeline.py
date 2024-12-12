@@ -18,7 +18,7 @@ Return to editing MASH with the get_calidation scores
 
 #Start Logging:
 logging.basicConfig(filename='/yunity/arusty/Graph-Manifold-Alignment/Resources/Pipeline.log',
-                     level=logging.DEBUG, format='%(asctime)s  -> %(levelname)s: %(message)s')
+                     level=logging.DEBUG, format='%(asctime)s  -> Line Number: %(lineno)d. %(levelname)s: %(message)s')
 logger = logging.getLogger('Pipe')
 
 # Set TensorFlow logging level

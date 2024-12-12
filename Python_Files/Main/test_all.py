@@ -43,9 +43,9 @@ reg_files = [ #REGRESSION
 #         "FacebookMetrics.csv",
 #         "Parkinsons.csv",
 #     "IstanbulStock.csv",
-#     "Automobile.csv",
-#     "CommunityCrime.csv"
-#     "ConcreteCompressiveStrength.csv",
+    "Automobile.csv",
+    "CommunityCrime.csv",
+    "ConcreteCompressiveStrength.csv",
     "OpticalNetwork.csv",
     "SML2010.csv"
 ]

@@ -14,19 +14,20 @@ Changes Log:
 28. Added A to B domain on Grae testing -> See Grae Tests for visualization
 29. Fixed RF-oob scores to only be on train data
 30. Fixed Errors in get_scores functions when labels aren't provided for MASH and SPUD
-
+31. MASH had memory challenges. Chunked functions so they take longer but require less memory. (If we wanted, we could make it parrelizable. Bigger memory chunks = Faster than more processors though)
+32. Ran tests for regression (And currently running more)
 
 
 TASKS:
 1. Run regression tests
-5. Ability to create confusion matrix with the CE score
-7. Set n_pca default to eqaul 100
 8. Compare and contrast the scores for PCA and MDS and also ISOMAP (probably not faster) and UMAP (Really fast potentially)
 9. Freeze layer of GRAE and building and A to B projection
 
 MORE TASKS
 1. MD things
 2. Time data for MASH
+7. Set n_pca default to eqaul 100
+
 
 If time things:
 6. Figure out how to make NaN processing faster. Use the pdist?
