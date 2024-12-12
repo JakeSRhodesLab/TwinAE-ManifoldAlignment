@@ -16,6 +16,7 @@ Changes Log:
 30. Fixed Errors in get_scores functions when labels aren't provided for MASH and SPUD
 31. MASH had memory challenges. Chunked functions so they take longer but require less memory. (If we wanted, we could make it parrelizable. Bigger memory chunks = Faster than more processors though)
 32. Ran tests for regression (And currently running more)
+33. Fixed error with MALI in the tests (also fixed that our methods were reporting less than they should be)
 
 
 TASKS:

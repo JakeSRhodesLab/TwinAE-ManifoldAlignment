@@ -36,17 +36,17 @@ csv_files = [
 reg_files = [ #REGRESSION 
 #     "EnergyEfficiency.csv", 
 #     "Hydrodynamics.csv",
+#     "OpticalNetwork.csv",
 #     "AirfoilSelfNoise.csv",  
 #       "AutoMPG.csv",
 #      "ComputerHardware.csv",
+#     "CommunityCrime.csv",
 #     "ConcreteSlumpTest.csv", 
 #         "FacebookMetrics.csv",
 #         "Parkinsons.csv",
 #     "IstanbulStock.csv",
-    "Automobile.csv",
-    "CommunityCrime.csv",
+#     "Automobile.csv",
     "ConcreteCompressiveStrength.csv",
-    "OpticalNetwork.csv",
     "SML2010.csv"
 ]
 
