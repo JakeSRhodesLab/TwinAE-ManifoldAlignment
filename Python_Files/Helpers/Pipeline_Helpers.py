@@ -304,7 +304,7 @@ def Andres_fit(self, tma, anchors):
 
 def adjust_tma_labels(emb, tma):
     #Update tma labels if needed for Andres fit methods
-    if len(emb) != len(tma.labels_doubled):
+    if len(emb) != len(tma.labels_doubled): #Emb is nan
         labelsh1 = tma.labels[tma.anchors[:int(len(tma.anchors) * tma.percent_of_anchors[0])].T[0]]
         tma.labels = np.concatenate((tma.labels, labelsh1))
         tma.labels_doubled = np.concatenate((tma.labels, tma.labels))
