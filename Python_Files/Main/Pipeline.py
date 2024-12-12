@@ -146,11 +146,16 @@ class pipe():
             
     def get_validation_scores(self, emb, tma, seed, best_fit):
 
+        if np.isscalar(emb): #Check to see if embedding is NaN
+            print("\nMETHOD EMBEDDING FAILED. It is missing\n")
+            logger.warning(f"Embedding is equal to NaN. Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {best_fit}.")
+            return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+
         from copy import deepcopy
         tma = deepcopy(tma)
 
         #Update tma labels if needed for Andres fit methods
-        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
+        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma) #Emb is Nan
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
@@ -220,6 +225,9 @@ class pipe():
         """
         Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
         """
+
+        if np.isscalar(emb): #We print and log warnings already above
+            return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
         #Update tma labels if needed for Andres fit methods
         #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
@@ -315,6 +323,7 @@ class pipe():
         best_c_score = np.NaN
         best_rf_oob_score= np.NaN
         best_knn_score = np.NaN
+        best_emb = np.NaN
 
         # Step 1: Test the KNN parameter first
         if self.method_data["KNN"]:
@@ -362,8 +371,8 @@ class pipe():
 
             #Set best_fit to default if necessary
             if is_default_best:
-                best_fit[parameter] = self.defaults[parameter]
-                best_emb = emb
+                best_fit[parameter] = self.defaults[parameter] 
+                #We dont need to reset the best emb
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
                 
