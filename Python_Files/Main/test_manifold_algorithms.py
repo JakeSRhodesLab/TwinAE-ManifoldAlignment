@@ -17,11 +17,10 @@ Changes Log:
 31. MASH had memory challenges. Chunked functions so they take longer but require less memory. (If we wanted, we could make it parrelizable. Bigger memory chunks = Faster than more processors though)
 32. Ran tests for regression (And currently running more)
 33. Fixed error with MALI in the tests (also fixed that our methods were reporting less than they should be)
+34. Created plot to show GRAE versus not Grae scores
 
 
 TASKS:
-1. Run regression tests
-8. Compare and contrast the scores for PCA and MDS and also ISOMAP (probably not faster) and UMAP (Really fast potentially)
 9. Freeze layer of GRAE and building and A to B projection
 
 MORE TASKS
