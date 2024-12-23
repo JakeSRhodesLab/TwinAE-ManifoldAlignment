@@ -26,24 +26,7 @@ def read_json_files_to_dataframe(directory_path):
     # Create a DataFrame from the list of JSON data
     df = pd.DataFrame(data_list)
     
-    return df
-
-def report_missing_json_files(directory_path):
-    print("Missing Data Files:")
-
-    # Walk through the directory and its subdirectories
-    for root, _, files in os.walk(directory_path):
-        print(f"    Entering directory: {root}")
-
-        found_table = {
-
-        }
-
-        for file in files:
-            if file.endswith('.json'):
-                # Construct full file path
-                file_path = os.path.join(root, file)
-                
+    return df            
                 
 
 
