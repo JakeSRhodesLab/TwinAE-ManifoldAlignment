@@ -28,6 +28,25 @@ def read_json_files_to_dataframe(directory_path):
     
     return df
 
+def report_missing_json_files(directory_path):
+    print("Missing Data Files:")
+
+    # Walk through the directory and its subdirectories
+    for root, _, files in os.walk(directory_path):
+        print(f"    Entering directory: {root}")
+
+        found_table = {
+
+        }
+
+        for file in files:
+            if file.endswith('.json'):
+                # Construct full file path
+                file_path = os.path.join(root, file)
+                
+                
+
+
 def plot_radial(df, columns):
     unique_methods = df["method"].unique()
 
@@ -124,7 +143,6 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
     
     sort_by should be the string of what the method you want"""
 
-
     agregate_df = pd.DataFrame({
             'SSMA': df[df["method"] == "SSMA"].groupby("csv_file")[metric].max(),
             'MAGAN': df[df["method"] == "MAGAN"].groupby("csv_file")[metric].max(),
@@ -132,14 +150,15 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
             'SPUD': df[df["method"] == "SPUD"].groupby("csv_file")[metric].max(),
             'MASH': df[df["method"] == "MASH"].groupby("csv_file")[metric].max(),
             'MASH-': df[df["method"] == "MASH-"].groupby("csv_file")[metric].max(),
+            'RF-MASH-': df[df["method"] == "RF-MASH-"].groupby("csv_file")[metric].max(),
             'NAMA': df[df["method"] == "NAMA"].groupby("csv_file")[metric].max(),
-            'PCR': df[df["method"] == "PCR"].groupby("csv_file")[metric].max(),
+            'RF-NAMA': df[df["method"] == "RF-NAMA"].groupby("csv_file")[metric].max(),
+            'PCR': df[df["method"].isin(["PCR", "MAPA"])].groupby("csv_file")[metric].max(),
             'JLMA': df[df["method"] == "JLMA"].groupby("csv_file")[metric].max(),
-            'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].max(),
-            'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].max(),
+            'MASH_RF': df[df["method"].isin(["MASH_RF", "RF-MASH"])].groupby("csv_file")[metric].max(),
+            'MALI_RF': df[df["method"].isin(["MALI_RF", "MALI-RF"])].groupby("csv_file")[metric].max(),
             'MALI': df[df["method"] == "MALI"].groupby("csv_file")[metric].max(),
-            'KEMA_RF': df[df["method"] == "KEMA_RF"].groupby("csv_file")[metric].max(),
-            'SPUD_RF': df[df["method"] == "SPUD_RF"].groupby("csv_file")[metric].max(),
+            'SPUD_RF': df[df["method"].isin(["SPUD_RF", "RF-SPUD"])].groupby("csv_file")[metric].max(),
             'BL_A': df.groupby("csv_file")["A_Classification_Score"].max(),
             'BL_B': df.groupby("csv_file")["B_Classification_Score"].max(),
     })
@@ -174,8 +193,6 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
         ax = plt.scatter(y = agregate_df["PCR"], marker = '^', color = "brown",x = get_index_pos(agregate_df), label = "Procrutees", **key_words)
     if "DTA" in plot_methods:
         ax = plt.scatter(y = agregate_df["DTA"], marker = "^", color = "orange",x = get_index_pos(agregate_df), label = "DTA", **key_words)
-    if "SPUD" in plot_methods:
-        ax = plt.scatter(y = agregate_df["SPUD"], label = "SPUD", marker = '^',x = get_index_pos(agregate_df), color = "blue", **key_words)
     if "SSMA" in plot_methods:
         ax = plt.scatter(y = agregate_df["SSMA"],  marker = '^', label = "SSMA",x = get_index_pos(agregate_df), **key_words) 
     if "BL_A" in plot_methods:
@@ -188,6 +205,10 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
                 "s" : 50,
                 "alpha" : .90 }
     
+    if "RF-NAMA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RF-NAMA"], marker = 'o', color = "red", x = get_index_pos(agregate_df),label = "RF-NAMA", **key_words)
+    if "RF-MASH-" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RF-MASH-"], marker = 'o', color = "orange", x = get_index_pos(agregate_df),label = "RF-MASH-", **key_words)
     if "MASH_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["MASH_RF"], marker = 'o', color = "green", x = get_index_pos(agregate_df),label = "MASH_RF", **key_words)
     if "MALI_RF" in plot_methods:
@@ -196,8 +217,6 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
         ax = plt.scatter(y = agregate_df["MALI"], marker = 'o', x = get_index_pos(agregate_df),label = "MALI", **key_words)
     if "SPUD_RF" in plot_methods:
         ax = plt.scatter(y = agregate_df["SPUD_RF"], x = get_index_pos(agregate_df), label = "SPUD_RF", marker = 'o', color = "blue", **key_words)
-    if "KEMA_RF" in plot_methods:
-        ax = plt.scatter(y = agregate_df["KEMA_RF"],x = get_index_pos(agregate_df), marker = 'o', color = "purple", label = "KEMA", **key_words)
 
     global move_index
     move_index = -0.03

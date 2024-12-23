@@ -40,14 +40,14 @@ reg_files = [ #REGRESSION
 #     "AirfoilSelfNoise.csv",  
 #       "AutoMPG.csv",
 #      "ComputerHardware.csv",
-#     "CommunityCrime.csv",
+     "CommunityCrime.csv",
 #     "ConcreteSlumpTest.csv", 
 #         "FacebookMetrics.csv",
 #         "Parkinsons.csv",
 #     "IstanbulStock.csv",
 #     "Automobile.csv",
-    "ConcreteCompressiveStrength.csv",
-    "SML2010.csv"
+#     "ConcreteCompressiveStrength.csv",
+#     "SML2010.csv"
 ]
 
 """
@@ -155,6 +155,18 @@ SPLITS = ["distort", "even", "random", "skewed", "turn"]
 PF = 10
 
 """
+Files 1-3 ran. 
+
+Files 3-6 crashed on MASH- due to excess memory requirements.
+
+File 6 crashed on MASH due to excess memory requirements.
+
+Files 7-10 still on Parkinsons with MASH-.
+
+
+
+
+
 RF Methods Below -> \/
 """
 

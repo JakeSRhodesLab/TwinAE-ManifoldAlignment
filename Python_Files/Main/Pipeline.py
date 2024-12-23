@@ -410,7 +410,18 @@ class pipe():
 
             #Get all the text cases except when it equals the default
             param_configs = [(anchor_percent, {**best_fit, "random_state": value}, tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)) for value in [1738, 5271, 9209, 1316]]
-            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
+            
+            
+            #Split based on mash data or not to reduce overhead
+            if self.method_data["Name"] in ["MASH-", "RF-MASH-"]:
+                #Use a classic for loop instead of parrelization to reduce the memory overhead
+                param_results = []
+                for param_set in param_configs:
+                    param_results.append(self.run_single_test(param_set[0], param_set[1], param_set[2]))
+                    
+            else:
+                #THIS LINE HERE NEEDS EXCESSIVE MEMORY
+                param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(self.run_single_test)(ap, params, tma) for ap, params, tma in param_configs)
 
             # Add the results
             for (f_score, c_score, emb), (_, params, tma_config) in zip(param_results, param_configs):
@@ -550,15 +561,20 @@ class pipe():
                         "KNN-metric" : grae_knn_metric,
                         "RF-metric": grae_rf_metric}}
 
-        #Step 3: Repeat the process with different seeds # RETURN WORKING HERE
+        #Step 3: Repeat the process with different seeds 
         if self.tma.split in ["random", "turn", "distort"]:
             #Delete the seed overide
             self.overide_defaults.pop("random_state")
 
             #Get all the text cases except when it equals the default
             param_configs = [{**best_fit, "hold_out_anchors" : np.array(self.tma.anchors[:int(len(self.tma.anchors) * anchor_percent)]), "random_state": value} for value in [1738, 5271, 9209, 1316]]
-            tma_configs = [tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0) for value in [1738, 5271, 9209, 1316]]
-            param_results = Parallel(n_jobs=min(self.parallel_factor, len(param_configs)))(delayed(get_mash_score_connected)(method_class, tma, **params) for params, tma in zip(param_configs, tma_configs))
+
+            #Use a classic for loop instead of parrelization to reduce the memory overhead
+            param_results = []
+            for pos, value in enumerate([1738, 5271, 9209, 1316]):
+                tma_config = tma(csv_file = self.csv_file, split = self.tma.split, percent_of_anchors = self.percent_of_anchors, random_state=value, verbose = 0)
+                
+                param_results.append(get_mash_score_connected(method_class, tma_config, **param_configs[pos]))
 
             # Add the results
             for (f_score, c_score, emb), params in zip(param_results, param_configs):

@@ -18,6 +18,7 @@ Changes Log:
 32. Ran tests for regression (And currently running more)
 33. Fixed error with MALI in the tests (also fixed that our methods were reporting less than they should be)
 34. Created plot to show GRAE versus not Grae scores
+35. Updated method to reduce memory restraints
 
 
 TASKS:
