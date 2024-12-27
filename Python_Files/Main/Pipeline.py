@@ -145,81 +145,86 @@ class pipe():
             return (np.NaN, np.NaN, np.NaN)
             
     def get_validation_scores(self, emb, tma, seed, best_fit):
+        try:
 
-        if np.isscalar(emb): #Check to see if embedding is NaN
-            print("\nMETHOD EMBEDDING FAILED. It is missing\n")
-            logger.warning(f"Embedding is equal to NaN. Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {best_fit}.")
-            return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+            if np.isscalar(emb): #Check to see if embedding is NaN
+                print("\nMETHOD EMBEDDING FAILED. It is missing\n")
+                logger.warning(f"Embedding is equal to NaN. Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {best_fit}.")
+                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
-        #Update tma labels if needed for Andres fit methods
-        if self.method_data["Name"] in ["DTA", "SSMA", "MALI", "MAPA"]:
-            from copy import deepcopy
-            tma = deepcopy(tma)
-            tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma) #Emb is Nan
+            #Update tma labels if needed for Andres fit methods
+            if self.method_data["Name"] in ["DTA", "SSMA", "MALI", "MAPA"]:
+                from copy import deepcopy
+                tma = deepcopy(tma)
+                tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma) #Emb is Nan
 
-        if self.method_data["Name"][:2] == "RF":
-            #To avoid it changing outside of the class
-            from copy import deepcopy
-            best_fit = deepcopy(best_fit)
+            if self.method_data["Name"][:2] == "RF":
+                #To avoid it changing outside of the class
+                from copy import deepcopy
+                best_fit = deepcopy(best_fit)
 
-            #To avoid using the data on the text and Train, we will need to split it
-            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
-            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
+                #To avoid using the data on the text and Train, we will need to split it
+                X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels, test_size=0.2, random_state=seed)
+                X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels, test_size=0.2, random_state=seed)
 
-            #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
-            if self.method_data["Name"] == "RF-MASH":
+                #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
+                if self.method_data["Name"] == "RF-MASH":
+                
+                    optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+
+                    #Select half of the anchors for training
+                    anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                    
+                    for param in ["connection_limit", "threshold", "epochs"]:
+                        optimize_dict[param] = best_fit[param]
+                        del best_fit[param]
+
+                    #Delete hold out anchors
+                    if "hold_out_anchors" in best_fit.keys():
+                        del best_fit["hold_out_anchors"]
+                    
+                else:
+                    anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+
+                #Create model
+                rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+
+                #Fit it. Should work for all that can use the Rhodes Test Fit Model
+                rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
+
+                #Calculate GRAE variant
+
+                if self.method_data["Name"] == "RF-MASH":
+                    rf_method_class.optimize_by_creating_connections(**optimize_dict)
+
+                #Create a custom MDS where we can run a higher n_init and n_jobs
+                mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
+                        n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
+                emb = mds.fit_transform(self.method_data["Block"](rf_method_class))
             
-                optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
-
-                #Select half of the anchors for training
-                anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
-                
-                for param in ["connection_limit", "threshold", "epochs"]:
-                    optimize_dict[param] = best_fit[param]
-                    del best_fit[param]
-
-                #Delete hold out anchors
-                if "hold_out_anchors" in best_fit.keys():
-                    del best_fit["hold_out_anchors"]
-                
             else:
-                anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+                #We want to test 80/20 still, but it doesn't matter which part because we didn't use any labels this time
+                X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(emb[:len(tma.labels)], tma.labels, test_size=0.2, random_state=seed)
+                X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[len(tma.labels):], tma.labels, test_size=0.2, random_state=seed)
+                
+                #Resticth the embedding 
+                emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
 
-            #Create model
-            rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
-
-            #Fit it. Should work for all that can use the Rhodes Test Fit Model
-            rf_method_class = Rhodes_test_fit(rf_method_class, (X_A_train, X_A_test, y_A_train), (X_B_train, X_B_test, y_B_train), anchors) #This works because we garuntee the tests are the same size
-
-            #Calculate GRAE variant
-
-            if self.method_data["Name"] == "RF-MASH":
-                rf_method_class.optimize_by_creating_connections(**optimize_dict)
-
-            #Create a custom MDS where we can run a higher n_init and n_jobs
-            mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
-                      n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
-            emb = mds.fit_transform(self.method_data["Block"](rf_method_class))
-        
-        else:
-            #We want to test 80/20 still, but it doesn't matter which part because we didn't use any labels this time
-            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(emb[:len(tma.labels)], tma.labels, test_size=0.2, random_state=seed)
-            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(emb[len(tma.labels):], tma.labels, test_size=0.2, random_state=seed)
+            #Get scores
+            rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
+            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
             
-            #Resticth the embedding 
-            emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
+            print(f"                KNN Score {knn_score}")
+            print(f"                RF on embedding Score {rf_score}")
+            print(f"                Random Forest out of bag score {rf_oob_score}")
+            print(f"                KNN's f1 or Root mean square error score {rf_score}")
+            print(f"                Random Forest f1 or Root mean square error score {rf_oob_score}")
 
-        #Get scores
-        rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
-        knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
+            return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
         
-        print(f"                KNN Score {knn_score}")
-        print(f"                RF on embedding Score {rf_score}")
-        print(f"                Random Forest out of bag score {rf_oob_score}")
-        print(f"                KNN's f1 or Root mean square error score {rf_score}")
-        print(f"                Random Forest f1 or Root mean square error score {rf_oob_score}")
-
-        return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
+        except Exception as e:
+            logger.warning(f"Failure with get_validation scores:", end = "    ")
+            raise Exception(e)
 
     def get_GRAE_validation_scores(self, emb, tma, seed, best_fit):
         """
