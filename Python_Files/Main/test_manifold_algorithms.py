@@ -22,6 +22,7 @@ Changes Log:
 
 
 TASKS:
+1. Create a data class of tma instead of the franken-object
 9. Freeze layer of GRAE and building and A to B projection
 
 MORE TASKS
@@ -1594,7 +1595,7 @@ class test_manifold_algorithms():
         #Save the numpy array
         np.save(filename, scores)
 
-        #self.run_BL_CE()
+        self.run_BL_CE()
 
         #Run successful
         return True
@@ -1834,6 +1835,9 @@ def _upload_file(file, directory = "default"):
     #Create Base Line Data Frame
     base_df = pd.DataFrame(columns= ["csv_file", "method", "seed", "split", "KNN", #Shared headers
                                     "A_Classification_Score", "B_Classification_Score"])
+    
+    if file[-4:] == "json":
+        return (df, base_df)
 
     #Load in the numpy array
     try:
@@ -1846,9 +1850,6 @@ def _upload_file(file, directory = "default"):
 
     #Create a dictionary to use to add rows to our DataFame
     data_dict = {}
-
-    if file[:-4] == "json":
-        return (df, base_df)
 
     #Drop the .npy
     file = file[:-4]
@@ -2312,12 +2313,26 @@ def run_all_tests(csv_files = "all", test_random = 1, run_RF_BL_tests = False, r
 
     def create_manifold_instances(method, results_df = results_df):
 
-        csv_files = ["audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv",
-                    "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
-                    "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "parkinsons.csv",
-                    "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv",
-                    "winequality-red.csv", "zoo.csv", 
-                    "S-curve.csv", "blobs.csv"]
+        csv_files = [#"audiology.csv", "balance_scale.csv", "breast_cancer.csv", "Cancer_Data.csv", "car.csv",
+                    # "crx.csv", "diabetes.csv", "ecoli_5.csv", "flare1.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "hepatitis.csv",
+                    # "hill_valley.csv", "ionosphere.csv", "iris.csv", "Medicaldataset.csv", "mnist_test.csv", "parkinsons.csv",
+                    # "seeds.csv", "segmentation.csv", "tic-tac-toe.csv", "titanic.csv", "treeData.csv", "water_potability.csv",
+                    # "winequality-red.csv", "zoo.csv", 
+                    # "S-curve.csv", "blobs.csv",
+                    "EnergyEfficiency.csv", 
+                    "Hydrodynamics.csv",
+                    "OpticalNetwork.csv",
+                    "AirfoilSelfNoise.csv",  
+                    "AutoMPG.csv",
+                    "ComputerHardware.csv",
+                    "CommunityCrime.csv",
+                    "ConcreteSlumpTest.csv", 
+                        "FacebookMetrics.csv",
+                        "Parkinsons.csv",
+                    "IstanbulStock.csv",
+                    "Automobile.csv",
+                    "ConcreteCompressiveStrength.csv",
+                    "SML2010.csv"]
 
         # Create an instance of TestManifoldAlgorithms for each CSV file.
         for csv_file in csv_files:
@@ -2483,6 +2498,8 @@ def upload_to_DataFrame(directory = "default"):
         for directory in os.listdir(CURR_DIR + "/RegressionData/"):
             if os.path.isdir(CURR_DIR + "/RegressionData/" + directory): #Check to make sure its a directory
                 files += [os.path.join(directory, file) for file in os.listdir(CURR_DIR + "/RegressionData/" + directory)]
+
+        directory = "regression"
 
     else: 
         for directory in os.listdir(CURR_DIR + "/ManifoldData_RF/"):
