@@ -151,11 +151,11 @@ class pipe():
             logger.warning(f"Embedding is equal to NaN. Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {best_fit}.")
             return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
-        from copy import deepcopy
-        tma = deepcopy(tma)
-
         #Update tma labels if needed for Andres fit methods
-        tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma) #Emb is Nan
+        if self.method_data["Name"] in ["DTA", "SSMA", "MALI", "MAPA"]:
+            from copy import deepcopy
+            tma = deepcopy(tma)
+            tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma) #Emb is Nan
 
         if self.method_data["Name"][:2] == "RF":
             #To avoid it changing outside of the class
@@ -225,93 +225,98 @@ class pipe():
         """
         Get the GRAE version of the validation metrics. We use the emb only to compare if we need to change tma sizes
         """
+        try:
 
-        if np.isscalar(emb): #We print and log warnings already above
-            return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+            if np.isscalar(emb): #We print and log warnings already above
+                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
-        #Update tma labels if needed for Andres fit methods
-        #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
+            #Update tma labels if needed for Andres fit methods
+            #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
 
-        #To avoid it changing outside of the class
-        from copy import deepcopy
-        best_fit = deepcopy(best_fit)
-        tma = deepcopy(tma)
+            #To avoid it changing outside of the class
+            from copy import deepcopy
+            best_fit = deepcopy(best_fit)
+            tma = deepcopy(tma)
 
-        #To avoid using the data on the text and Train, we will need to split it
-        X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels[:len(tma.split_A)], test_size=0.2, random_state=seed)
-        X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels[:len(tma.split_B)], test_size=0.2, random_state=seed)
+            #To avoid using the data on the text and Train, we will need to split it
+            X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(tma.split_A, tma.labels[:len(tma.split_A)], test_size=0.2, random_state=seed)
+            X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(tma.split_B, tma.labels[:len(tma.split_B)], test_size=0.2, random_state=seed)
 
-        #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
-        if self.method_data["Name"][-4:] == "MASH":
+            #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
+            if self.method_data["Name"][-4:] == "MASH":
 
-            optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+                optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
 
-            #Select half of the anchors for training
-            anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                #Select half of the anchors for training
+                anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
+                
+                for param in ["connection_limit", "threshold", "epochs"]:
+                    optimize_dict[param] = best_fit[param]
+                    del best_fit[param]
+
+                #Delete hold out anchors
+                if "hold_out_anchors" in best_fit.keys():
+                    del best_fit["hold_out_anchors"]
+                
+            else:
+                anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+
+            #Fit using x train
+            tma.split_A = X_A_train
+            tma.split_B = X_B_train
+            tma.labels = y_A_train # y_A_train will equal y_B_train
             
-            for param in ["connection_limit", "threshold", "epochs"]:
-                optimize_dict[param] = best_fit[param]
-                del best_fit[param]
+            #Create model
+            rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
+            rf_method_class = self.method_data["Fit"](rf_method_class, tma, anchors)
 
-            #Delete hold out anchors
-            if "hold_out_anchors" in best_fit.keys():
-                del best_fit["hold_out_anchors"]
+            #Optimize for RF-MASH
+            if self.method_data["Name"][-4:] == "MASH":
+                rf_method_class.optimize_by_creating_connections(**optimize_dict)
+
+            ##Create a custom MDS where we can run a higher n_init and n_jobs
+            mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
+                    n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
+            emb = mds.fit_transform(self.method_data["Block"](rf_method_class)) 
+
+            #GRAE on domain A
+            myGrae = GRAEBase(n_components = tma.n_comp)
+            split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = seed, split = "none")
+            myGrae.fit(split_A, emb=emb[:len(X_A_train)])
+            testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = seed, split = "none")
+            pred_A, _ = myGrae.score(testA)
+
+            #Grae on domain B 
+            myGrae = GRAEBase(n_components = tma.n_comp)
+            split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
+            myGrae.fit(split_B, emb=emb[int(len(emb)/2):])
+            testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
+            pred_B, _ = myGrae.score(testB)
             
-        else:
-            anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+            #Grab the scores
+            A_train = emb[:int(len(emb)/2)]
+            B_train = emb[int(len(emb)/2):]
+            emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
+            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
 
-        #Fit using x train
-        tma.split_A = X_A_train
-        tma.split_B = X_B_train
-        tma.labels = y_A_train # y_A_train will equal y_B_train
+            #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
+            if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
+                rf_oob_score = get_RF_score(emb, (tma.labels, y_A_test, tma.labels, y_B_test), seed)
+            else:
+                rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
+
+
+            print(f"                GRAE KNN Score {knn_score}")
+            print(f"                GRAE RF on embedding Score {rf_score}")
+            print(f"                GRAE Random Forest out of bag score {rf_oob_score}")
+            print(f"                GRAE KNN's f1 or Root mean square error score {rf_score}")
+            print(f"                GRAE Random Forest f1 or Root mean square error score {rf_oob_score}")
+
+            return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
         
-        #Create model
-        rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
-        rf_method_class = self.method_data["Fit"](rf_method_class, tma, anchors)
-
-        #Optimize for RF-MASH
-        if self.method_data["Name"][-4:] == "MASH":
-            rf_method_class.optimize_by_creating_connections(**optimize_dict)
-
-        ##Create a custom MDS where we can run a higher n_init and n_jobs
-        mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = max(self.parallel_factor, 3),
-                 n_jobs=self.parallel_factor, random_state = seed, n_components = tma.n_comp)
-        emb = mds.fit_transform(self.method_data["Block"](rf_method_class)) 
-
-        #GRAE on domain A
-        myGrae = GRAEBase(n_components = tma.n_comp)
-        split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = seed, split = "none")
-        myGrae.fit(split_A, emb=emb[:len(X_A_train)])
-        testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = seed, split = "none")
-        pred_A, _ = myGrae.score(testA)
-
-        #Grae on domain B 
-        myGrae = GRAEBase(n_components = tma.n_comp)
-        split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = seed, split = "none")
-        myGrae.fit(split_B, emb=emb[int(len(emb)/2):])
-        testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = seed, split = "none")
-        pred_B, _ = myGrae.score(testB)
-        
-        #Grab the scores
-        A_train = emb[:int(len(emb)/2)]
-        B_train = emb[int(len(emb)/2):]
-        emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
-        knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, seed, (y_A_train, y_A_test, y_B_train, y_B_test))
-
-        #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
-        if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
-            rf_oob_score = get_RF_score(emb, (tma.labels, y_A_test, tma.labels, y_B_test), seed)
-        else:
-            rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
-
-
-        print(f"                GRAE KNN Score {knn_score}")
-        print(f"                GRAE RF on embedding Score {rf_score}")
-        print(f"                GRAE Random Forest out of bag score {rf_oob_score}")
-        print(f"                GRAE KNN's f1 or Root mean square error score {rf_score}")
-        print(f"                GRAE Random Forest f1 or Root mean square error score {rf_oob_score}")
-
-        return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
+        except Exception as e:
+            logger.warning(f"Failure with Get_Grae_validation:", end = "    ")
+            raise Exception(e)
 
     def run_tests(self, anchor_percent):
         """
