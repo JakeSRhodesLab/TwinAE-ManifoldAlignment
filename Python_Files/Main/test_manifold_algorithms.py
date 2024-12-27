@@ -1531,7 +1531,82 @@ class test_manifold_algorithms():
         Gets the baseline classification without doing any alignment for each data set"""
 
         #Create file name
-        filename, AP_values = self.create_filename("Base_Line_Scores")
+        filename, AP_values = self.create_filename("KNN_BL")
+        from sklearn.decomposition import PCA
+
+        #Prepare Baseline Data
+        pca = PCA(n_components=min(len(self.split_A[1]), len(self.split_B[1])))
+        A_emb = pca.fit_transform(self.split_A)
+        B_emb = pca.fit_transform(self.split_B)
+
+        #If file aready exists, then we are done :)
+        if os.path.exists(filename) or len(AP_values) < 1:
+            print(f"<><><><><>    File {filename} already exists   <><><><><>")
+            return True
+        
+        #Create an array to store the important data in 
+        scores = np.zeros((len(self.knn_range), 2)) #Now both of these are classification scores -- one for Split A and one for Split B
+
+        print("\n--------------------------------------   Base Line Tests " + self.base_directory[53:-1] + "   --------------------------------------\n")
+        #Repeat through each knn value
+        from sklearn.model_selection import train_test_split
+
+        for i, knn in enumerate(self.knn_range):
+            print(f"KNN {knn}")
+
+            #Initilize model
+            # Determine if the task is classification or regression
+            if np.issubdtype(self.labels.dtype, np.integer):
+                model = KNeighborsClassifier(n_neighbors = knn)
+            else:
+                model = KNeighborsRegressor(n_neighbors = knn)
+
+            #Split data and train for split A
+            try:
+                # Split the data into training and testing sets
+                A_emb_train, A_emb_test, labels_train, labels_test = train_test_split(A_emb, self.labels, test_size=0.2, random_state=42)
+
+                # Train the model on the training set
+                model.fit(A_emb_train, labels_train)
+
+                # Evaluate the model on the testing set
+                scores[i, 0] = model.score(A_emb_test, labels_test)
+                print(f"    Classification Score trained on A {scores[i, 0]}")
+            except:
+                scores[i, 0] = np.NaN
+                print(f"    Classification Score trained on A Failed")
+
+            #Split data and train for split B
+            try:
+                # Split the data into training and testing sets
+                B_emb_train, B_emb_test, labels_train, labels_test = train_test_split(B_emb, self.labels, test_size=0.2, random_state=42)
+
+                # Train the model on the training set
+                model.fit(B_emb_train, labels_train)
+
+                # Evaluate the model on the testing set
+                scores[i, 1] = model.score(B_emb_test, labels_test)
+                print(f"    Classification Score trained on b {scores[i, 1]}")
+            except:
+                scores[i, 1] = np.NaN
+                print(f"    Classification Score trained on B Failed")
+
+        #Save the numpy array
+        np.save(filename, scores)
+
+        self.run_BL_CE()
+
+        #Run successful
+        return True
+    
+
+    def run_BL_CE(self):
+        """Needs no additional paramenters.
+        
+        Gets the baseline classification by training on one domain to predict on other domain"""
+
+        #Create file name
+        filename, AP_values = self.create_filename("BL_CE")
         from sklearn.decomposition import PCA
 
         #Prepare Baseline Data
@@ -1562,7 +1637,7 @@ class test_manifold_algorithms():
             #Split data and train for split A
             try:
                 model.fit(A_emb, self.labels)
-                scores[i, 0] = model.score(A_emb, self.labels)
+                scores[i, 0] = model.score(B_emb, self.labels)
                 print(f"    Classification Score trained on A {scores[i, 0]}")
             except:
                 scores[i, 0] = np.NaN
@@ -1571,7 +1646,7 @@ class test_manifold_algorithms():
             #Split data and train for split B
             try:
                 model.fit(B_emb, self.labels)
-                scores[i, 1] = model.score(B_emb, self.labels)
+                scores[i, 1] = model.score(A_emb, self.labels)
                 print(f"    Classification Score trained on B {scores[i, 1]}")
             except:
                 scores[1, 1] = np.NaN
@@ -1582,6 +1657,7 @@ class test_manifold_algorithms():
 
         #Run successful
         return True
+
 
     def run_RF_BL_tests(self):
         """Needs no additional paramenters.
@@ -2140,15 +2216,15 @@ def _upload_file(file, directory = "default"):
                 #Create a new Data frame instance with all the asociated values
                 df = df._append(data_dict, ignore_index=True)
 
-        elif data_dict["method"] == "Base_Line_Scores":
+        elif data_dict["method"] == "Base_Line_Scores" or data_dict["method"] == "KNN_BL" or data_dict["method"] == "BL_CE":
             #Loop through each Knn
             for k in range(0, 10):
                 knn = (k*knn_increment) + 2
                 data_dict["KNN"] = knn
 
                 #Now use are data array to grab the FOSCTTM and CE scores
-                data_dict["A_Classification_Score"] = data[k, 0]
-                data_dict["B_Classification_Score"] = data[k, 1]
+                data_dict[data_dict["method"] + "_A"] = data[k, 0]
+                data_dict[data_dict["method"] + "_B"] = data[k, 1]
 
                 #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
                 base_df = base_df._append(data_dict, ignore_index=True)
@@ -2157,10 +2233,9 @@ def _upload_file(file, directory = "default"):
             
         elif data_dict["method"] == "RF_BL":
             
-
             #Now use are data array to grab the FOSCTTM and CE scores
-            data_dict["A_Classification_Score"] = data[0]
-            data_dict["B_Classification_Score"] = data[1]
+            data_dict["RF_BL_A"] = data[0]
+            data_dict["RF_BL_B"] = data[1]
 
             #Create a new Data frame instance with all the asociated values -- Attach to base_df instead of df
             base_df = base_df._append(data_dict, ignore_index=True)

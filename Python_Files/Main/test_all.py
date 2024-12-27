@@ -34,20 +34,20 @@ csv_files = [
              ]
 
 reg_files = [ #REGRESSION 
-#     "EnergyEfficiency.csv", 
-#     "Hydrodynamics.csv",
-#     "OpticalNetwork.csv",
-#     "AirfoilSelfNoise.csv",  
-#        "AutoMPG.csv",
+    "EnergyEfficiency.csv", 
+    "Hydrodynamics.csv",
+    "OpticalNetwork.csv",
+    "AirfoilSelfNoise.csv",  
+       "AutoMPG.csv",
       "ComputerHardware.csv",
      "CommunityCrime.csv",
      "ConcreteSlumpTest.csv", 
          "FacebookMetrics.csv",
-#         "Parkinsons.csv",
-#     "IstanbulStock.csv",
-#     "Automobile.csv",
-#     "ConcreteCompressiveStrength.csv",
-#     "SML2010.csv"
+        "Parkinsons.csv",
+    "IstanbulStock.csv",
+    "Automobile.csv",
+    "ConcreteCompressiveStrength.csv",
+    "SML2010.csv"
 ]
 
 """
@@ -152,7 +152,7 @@ tma.run_all_tests(csv_files = csv_files, test_random =  [1738],#, 5198, 7667],# 
 from Pipeline import pipe
 
 SPLITS = ["distort", "even", "random", "skewed", "turn"]
-PF = 2
+PF = 1
 
 """
 Files 1-3 ran. 
@@ -235,16 +235,15 @@ pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], p
 Mash Methods Below \/
 """
 
-# pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 # pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
 #     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-
 # pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
 #     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+# pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
