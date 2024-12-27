@@ -1594,7 +1594,7 @@ class test_manifold_algorithms():
         #Save the numpy array
         np.save(filename, scores)
 
-        self.run_BL_CE()
+        #self.run_BL_CE()
 
         #Run successful
         return True
