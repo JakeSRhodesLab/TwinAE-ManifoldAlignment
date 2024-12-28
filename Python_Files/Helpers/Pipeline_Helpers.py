@@ -59,7 +59,7 @@ def get_RF_score(emb, labels, seed):
     rf_class.fit(X_train, y = labels)
     return rf_class.oob_score_
 
-def get_embedding_scores(emb, seed, labels):
+def get_embedding_scores(emb, labels, seed):
     # Unpack data
     y_A_train, y_A_test, y_B_train, y_B_test = labels
 
