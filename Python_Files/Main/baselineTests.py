@@ -16,6 +16,7 @@ from Helpers.Pipeline_Helpers import get_RF_score, get_embedding_scores
 from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
+from Helpers.utils import dataprep
 
 # Data sets below.
 classification_csv = [
@@ -29,3 +30,47 @@ regression_csv = [
     "ConcreteSlumpTest.csv", "FacebookMetrics.csv", "Parkinsons.csv", "IstanbulStock.csv", "Automobile.csv", "ConcreteCompressiveStrength.csv", "SML2010.csv"
     ]
 
+
+# Data Prep Function
+def prep_data_file(csv_file, seed):
+    """
+    Takes the csv_file (and seed) to a csv file and returns embedding and labels for the get_embedding_scores and
+    get_RF_scores functions. 
+    """
+
+    #Find whether its a classification or regression problem
+    try:
+        df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Classification_CSV/" + csv_file)
+    except:
+        df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
+
+    #Split data into features and labels. This also normalizes.
+    X, y = dataprep(df, label_col_idx=0)
+
+    # Split into two groups A and B. This should have no effect as its reconstructed later
+    X_A, X_B, y_A, y_B = train_test_split(X, y, test_size=0.5, random_state=42)
+
+    # Further split each group into train and test sets
+    X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(X_A, y_A, test_size=0.2, random_state=seed)
+    X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(X_B, y_B, test_size=0.2, random_state=seed)
+
+    # Combine embeddings into a single array and labels as a tuple
+    emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
+    labels = (y_A_train, y_A_test, y_B_train, y_B_test)
+
+    #Return the necessary arguments
+    return emb, labels, seed
+
+# Evaluation function
+def get_results(csv_file, seed):
+    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(**prep_data_file(csv_file, seed))
+    rf_oob = get_RF_score(**prep_data_file(csv_file, seed))
+
+    #Return it as a dictionary so we can make a Pandas table easier later
+    return {"csv_file" : csv_file, "Method": "Pipeline Baseline", 
+            "Random Forest OOB": rf_oob,
+            "Random Forest Emb": rf_score,
+            "Nearest Neighbor": knn_score,
+            "Nearest Neighbor (F1 score or RMSE)": knn_rmse,
+            "Random Forest (F1 score or RMSE)": rf_rmse
+            }
