@@ -19,6 +19,8 @@ Changes Log:
 33. Fixed error with MALI in the tests (also fixed that our methods were reporting less than they should be)
 34. Created plot to show GRAE versus not Grae scores
 35. Updated method to reduce memory restraints
+36. Created new baseline scores
+37. Created new way to run baseline results
 
 
 TASKS:
