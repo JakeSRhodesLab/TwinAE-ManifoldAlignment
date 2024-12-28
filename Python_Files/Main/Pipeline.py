@@ -302,7 +302,7 @@ class pipe():
             A_train = emb[:int(len(emb)/2)]
             B_train = emb[int(len(emb)/2):]
             emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
-            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test, seed)
+            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test, seed))
 
             #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
             if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
