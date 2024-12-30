@@ -208,7 +208,7 @@ def get_rf_proximites(self, tuple):
       dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
 
     #Reset inf values
-    dataA[np.isinf(dataA)] = 1
+    dataA[np.isinf(dataA)] = 0
 
     return 1 - dataA
 
