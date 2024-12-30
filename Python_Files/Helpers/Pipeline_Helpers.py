@@ -182,9 +182,9 @@ def get_rf_proximites(self, tuple):
         tuple should be a tuple with position 0 being the data and position 1 being the labels"""
     
     if np.issubdtype(np.array(tuple[1]).dtype, np.integer):
-        rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
     else:
-        rf_class = RFGAP(prediction_type="regression", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        rf_class = RFGAP(prediction_type="regression", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
         
     #Fit it for Data A
     rf_class.fit(tuple[0], y = tuple[1])
