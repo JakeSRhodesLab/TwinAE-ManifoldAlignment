@@ -10,7 +10,7 @@ Then we can take the resulting Z layer, input it to both graes, and then retrain
 
 Changes Log: 
 3. Adding Logging to tell easier why tests fail
-9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false
+9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false. Correction -> It sets the off-diagonal to be the opposite of what it should be
 28. Added A to B domain on Grae testing -> See Grae Tests for visualization
 29. Fixed RF-oob scores to only be on train data
 30. Fixed Errors in get_scores functions when labels aren't provided for MASH and SPUD
@@ -42,6 +42,8 @@ If time things:
 11. Shared embedding bottle neck nueral networks to extend points the embedding was not trained on. 
 
 Ideas:
+ - > SHARE WITH RHODES: MASH has a divergence (like its mirrored) when using few anchors. This is because the off-diagonal matrix is larger than others. To 
+help with this we can find the anchors and their corresponding points in the off-diagonal and see how far away they are and then subtract the average distance fromt he entire off diagonal
 -> Think about how we can add new points without rerunning the embedding -- Nystrom method
 -> MASH optimization function to work something like a nueral network. At the least, make it so connections are adjustable
 -> Weighting feature importance
@@ -95,37 +97,6 @@ def use_rf_proximities(self, tuple):
 
         #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
-
-    elif self.len_B == 2:
-        self.len_B = len(tuple[0])
-
-    #Scale it and check to ensure no devision by 0
-    if np.max(dataA[~np.isinf(dataA)]) != 0:
-
-      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
-
-    #Reset inf values
-    dataA[np.isinf(dataA)] = 1
-
-    return 1 - dataA
-
-#Create an RF Proximities function
-def use_rf_proximities_MASH(self, tuple):
-    """Creates RF proximities similarities
-    
-        tuple should be a tuple with position 0 being the data and position 1 being the labels"""
-    #Initilize Class
-    rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True) #Change Classification to regression
-
-    #Fit it for Data A
-    rf_class.fit(tuple[0], y = tuple[1])
-
-    #Get promities
-    dataA = rf_class.get_proximities()
-
-    #Reset len_A and other varables
-    if self.len_A == 2:
-        self.len_A = len(tuple[0]) 
 
     elif self.len_B == 2:
         self.len_B = len(tuple[0])
@@ -1087,7 +1058,7 @@ class test_manifold_algorithms():
                         
                         try:
                             #Create our class to run the tests
-                            DIG_class = MASH(t = -1, knn = knn, DTM = link, distance_measure_A = use_rf_proximities_MASH, distance_measure_B= use_rf_proximities_MASH, n_pca = 100)
+                            DIG_class = MASH(t = -1, knn = knn, DTM = link, distance_measure_A = use_rf_proximities, distance_measure_B= use_rf_proximities, n_pca = 100)
                             
                             if connection == "default":
                                 DIG_class.fit(dataA = (self.split_A, self.labels), dataB = (self.split_B, self.labels), known_anchors=self.anchors[:anchor_amount])
