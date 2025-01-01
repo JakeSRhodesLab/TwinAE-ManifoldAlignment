@@ -2,6 +2,7 @@
 
 """
 QUESTIONS:
+See num 9 on Tasks. Pipeline tests were run with RF GAP off diagonal set to False (which means that the values were not given to be closest to themselves... it does make a difference). Should it be set to True?
 
 Strategy for Doing Grae A to B:
 Grae doesn't have an embedding layer, but only a bottleneck layer z. It uses the embedding to calculate loss, which makes it look similar to 
@@ -21,6 +22,7 @@ Changes Log:
 35. Updated method to reduce memory restraints
 36. Created new baseline scores
 37. Created new way to run baseline results
+38. Updated different distance measurements and how they could run for MASH. Testing them in addition. 
 
 
 TASKS:

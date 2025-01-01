@@ -7,7 +7,7 @@ os.environ['MIN_LOG_LEVEL'] = '3'
 
 import warnings
 warnings.filterwarnings("ignore")
-import Main.test_manifold_algorithms as tma
+#import Main.test_manifold_algorithms as tma
 from Main.Pipeline import pipe
 
 
@@ -34,25 +34,25 @@ csv_files = [
              ]
 
 reg_files = [ #REGRESSION 
-    "EnergyEfficiency.csv", 
-    "Hydrodynamics.csv",
-    "OpticalNetwork.csv",
-    "AirfoilSelfNoise.csv",  
-       "AutoMPG.csv",
-      "ComputerHardware.csv",
-     "CommunityCrime.csv",
-     "ConcreteSlumpTest.csv", 
-         "FacebookMetrics.csv",
-        "Parkinsons.csv",
-    "IstanbulStock.csv",
-    "Automobile.csv",
-    "ConcreteCompressiveStrength.csv",
+#     "EnergyEfficiency.csv", 
+#     "Hydrodynamics.csv",
+#     "OpticalNetwork.csv",
+#     "AirfoilSelfNoise.csv",  
+#        "AutoMPG.csv",
+#       "ComputerHardware.csv",
+#      "CommunityCrime.csv",
+#      "ConcreteSlumpTest.csv", 
+#          "FacebookMetrics.csv",
+#         "Parkinsons.csv",
+#     "IstanbulStock.csv",
+#     "Automobile.csv",
+#   "ConcreteCompressiveStrength.csv",
     "SML2010.csv"
 ]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
-"""
+
 state = False
 nope = not state
 
@@ -147,6 +147,7 @@ tma.run_all_tests(csv_files = reg_files, test_random =  [1738],#, 5198, 7667],# 
                             run_KEMA = state,
                             run_RF_BL_tests = state, 
                             run_CSPUD = state) #SPUD key argument
+"""
 
 # #Pipeline Tests
 from Pipeline import pipe
@@ -235,11 +236,11 @@ pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], p
 Mash Methods Below \/
 """
 
-# pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 # pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
 #     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
