@@ -40,14 +40,14 @@ reg_files = [ #REGRESSION
 #     "AirfoilSelfNoise.csv",  
 #        "AutoMPG.csv",
 #       "ComputerHardware.csv",
-#      "CommunityCrime.csv",
+#       "CommunityCrime.csv",
 #      "ConcreteSlumpTest.csv", 
 #          "FacebookMetrics.csv",
 #         "Parkinsons.csv",
-#     "IstanbulStock.csv",
-#     "Automobile.csv",
-#   "ConcreteCompressiveStrength.csv",
-    "SML2010.csv"
+    "IstanbulStock.csv",
+    "Automobile.csv",
+  "ConcreteCompressiveStrength.csv",
+#  "SML2010.csv"
 ]
 
 """
@@ -153,7 +153,7 @@ tma.run_all_tests(csv_files = reg_files, test_random =  [1738],#, 5198, 7667],# 
 from Pipeline import pipe
 
 SPLITS = ["distort", "even", "random", "skewed", "turn"]
-PF = 1
+PF = 10
 
 """
 Files 1-3 ran. 
