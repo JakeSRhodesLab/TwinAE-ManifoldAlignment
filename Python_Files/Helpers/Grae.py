@@ -1427,16 +1427,24 @@ class DomainTranslation():
 
         # Anchor loss (A -> Z -> B embedding)
         A_Z_B_data = self.graeB.inverse_transform(Z_A)
-        anchor_loss = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx_A], B[idx_B])
+        anchor_loss_A = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx_A], B[idx_B])
 
         # Cycle consistency loss (A -> Z -> B -> Z -> A)
         A_reconstructed = self.graeA.inverse_transform(self.graeB.transform(A_Z_B_data))  # -> Z -> A
-        cycle_loss = self.cycle_weight * self.graeA.criterion(A, A_reconstructed)
+        cycle_loss_A = self.cycle_weight * self.graeA.criterion(A, A_reconstructed)
 
         """DO the Same from B's perspective"""
-        #loss_B = self.graeB.criterion(B, self.graeB.inverse_transform(Z_B)) #NOTE: Do we want to calculate the loss from both perspectives? 
+        # loss_B = self.graeB.criterion(B, self.graeB.inverse_transform(Z_B)) #NOTE: Do we want to calculate the loss from both perspectives? 
 
-        return loss_A + anchor_loss + cycle_loss
+        # # Anchor loss (B -> Z -> A embedding)
+        # B_Z_A_data = self.graeA.inverse_transform(Z_B)
+        # anchor_loss_B = self.anchor_weight * self.graeA.criterion(B_Z_A_data[idx_B], B[idx_A])
+
+        # # Cycle consistency loss (B -> Z -> A -> Z -> B)
+        # B_reconstructed = self.graeB.inverse_transform(self.graeA.transform(B_Z_A_data))  # -> Z -> B
+        # cycle_loss_B = self.cycle_weight * self.graeB.criterion(B, B_reconstructed)
+
+        return loss_A + anchor_loss_A + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
 
     def fit(self, A, B, emb_A, emb_B):
         """
