@@ -1407,7 +1407,7 @@ class DomainTranslation():
         self.anchor_weight = anchor_weight
         self.cycle_weight = cycle_weight
 
-    def compute_custom_loss(self, A, B, Z_A, Z_B, idx_A, idx_B):
+    def compute_custom_loss(self, A, B, Z_A, Z_B, idx):
         """
         Compute the combined loss for domain translation.
         
@@ -1427,7 +1427,7 @@ class DomainTranslation():
 
         # Anchor loss (A -> Z -> B embedding)
         A_Z_B_data = self.graeB.inverse_transform(Z_A)
-        anchor_loss_A = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx_A], B[idx_B])
+        anchor_loss_A = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx], B[idx])
 
         # Cycle consistency loss (A -> Z -> B -> Z -> A)
         A_reconstructed = self.graeA.inverse_transform(self.graeB.transform(A_Z_B_data))  # -> Z -> A
@@ -1438,7 +1438,7 @@ class DomainTranslation():
 
         # # Anchor loss (B -> Z -> A embedding)
         # B_Z_A_data = self.graeA.inverse_transform(Z_B)
-        # anchor_loss_B = self.anchor_weight * self.graeA.criterion(B_Z_A_data[idx_B], B[idx_A])
+        # anchor_loss_B = self.anchor_weight * self.graeA.criterion(B_Z_A_data[idx], B[idx])
 
         # # Cycle consistency loss (B -> Z -> A -> Z -> B)
         # B_reconstructed = self.graeB.inverse_transform(self.graeA.transform(B_Z_A_data))  # -> Z -> B
@@ -1446,7 +1446,7 @@ class DomainTranslation():
 
         return loss_A + anchor_loss_A + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
 
-    def fit(self, A, B, emb_A, emb_B):
+    def fit(self, A, B, emb_A, emb_B, known_anchors, epochs):
         """
         Fit model to data from domains A and B.
 
@@ -1460,23 +1460,54 @@ class DomainTranslation():
         self.graeA.fit(A, emb_A)
         self.graeB.fit(B, emb_B)
 
+
+        print("\nPreparing Anchor Data...")
+        #How to handle Anchors. 
+        #1. Batch Data A and B together so they points remained connected
+        #2. Flag which ones are anchors, and create the indexes after that. 
+
+        tupled_data = []
+        for pair in known_anchors:
+            tupled_data.append((A[pair[0]], B[pair[1]], True))
+        
+        #We have to delete this later so we don't mess up the index or resuse these points
+        for pair in known_anchors:
+            A = np.delete(A, pair[0])
+            B = np.delete(B, pair[1])
+
+        small_data_szie = min(len(A), len(B))
+        for i in range(0, small_data_szie):
+            tupled_data.append((A[i], B[i], False))
+        
+
+
+        data_to_loader = NoSplitBaseDataset(x = tupled_data,  y = None)
+        loader = torch.utils.data.DataLoader(data_to_loader, batch_size=32, shuffle=True) #This may be better just giving it tupled Data -- Maybe convert it to a pytorch tensor
+
+
+        self.optimizer = torch.optim.Adam(self.graeA.torch_module.parameters(),
+                                          lr=self.lr,
+                                          weight_decay=self.weight_decay)
+
+
+        print('\n ---------------------------------\nBeggining Training Loop...')
         # Training loop (example structure, depends on implementation details)
-        for epoch in range(num_epochs):
-            for batch_A, batch_B in zip(dataloader_A, dataloader_B):
-                A, idx_A = batch_A
-                B, idx_B = batch_B
+        for epoch in range(epochs):
+            for batch in data_to_loader:
+                A, B, is_anchor = batch
+                idx = np.where(is_anchor)
 
                 # Forward pass through GRAEs
-                Z_A = self.graeA.encode(A)
-                Z_B = self.graeB.encode(B)
+                Z_A = self.graeA.transform(A)
+                Z_B = self.graeB.transform(B)
 
                 # Compute custom loss
-                loss = self.compute_custom_loss(A, B, Z_A, Z_B, idx_A, idx_B)
+                loss = self.compute_custom_loss(A, B, Z_A, Z_B, idx)
 
                 # Backpropagation and optimization
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
 
                 print(f"Epoch {epoch}, Loss: {loss.item()}")
 
