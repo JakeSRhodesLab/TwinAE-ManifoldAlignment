@@ -1382,6 +1382,99 @@ class GRAEBase(AE):
         #             1 + np.exp((epoch - (self.epochs / 2)) * 0.2)) \
         #                + self.lam_original
 
+class DomainTranslation():
+    """
+    NOTE: This is original to Adam. 
+
+    Custom domain translation class with custom loss functions.
+    
+    - Loss from A to Z layer back to A (Standard)
+    - Loss from anchors in A to Z layer to B (Weighted)
+    - Loss from points from A to Z layer to B domain back to Z to A
+    """
+
+    def __init__(self, A_lam=100, A_relax=False, Akwargs={}, B_lam=100, B_relax=False, Bkwargs={}, 
+                 anchor_weight=1.0, cycle_weight=1.0):
+        """
+        Args:
+            A_lam, A_relax, Akwargs: Parameters for GRAE A.
+            B_lam, B_relax, Bkwargs: Parameters for GRAE B.
+            anchor_weight: Weight for anchor loss.
+            cycle_weight: Weight for cycle consistency loss.
+        """
+        self.graeA = GRAEBase(A_lam, A_relax, **Akwargs)
+        self.graeB = GRAEBase(B_lam, B_relax, **Bkwargs)
+        self.anchor_weight = anchor_weight
+        self.cycle_weight = cycle_weight
+
+    def compute_custom_loss(self, A, B, Z_A, Z_B, idx_A, idx_B):
+        """
+        Compute the combined loss for domain translation.
+        
+        Args:
+            A (torch.Tensor): Original data from domain A.
+            B (torch.Tensor): Original data from domain B.
+            Z_A (torch.Tensor): Latent representation of A (from graeA).
+            Z_B (torch.Tensor): Latent representation of B (from graeB).
+            idx_A (torch.Tensor): Indices for A samples.
+            idx_B (torch.Tensor): Indices for B samples.
+        
+        Returns:
+            torch.Tensor: Combined loss value.
+        """
+        # Standard reconstruction loss (A -> Z -> A)
+        loss_A = self.graeA.criterion(A, self.graeA.inverse_transform(Z_A)) 
+
+        # Anchor loss (A -> Z -> B embedding)
+        A_Z_B_data = self.graeB.inverse_transform(Z_A)
+        anchor_loss = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx_A], B[idx_B])
+
+        # Cycle consistency loss (A -> Z -> B -> Z -> A)
+        A_reconstructed = self.graeA.inverse_transform(self.graeB.transform(A_Z_B_data))  # -> Z -> A
+        cycle_loss = self.cycle_weight * self.graeA.criterion(A, A_reconstructed)
+
+        """DO the Same from B's perspective"""
+        #loss_B = self.graeB.criterion(B, self.graeB.inverse_transform(Z_B)) #NOTE: Do we want to calculate the loss from both perspectives? 
+
+        return loss_A + anchor_loss + cycle_loss
+
+    def fit(self, A, B, emb_A, emb_B):
+        """
+        Fit model to data from domains A and B.
+
+        Args:
+            A (torch.Tensor): Data from domain A.
+            B (torch.Tensor): Data from domain B.
+            emb_A (torch.Tensor): Precomputed embeddings for A.
+            emb_B (torch.Tensor): Precomputed embeddings for B.
+        """
+        print('Fitting GRAE modules...')
+        self.graeA.fit(A, emb_A)
+        self.graeB.fit(B, emb_B)
+
+        # Training loop (example structure, depends on implementation details)
+        for epoch in range(num_epochs):
+            for batch_A, batch_B in zip(dataloader_A, dataloader_B):
+                A, idx_A = batch_A
+                B, idx_B = batch_B
+
+                # Forward pass through GRAEs
+                Z_A = self.graeA.encode(A)
+                Z_B = self.graeB.encode(B)
+
+                # Compute custom loss
+                loss = self.compute_custom_loss(A, B, Z_A, Z_B, idx_A, idx_B)
+
+                # Backpropagation and optimization
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                print(f"Epoch {epoch}, Loss: {loss.item()}")
+
+
+
+
 class EmbeddingProber:
     """Class to benchmark MSE, the coefficient of determination (R2) for ground truth continuous variables and
     classification accuracy of dataset has labels.
