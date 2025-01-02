@@ -1446,7 +1446,7 @@ class DomainTranslation():
 
         return loss_A + anchor_loss_A + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
 
-    def fit(self, A, B, emb, known_anchors, epochs):
+    def fit(self, A, B, labels, emb, known_anchors, epochs):
         """
         Fit model to data from domains A and B.
 
@@ -1457,8 +1457,8 @@ class DomainTranslation():
             emb_B (torch.Tensor): Precomputed embeddings for B.
         """
         print('Fitting GRAE modules...')
-        dataset_A = BaseDataset(x = A, y = None, split_ratio = 0.8, random_state = 42, split = "none")
-        dataset_B = BaseDataset(x = B, y = None, split_ratio = 0.8, random_state = 42, split = "none")
+        dataset_A = BaseDataset(x = A, y = labels, split_ratio = 0.8, random_state = 42, split = "none")
+        dataset_B = BaseDataset(x = B, y = labels, split_ratio = 0.8, random_state = 42, split = "none")
         self.graeA.fit(dataset_A, emb)
         self.graeB.fit(dataset_B, emb)
 
@@ -1483,7 +1483,7 @@ class DomainTranslation():
         
 
 
-        data_to_loader = BaseDataset(x = tupled_data,  y = None, split_ratio = 0.8, random_state = 42, split = "none")
+        data_to_loader = BaseDataset(x = tupled_data,  y = np.vstack((labels,labels)), split_ratio = 0.8, random_state = 42, split = "none")
         loader = torch.utils.data.DataLoader(data_to_loader, batch_size=32, shuffle=True) #This may be better just giving it tupled Data -- Maybe convert it to a pytorch tensor
 
 
@@ -1495,7 +1495,7 @@ class DomainTranslation():
         print('\n ---------------------------------\nBeggining Training Loop...')
         # Training loop (example structure, depends on implementation details)
         for epoch in range(epochs):
-            for batch in data_to_loader:
+            for batch in loader:
                 A, B, is_anchor = batch
                 idx = np.where(is_anchor)
 
