@@ -1520,7 +1520,7 @@ class DomainTranslation():
                 loss.backward()
                 self.optimizer.step()
 
-                print(f"Epoch {epoch}, Loss: {loss.item()}")
+            print(f"Epoch {epoch}, Loss: {loss.item()}")
 
 
 
