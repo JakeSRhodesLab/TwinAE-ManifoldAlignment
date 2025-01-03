@@ -1423,15 +1423,16 @@ class DomainTranslation():
             torch.Tensor: Combined loss value.
         """
         # Standard reconstruction loss (A -> Z -> A)
-        loss_A = self.graeA.criterion(A, self.graeA.inverse_transform(Z_A)) 
+        loss_A = self.graeA.criterion(A, torch.tensor(self.graeA.inverse_transform(Z_A))) 
 
         # Anchor loss (A -> Z -> B embedding)
         A_Z_B_data = self.graeB.inverse_transform(Z_A)
-        anchor_loss_A = self.anchor_weight * self.graeB.criterion(A_Z_B_data[idx], B[idx])
+        anchor_loss_A = self.anchor_weight * self.graeB.criterion(torch.tensor(A_Z_B_data[idx]), B[idx])
 
         # Cycle consistency loss (A -> Z -> B -> Z -> A)
+        A_Z_B_data = BaseDataset(x = A_Z_B_data, y = np.zeros(len(A_Z_B_data)), split_ratio = 0.8, random_state = 42, split = "none")
         A_reconstructed = self.graeA.inverse_transform(self.graeB.transform(A_Z_B_data))  # -> Z -> A
-        cycle_loss_A = self.cycle_weight * self.graeA.criterion(A, A_reconstructed)
+        cycle_loss_A = self.cycle_weight * self.graeA.criterion(A, torch.tensor(A_reconstructed))
 
         """DO the Same from B's perspective"""
         # loss_B = self.graeB.criterion(B, self.graeB.inverse_transform(Z_B)) #NOTE: Do we want to calculate the loss from both perspectives? 
