@@ -1446,6 +1446,12 @@ class DomainTranslation():
 
         return loss_A + anchor_loss_A + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
 
+    def custom_collate_fn(self, batch):
+        A_batch = np.stack([item[0] for item in batch])
+        B_batch = np.stack([item[1] for item in batch])
+        is_anchor = np.array([item[2] for item in batch])
+        return A_batch, B_batch, is_anchor
+    
     def fit(self, A, B, labels, emb, known_anchors, epochs):
         """
         Fit model to data from domains A and B.
@@ -1459,8 +1465,8 @@ class DomainTranslation():
         print('Fitting GRAE modules...')
         dataset_A = BaseDataset(x = A, y = labels, split_ratio = 0.8, random_state = 42, split = "none")
         dataset_B = BaseDataset(x = B, y = labels, split_ratio = 0.8, random_state = 42, split = "none")
-        self.graeA.fit(dataset_A, emb)
-        self.graeB.fit(dataset_B, emb)
+        self.graeA.fit(dataset_A, emb[:len(A)])
+        self.graeB.fit(dataset_B, emb[len(A):])
 
 
         print("\nPreparing Anchor Data...")
@@ -1474,37 +1480,38 @@ class DomainTranslation():
         
         #We have to delete this later so we don't mess up the index or resuse these points
         for pair in known_anchors:
-            A = np.delete(A, pair[0])
+            A = np.delete(A, pair[0]) #This may be incorrect...
             B = np.delete(B, pair[1])
 
         small_data_szie = min(len(A), len(B))
         for i in range(0, small_data_szie):
             tupled_data.append((A[i], B[i], False))
         
-
-
-        data_to_loader = BaseDataset(x = tupled_data,  y = np.vstack((labels,labels)), split_ratio = 0.8, random_state = 42, split = "none")
-        loader = torch.utils.data.DataLoader(data_to_loader, batch_size=32, shuffle=True) #This may be better just giving it tupled Data -- Maybe convert it to a pytorch tensor
-
+        loader = torch.utils.data.DataLoader(tupled_data, batch_size=32, shuffle=True, collate_fn=self.custom_collate_fn)
 
         self.optimizer = torch.optim.Adam(self.graeA.torch_module.parameters(),
-                                          lr=self.lr,
-                                          weight_decay=self.weight_decay)
+                                          lr=self.graeA.lr,
+                                          weight_decay=self.graeA.weight_decay)
 
-
-        print('\n ---------------------------------\nBeggining Training Loop...')
-        # Training loop (example structure, depends on implementation details)
+        print('\n ---------------------------------\nBeginning Training Loop...')
         for epoch in range(epochs):
             for batch in loader:
-                A, B, is_anchor = batch
+                A_batch, B_batch, is_anchor = batch
+                # A_batch = np.array(A_batch)
+                # B_batch = np.array(A_batch)
+
                 idx = np.where(is_anchor)
 
+                # Convert A_batch and B_batch to BaseDataset
+                dataset_A_batch = BaseDataset(x=A_batch, y=np.zeros(len(A_batch)), split_ratio=0.8, random_state=42, split="none")
+                dataset_B_batch = BaseDataset(x=B_batch, y=np.zeros(len(B_batch)), split_ratio=0.8, random_state=42, split="none")
+
                 # Forward pass through GRAEs
-                Z_A = self.graeA.transform(A)
-                Z_B = self.graeB.transform(B)
+                Z_A = self.graeA.transform(dataset_A_batch)
+                Z_B = self.graeB.transform(dataset_B_batch)
 
                 # Compute custom loss
-                loss = self.compute_custom_loss(A, B, Z_A, Z_B, idx)
+                loss = self.compute_custom_loss(A_batch, B_batch, Z_A, Z_B, idx)
 
                 # Backpropagation and optimization
                 self.optimizer.zero_grad()
