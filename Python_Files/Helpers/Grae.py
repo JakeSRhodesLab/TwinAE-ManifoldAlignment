@@ -1423,16 +1423,16 @@ class DomainTranslation():
             torch.Tensor: Combined loss value.
         """
         # Standard reconstruction loss (A -> Z -> A)
-        loss_A = self.graeA.criterion(A, torch.tensor(self.graeA.inverse_transform(Z_A))) 
+        loss_A = self.graeA.criterion(A, torch.tensor(self.graeA.inverse_transform(Z_A), device=DEVICE, requires_grad=True)) 
 
         # Anchor loss (A -> Z -> B embedding)
         A_Z_B_data = self.graeB.inverse_transform(Z_A)
-        anchor_loss_A = self.anchor_weight * self.graeB.criterion(torch.tensor(A_Z_B_data[idx]), B[idx])
+        anchor_loss_A = self.anchor_weight * self.graeB.criterion(torch.tensor(A_Z_B_data[idx], device=DEVICE, requires_grad=True), B[idx])
 
         # Cycle consistency loss (A -> Z -> B -> Z -> A)
         A_Z_B_data = BaseDataset(x = A_Z_B_data, y = np.zeros(len(A_Z_B_data)), split_ratio = 0.8, random_state = 42, split = "none")
         A_reconstructed = self.graeA.inverse_transform(self.graeB.transform(A_Z_B_data))  # -> Z -> A
-        cycle_loss_A = self.cycle_weight * self.graeA.criterion(A, torch.tensor(A_reconstructed))
+        cycle_loss_A = self.cycle_weight * self.graeA.criterion(A, torch.tensor(A_reconstructed, device=DEVICE, requires_grad=True))
 
         """DO the Same from B's perspective"""
         # loss_B = self.graeB.criterion(B, self.graeB.inverse_transform(Z_B)) #NOTE: Do we want to calculate the loss from both perspectives? 
@@ -1498,8 +1498,7 @@ class DomainTranslation():
         for epoch in range(epochs):
             for batch in loader:
                 A_batch, B_batch, is_anchor = batch
-                # A_batch = np.array(A_batch)
-                # B_batch = np.array(A_batch)
+
 
                 idx = np.where(is_anchor)
 
@@ -1512,8 +1511,8 @@ class DomainTranslation():
                 Z_B = self.graeB.transform(dataset_B_batch)
 
                 # Compute custom loss
-                A_batch = torch.tensor(A_batch)
-                B_batch = torch.tensor(B_batch)
+                A_batch = torch.tensor(A_batch, dtype=torch.float32, device=DEVICE, requires_grad=True)
+                B_batch = torch.tensor(B_batch, dtype=torch.float32, device=DEVICE, requires_grad=True)
                 loss = self.compute_custom_loss(A_batch, B_batch, Z_A, Z_B, idx)
 
                 # Backpropagation and optimization
