@@ -1480,11 +1480,11 @@ class DomainTranslation():
         
         #We have to delete this later so we don't mess up the index or resuse these points
         for pair in known_anchors:
-            A = np.delete(A, pair[0]) #This may be incorrect...
-            B = np.delete(B, pair[1])
+            A = np.delete(A, pair[0], axis = 0) 
+            B = np.delete(B, pair[1], axis = 0)
 
-        small_data_szie = min(len(A), len(B))
-        for i in range(0, small_data_szie):
+        small_data_size = min(A.shape[0], B.shape[0])
+        for i in range(0, small_data_size):
             tupled_data.append((A[i], B[i], False))
         
         loader = torch.utils.data.DataLoader(tupled_data, batch_size=32, shuffle=True, collate_fn=self.custom_collate_fn)
@@ -1511,6 +1511,8 @@ class DomainTranslation():
                 Z_B = self.graeB.transform(dataset_B_batch)
 
                 # Compute custom loss
+                A_batch = torch.tensor(A_batch)
+                B_batch = torch.tensor(B_batch)
                 loss = self.compute_custom_loss(A_batch, B_batch, Z_A, Z_B, idx)
 
                 # Backpropagation and optimization
