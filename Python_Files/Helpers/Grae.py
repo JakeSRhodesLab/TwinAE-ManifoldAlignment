@@ -1479,10 +1479,13 @@ class DomainTranslation():
         for pair in known_anchors:
             tupled_data.append((A[pair[0]], B[pair[1]], True))
         
-        #We have to delete this later so we don't mess up the index or resuse these points
-        for pair in known_anchors:
-            A = np.delete(A, pair[0], axis = 0) 
-            B = np.delete(B, pair[1], axis = 0)
+        # Collect indices to be deleted
+        indices_A = [pair[0] for pair in known_anchors]
+        indices_B = [pair[1] for pair in known_anchors]
+
+        # Delete all collected indices at once
+        A = np.delete(A, indices_A, axis=0)
+        B = np.delete(B, indices_B, axis=0)
 
         small_data_size = min(A.shape[0], B.shape[0])
         for i in range(0, small_data_size):
