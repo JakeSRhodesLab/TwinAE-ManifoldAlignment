@@ -51,16 +51,13 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
 def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}):
         
-        n1 = len(Y)/2
+        n1 = int(len(Y)/2)
 
         # Determine if the task is classification or regression
         if not run_regression:
             knn = KNeighborsClassifier(**knn_args)
-            print("Using a classifier")
         else:
             knn = KNeighborsRegressor(**knn_args)
-            print("Using a regression model")
-
             knn.fit(embedding[:n1], Y[:n1])
 
             return knn.score(embedding[n1:], Y[n1:])
