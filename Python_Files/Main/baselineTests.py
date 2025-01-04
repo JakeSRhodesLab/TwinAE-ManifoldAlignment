@@ -144,7 +144,7 @@ def get_results(csv_file, seed, split):
     knn = cross_embedding_knn(embA, np.hstack(labelsA))
 
     #Return it as a dictionary so we can make a Pandas table easier later
-    domain_A_results =  {"csv_file" : csv_file, "Method": "Domain A Pipeline Baseline", 
+    domain_A_results =  {"csv_file" : csv_file, "Method": "Domain A Pipeline Baseline", "split": split,
             "Random Forest OOB": rf_oob,
             "Random Forest Emb": rf_score,
             "Nearest Neighbor": knn_score,
@@ -160,7 +160,7 @@ def get_results(csv_file, seed, split):
 
 
     #Return it as a dictionary so we can make a Pandas table easier later
-    domain_B_results =  {"csv_file" : csv_file, "Method": "Domain B Pipeline Baseline", 
+    domain_B_results =  {"csv_file" : csv_file, "Method": "Domain B Pipeline Baseline", "split": split,
             "Random Forest OOB": rf_oob,
             "Random Forest Emb": rf_score,
             "Nearest Neighbor": knn_score,
