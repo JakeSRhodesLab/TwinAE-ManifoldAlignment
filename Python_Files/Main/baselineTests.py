@@ -54,7 +54,7 @@ def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}):
         n1 = len(Y)/2
 
         # Determine if the task is classification or regression
-        if np.issubdtype(y1.dtype, np.integer):
+        if np.issubdtype(Y.dtype, np.integer):
             knn = KNeighborsClassifier(**knn_args)
             print("Using a classifier")
         else:
@@ -105,6 +105,7 @@ def prep_data_file(csv_file, seed, split):
 
     #We need to gt the labels
     _, y = dataprep(df, label_col_idx=0)
+    y = np.array(y)
 
     #get data files
     split_A, split_B = split_features(csv_file, split, seed)
