@@ -45,10 +45,34 @@ else:
         "EnergyEfficiency.csv", "Hydrodynamics.csv", "OpticalNetwork.csv","AirfoilSelfNoise.csv","AutoMPG.csv","ComputerHardware.csv","CommunityCrime.csv",
         "ConcreteSlumpTest.csv", "FacebookMetrics.csv", "Parkinsons.csv", "IstanbulStock.csv", "Automobile.csv", "ConcreteCompressiveStrength.csv", "SML2010.csv"
         ]
+    
 
+import os
+#Directory Constant
+def split_features(csv_file, split, seed):
+
+        #Step 1. Check if a file exists already
+        #Create filename 
+        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/Splits_Data/" + csv_file[:-4] + "/"
+        filename += split[0] + str(seed) + ".npz"
+
+        #Step 2b. If so, simply load the files into split A and split B
+        if os.path.exists(filename):
+
+            #Load in the file
+            data = np.load(filename) 
+
+            #Grab the splits
+            return data['split_a'], data["split_b"]
+        
+        else:
+            from test_manifold_algorithms import test_manifold_algorithms as tma
+            tma(csv, random_state= seed, split = split)
+            print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
+            split_features(csv_file, split, seed)
 
 # Data Prep Function
-def prep_data_file(csv_file, seed):
+def prep_data_file(csv_file, seed, split):
     """
     Takes the csv_file (and seed) to a csv file and returns embedding and labels for the get_embedding_scores and
     get_RF_scores functions. 
@@ -77,7 +101,7 @@ def prep_data_file(csv_file, seed):
     #Return the necessary arguments
     return emb, labels, seed
 
-# Evaluation function
+# Evaluation function - Similar to pipeline
 def get_results(csv_file, seed):
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(*prep_data_file(csv_file, seed))
     rf_oob = get_RF_score(*prep_data_file(csv_file, seed))
@@ -97,12 +121,13 @@ for seed in [1738, 5271, 9209, 1316, 42]:
     for csv in csv_files: #CHANGE THIS FOR REGRESSION OR NOT
         csv_seed_list.append((csv, seed))
 
-# Get the results and show progress
-with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
-    results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed) for csv, seed in csv_seed_list)
 
-#Write Pandas dataframe
-if run_regression:
-    pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/PipelineBasline.csv")
-else:
-    pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/RegressionData/PipelineBaseline.csv")
+# Get the results and show progress
+# with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
+#     results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed) for csv, seed in csv_seed_list)
+
+# #Write Pandas dataframe
+# if run_regression:
+#     pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/PipelineBasline.csv")
+# else:
+#     pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/RegressionData/PipelineBaseline.csv")
