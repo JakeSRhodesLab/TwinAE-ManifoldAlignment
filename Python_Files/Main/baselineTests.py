@@ -49,10 +49,9 @@ else:
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
 
-def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
-        (y1, y2) = Y
-
-        n1, n2 = len(y1), len(y2)
+def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}):
+        
+        n1 = len(Y)/2
 
         # Determine if the task is classification or regression
         if np.issubdtype(y1.dtype, np.integer):
@@ -62,16 +61,10 @@ def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}, other_side 
             knn = KNeighborsRegressor(**knn_args)
             print("Using a regression model")
 
-        if other_side:
-            knn.fit(embedding[:n1, :], y1)
+            knn.fit(embedding[:n1], Y[:n1])
 
-            return knn.score(embedding[n1:, :], y2)
+            return knn.score(embedding[n1:], Y[n1:])
 
-        else:
-            #Train on other domain, predict on other domain ---- TODO
-            knn.fit(embedding[n1:, :], y2)
-
-            return knn.score(embedding[:n1, :], y1)
 
 import os
 #Directory Constant
@@ -144,8 +137,8 @@ def prep_data_file(csv_file, seed, split):
     return embA, labelsA, embB, labelsB
 
 # Evaluation function - Similar to pipeline
-def get_results(csv_file, seed):
-    embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed)
+def get_results(csv_file, seed, split):
+    embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed, split)
 
     """Domain A"""
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embA, labelsA, seed)
@@ -184,15 +177,17 @@ def get_results(csv_file, seed):
 csv_seed_list = []
 for seed in [1738, 5271, 9209, 1316, 42]: 
     for csv in csv_files: #CHANGE THIS FOR REGRESSION OR NOT
-        csv_seed_list.append((csv, seed))
+        for split in ["random", "even", "turn", "skewed", "distort"]:
+            csv_seed_list.append((csv, seed, split))
 
 
 # Get the results and show progress
 with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
-    results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed) for csv, seed in csv_seed_list)
+    results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed, split) for csv, seed, split in csv_seed_list)
 
 #Unpack and make into dataframe
-new_df = pd.DataFrame(np.array(results).flatten())
+flattened_results = [item for sublist in results for item in sublist]
+new_df = pd.DataFrame(flattened_results)
 
 #Write Pandas dataframe
 if run_regression:
