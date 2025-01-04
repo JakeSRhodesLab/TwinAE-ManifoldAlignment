@@ -54,7 +54,7 @@ def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}):
         n1 = len(Y)/2
 
         # Determine if the task is classification or regression
-        if np.issubdtype(Y.dtype, np.integer):
+        if not run_regression:
             knn = KNeighborsClassifier(**knn_args)
             print("Using a classifier")
         else:
@@ -144,7 +144,7 @@ def get_results(csv_file, seed, split):
     """Domain A"""
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embA, labelsA, seed)
     rf_oob = get_RF_score(embA, labelsA, seed)
-    knn = cross_embedding_knn(embA, labelsA)
+    knn = cross_embedding_knn(embA, np.hstack(labelsA))
 
     #Return it as a dictionary so we can make a Pandas table easier later
     domain_A_results =  {"csv_file" : csv_file, "Method": "Domain A Pipeline Baseline", 
@@ -159,7 +159,7 @@ def get_results(csv_file, seed, split):
     """Domain B"""
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embB, labelsB, seed)
     rf_oob = get_RF_score(embB, labelsB, seed)
-    knn = cross_embedding_knn(embB, labelsB)
+    knn = cross_embedding_knn(embB, np.hstack(labelsB))
 
 
     #Return it as a dictionary so we can make a Pandas table easier later
