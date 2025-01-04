@@ -143,7 +143,7 @@ def get_results(csv_file, seed, split):
     """Domain A"""
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embA, labelsA, seed)
     rf_oob = get_RF_score(embA, labelsA, seed)
-    knn = cross_embedding_knn(embA, labelsA, other_side = False)
+    knn = cross_embedding_knn(embA, labelsA)
 
     #Return it as a dictionary so we can make a Pandas table easier later
     domain_A_results =  {"csv_file" : csv_file, "Method": "Domain A Pipeline Baseline", 
@@ -158,7 +158,7 @@ def get_results(csv_file, seed, split):
     """Domain B"""
     knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embB, labelsB, seed)
     rf_oob = get_RF_score(embB, labelsB, seed)
-    knn = cross_embedding_knn(embB, labelsB, other_side = False)
+    knn = cross_embedding_knn(embB, labelsB)
 
 
     #Return it as a dictionary so we can make a Pandas table easier later
