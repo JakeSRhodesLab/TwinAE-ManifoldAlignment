@@ -45,7 +45,33 @@ else:
         "EnergyEfficiency.csv", "Hydrodynamics.csv", "OpticalNetwork.csv","AirfoilSelfNoise.csv","AutoMPG.csv","ComputerHardware.csv","CommunityCrime.csv",
         "ConcreteSlumpTest.csv", "FacebookMetrics.csv", "Parkinsons.csv", "IstanbulStock.csv", "Automobile.csv", "ConcreteCompressiveStrength.csv", "SML2010.csv"
         ]
-    
+
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+
+
+def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}, other_side = True):
+        (y1, y2) = Y
+
+        n1, n2 = len(y1), len(y2)
+
+        # Determine if the task is classification or regression
+        if np.issubdtype(y1.dtype, np.integer):
+            knn = KNeighborsClassifier(**knn_args)
+            print("Using a classifier")
+        else:
+            knn = KNeighborsRegressor(**knn_args)
+            print("Using a regression model")
+
+        if other_side:
+            knn.fit(embedding[:n1, :], y1)
+
+            return knn.score(embedding[n1:, :], y2)
+
+        else:
+            #Train on other domain, predict on other domain ---- TODO
+            knn.fit(embedding[n1:, :], y2)
+
+            return knn.score(embedding[:n1, :], y1)
 
 import os
 #Directory Constant
@@ -84,36 +110,75 @@ def prep_data_file(csv_file, seed, split):
     else:
         df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
 
-    #Split data into features and labels. This also normalizes.
-    X, y = dataprep(df, label_col_idx=0)
+    #We need to gt the labels
+    _, y = dataprep(df, label_col_idx=0)
 
+    #get data files
+    split_A, split_B = split_features(csv_file, split, seed)
+
+    """For Domain A"""
     # Split into two groups A and B. This should have no effect as its reconstructed later
-    X_A, X_B, y_A, y_B = train_test_split(X, y, test_size=0.5, random_state=42)
+    X_A, X_B, y_A, y_B = train_test_split(split_A, y, test_size=0.5, random_state=42)
 
     # Further split each group into train and test sets
     X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(X_A, y_A, test_size=0.2, random_state=seed)
     X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(X_B, y_B, test_size=0.2, random_state=seed)
 
     # Combine embeddings into a single array and labels as a tuple
-    emb = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
-    labels = (y_A_train, y_A_test, y_B_train, y_B_test)
+    embA = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
+    labelsA = (y_A_train, y_A_test, y_B_train, y_B_test)
+
+    """For Domain B"""
+    # Split into two groups A and B. This should have no effect as its reconstructed later
+    X_A, X_B, y_A, y_B = train_test_split(split_B, y, test_size=0.5, random_state=42)
+
+    # Further split each group into train and test sets
+    X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(X_A, y_A, test_size=0.2, random_state=seed)
+    X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(X_B, y_B, test_size=0.2, random_state=seed)
+
+    # Combine embeddings into a single array and labels as a tuple
+    embB = np.vstack((X_A_train, X_A_test, X_B_train, X_B_test))
+    labelsB = (y_A_train, y_A_test, y_B_train, y_B_test)
 
     #Return the necessary arguments
-    return emb, labels, seed
+    return embA, labelsA, embB, labelsB
 
 # Evaluation function - Similar to pipeline
 def get_results(csv_file, seed):
-    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(*prep_data_file(csv_file, seed))
-    rf_oob = get_RF_score(*prep_data_file(csv_file, seed))
+    embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed)
+
+    """Domain A"""
+    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embA, labelsA, seed)
+    rf_oob = get_RF_score(embA, labelsA, seed)
+    knn = cross_embedding_knn(embA, labelsA, other_side = False)
 
     #Return it as a dictionary so we can make a Pandas table easier later
-    return {"csv_file" : csv_file, "Method": "Pipeline Baseline", 
+    domain_A_results =  {"csv_file" : csv_file, "Method": "Domain A Pipeline Baseline", 
             "Random Forest OOB": rf_oob,
             "Random Forest Emb": rf_score,
             "Nearest Neighbor": knn_score,
             "Nearest Neighbor (F1 score or RMSE)": knn_rmse,
-            "Random Forest (F1 score or RMSE)": rf_rmse
+            "Random Forest (F1 score or RMSE)": rf_rmse,
+            "CE (4 KNN)": knn
             }
+    
+    """Domain B"""
+    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embB, labelsB, seed)
+    rf_oob = get_RF_score(embB, labelsB, seed)
+    knn = cross_embedding_knn(embB, labelsB, other_side = False)
+
+
+    #Return it as a dictionary so we can make a Pandas table easier later
+    domain_B_results =  {"csv_file" : csv_file, "Method": "Domain B Pipeline Baseline", 
+            "Random Forest OOB": rf_oob,
+            "Random Forest Emb": rf_score,
+            "Nearest Neighbor": knn_score,
+            "Nearest Neighbor (F1 score or RMSE)": knn_rmse,
+            "Random Forest (F1 score or RMSE)": rf_rmse,
+            "CE (4 KNN)": knn
+            }
+    
+    return domain_A_results, domain_B_results
 
 
 csv_seed_list = []
@@ -123,11 +188,14 @@ for seed in [1738, 5271, 9209, 1316, 42]:
 
 
 # Get the results and show progress
-# with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
-#     results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed) for csv, seed in csv_seed_list)
+with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
+    results = Parallel(n_jobs=10)(delayed(get_results)(csv, seed) for csv, seed in csv_seed_list)
 
-# #Write Pandas dataframe
-# if run_regression:
-#     pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/PipelineBasline.csv")
-# else:
-#     pd.DataFrame(results).to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/RegressionData/PipelineBaseline.csv")
+#Unpack and make into dataframe
+new_df = pd.DataFrame(np.array(results).flatten())
+
+#Write Pandas dataframe
+if run_regression:
+    new_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/PipelineBasline.csv")
+else:
+    new_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/RegressionData/PipelineBaseline.csv")
