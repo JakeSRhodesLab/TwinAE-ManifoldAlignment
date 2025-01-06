@@ -28,8 +28,6 @@ def read_json_files_to_dataframe(directory_path):
     
     return df            
                 
-
-
 def plot_radial(df, columns):
     unique_methods = df["method"].unique()
 
@@ -211,3 +209,101 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
     plt.grid(visible=True, axis = "x")
     plt.legend()
     #plt.show()
+    
+def plt_methods_by_metric(df, sort_by = "MASH", return_df =False, plot_methods = ["MASH", "SPUD"]):
+    """df should equal the dataframe. It can be subsetted already
+    
+    Plots the max of the combined metric for each method to each CSV_File
+    
+    sort_by should be the string of what the method you want"""
+
+    metrics = ["Combined_Metric", "A_Classification_Score", "B_Classification_Score", "FOSCTTM", "Nearest Neighbor (F1 score or RMSE)", "Random Forest (F1 score or RMSE)", "Grae-KNN-metric", "Grae-RF-metric"]
+
+
+    agregate_df = pd.DataFrame({
+            'SSMA': df[df["method"] == "SSMA"][metrics].mean(),
+            'MAGAN': df[df["method"] == "MAGAN"][metrics].mean(),
+            'DTA': df[df["method"] == "DTA"][metrics].mean(),
+            'SPUD': df[df["method"] == "SPUD"][metrics].mean(),
+            'MASH': df[df["method"] == "MASH"][metrics].mean(),
+            'MASH-': df[df["method"] == "MASH-"][metrics].mean(),
+            'RF-MASH-': df[df["method"] == "RF-MASH-"][metrics].mean(),
+            'NAMA': df[df["method"] == "NAMA"][metrics].mean(),
+            'RF-NAMA': df[df["method"] == "RF-NAMA"][metrics].mean(),
+            'PCR': df[df["method"].isin(["PCR", "MAPA"])][metrics].mean(),
+            'JLMA': df[df["method"] == "JLMA"][metrics].mean(),
+            'MASH_RF': df[df["method"].isin(["MASH_RF", "RF-MASH"])][metrics].mean(),
+            'MALI_RF': df[df["method"].isin(["MALI_RF", "MALI-RF"])][metrics].mean(),
+            'MALI': df[df["method"] == "MALI"][metrics].mean(),
+            'SPUD_RF': df[df["method"].isin(["SPUD_RF", "RF-SPUD"])][metrics].mean(),
+
+        #   'BL_A': df["A_Classification_Score"].mean(),
+        #   'BL_B': df["B_Classification_Score"].mean(),
+    })
+
+    agregate_df = agregate_df.sort_values(by = sort_by).reset_index()
+
+    #If we only want the df
+    if return_df:
+        return agregate_df
+
+    #To make it easier to add edits
+    key_words = {
+                "s" : 70,
+                "alpha" : .60,
+                }
+
+    plt.figure(figsize=(16, 6))
+    
+    if "MASH" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MASH"], marker = '^', color = "green", label = "MASH", x = get_index_pos(agregate_df), **key_words)
+    if "MAGAN" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MAGAN"], marker = '^', color = "red", label = "MAGAN",x = get_index_pos(agregate_df), **key_words)
+    if "JLMA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["JLMA"], marker = '^', label = "JLMA",x = get_index_pos(agregate_df), **key_words)
+    if "SPUD" in plot_methods:
+        ax = plt.scatter(y = agregate_df["SPUD"], marker = "^", label = "SPUD",x = get_index_pos(agregate_df), **key_words)
+    if "MASH-" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MASH-"], marker = '^', label = "MASH-",x = get_index_pos(agregate_df), **key_words)
+    if "NAMA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["NAMA"], marker = '^', label = "NAMA",x = get_index_pos(agregate_df), **key_words)
+    if "PCR" in plot_methods:
+        ax = plt.scatter(y = agregate_df["PCR"], marker = '^', color = "brown",x = get_index_pos(agregate_df), label = "Procrutees", **key_words)
+    if "DTA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["DTA"], marker = "^", color = "orange",x = get_index_pos(agregate_df), label = "DTA", **key_words)
+    if "SSMA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["SSMA"],  marker = '^', label = "SSMA",x = get_index_pos(agregate_df), **key_words) 
+    if "BL_A" in plot_methods:
+        ax = plt.scatter(y = agregate_df["BL_A"], marker = '.', color = "red",x = get_index_pos(agregate_df), label = "BL_A", **key_words)
+    if "BL_B" in plot_methods:
+        ax = plt.scatter(y = agregate_df["BL_B"], marker = '.', color = "pink", x = get_index_pos(agregate_df), label = "BL_B", **key_words)
+
+    #To make it easier to add edits
+    key_words = {
+                "s" : 50,
+                "alpha" : .90 }
+    
+    if "RF-NAMA" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RF-NAMA"], marker = 'o', color = "red", x = get_index_pos(agregate_df),label = "RF-NAMA", **key_words)
+    if "RF-MASH-" in plot_methods:
+        ax = plt.scatter(y = agregate_df["RF-MASH-"], marker = 'o', color = "orange", x = get_index_pos(agregate_df),label = "RF-MASH-", **key_words)
+    if "MASH_RF" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MASH_RF"], marker = 'o', color = "green", x = get_index_pos(agregate_df),label = "MASH_RF", **key_words)
+    if "MALI_RF" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MALI_RF"], marker = 'o',x = get_index_pos(agregate_df), label = "MALI_RF", **key_words)
+    if "MALI" in plot_methods:
+        ax = plt.scatter(y = agregate_df["MALI"], marker = 'o', x = get_index_pos(agregate_df),label = "MALI", **key_words)
+    if "SPUD_RF" in plot_methods:
+        ax = plt.scatter(y = agregate_df["SPUD_RF"], x = get_index_pos(agregate_df), label = "SPUD_RF", marker = 'o', color = "blue", **key_words)
+
+    global move_index
+    move_index = -0.03
+
+    #Show Legend
+    plt.xticks(ticks= agregate_df.index,labels=agregate_df["csv_file"], rotation = 90)
+    plt.title(f"Metric Scores vs. Methods")
+    plt.ylabel("Metric")
+    plt.grid(visible=True, axis = "x")
+    plt.legend()
+    #plt.show()
+
