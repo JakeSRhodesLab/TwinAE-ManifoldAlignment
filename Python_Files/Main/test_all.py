@@ -43,11 +43,11 @@ reg_files = [ #REGRESSION
       "CommunityCrime.csv",
      "ConcreteSlumpTest.csv", 
          "FacebookMetrics.csv",
-        "Parkinsons.csv",
+        # "Parkinsons.csv",
     "IstanbulStock.csv",
     "Automobile.csv",
   "ConcreteCompressiveStrength.csv",
- "SML2010.csv"
+#  "SML2010.csv"
 ]
 
 """
@@ -236,15 +236,15 @@ pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], p
 Mash Methods Below \/
 """
 
-# pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
 pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-# pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
-#     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
+pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+    page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
