@@ -210,15 +210,16 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
     plt.legend()
     #plt.show()
     
-def plt_methods_by_metric(df, sort_by = "MASH", return_df =False, plot_methods = ["MASH", "SPUD"]):
+def plt_methods_by_metric(df, sort_by = "MASH", return_df =False, plot_methods = ["MASH", "SPUD"],
+                          metrics = ['CE', 'FOSCTTM', 'Random Forest OOB', 'Random Forest Emb', 'Nearest Neighbor',
+                                    'Nearest Neighbor (F1 score or RMSE)', 'Random Forest (F1 score or RMSE)',
+                                    'Grae-KNN', 'Grae-KNN-metric', 'Grae-RF', 'Grae-RF-OOB', 'Grae-RF-metric']):
+    
     """df should equal the dataframe. It can be subsetted already
     
     Plots the max of the combined metric for each method to each CSV_File
     
     sort_by should be the string of what the method you want"""
-
-    metrics = ["Combined_Metric", "A_Classification_Score", "B_Classification_Score", "FOSCTTM", "Nearest Neighbor (F1 score or RMSE)", "Random Forest (F1 score or RMSE)", "Grae-KNN-metric", "Grae-RF-metric"]
-
 
     agregate_df = pd.DataFrame({
             'SSMA': df[df["method"] == "SSMA"][metrics].mean(),
@@ -258,23 +259,23 @@ def plt_methods_by_metric(df, sort_by = "MASH", return_df =False, plot_methods =
     if "MASH" in plot_methods:
         ax = plt.scatter(y = agregate_df["MASH"], marker = '^', color = "green", label = "MASH", x = get_index_pos(agregate_df), **key_words)
     if "MAGAN" in plot_methods:
-        ax = plt.scatter(y = agregate_df["MAGAN"], marker = '^', color = "red", label = "MAGAN",x = get_index_pos(agregate_df), **key_words)
+        ax = plt.scatter(y = agregate_df["MAGAN"], marker = '^', color = "red", label = "MAGAN", x = get_index_pos(agregate_df), **key_words)
     if "JLMA" in plot_methods:
-        ax = plt.scatter(y = agregate_df["JLMA"], marker = '^', label = "JLMA",x = get_index_pos(agregate_df), **key_words)
+        ax = plt.scatter(y = agregate_df["JLMA"], marker = '^', label = "JLMA", x = get_index_pos(agregate_df), **key_words)
     if "SPUD" in plot_methods:
-        ax = plt.scatter(y = agregate_df["SPUD"], marker = "^", label = "SPUD",x = get_index_pos(agregate_df), **key_words)
+        ax = plt.scatter(y = agregate_df["SPUD"], marker = "^", label = "SPUD", x = get_index_pos(agregate_df), **key_words)
     if "MASH-" in plot_methods:
-        ax = plt.scatter(y = agregate_df["MASH-"], marker = '^', label = "MASH-",x = get_index_pos(agregate_df), **key_words)
+        ax = plt.scatter(y = agregate_df["MASH-"], marker = '^', label = "MASH-", x = get_index_pos(agregate_df), **key_words)
     if "NAMA" in plot_methods:
-        ax = plt.scatter(y = agregate_df["NAMA"], marker = '^', label = "NAMA",x = get_index_pos(agregate_df), **key_words)
+        ax = plt.scatter(y = agregate_df["NAMA"], marker = '^', label = "NAMA", x = get_index_pos(agregate_df), **key_words)
     if "PCR" in plot_methods:
-        ax = plt.scatter(y = agregate_df["PCR"], marker = '^', color = "brown",x = get_index_pos(agregate_df), label = "Procrutees", **key_words)
+        ax = plt.scatter(y = agregate_df["PCR"], marker = '^', color = "brown", x = get_index_pos(agregate_df), label = "Procrutees", **key_words)
     if "DTA" in plot_methods:
-        ax = plt.scatter(y = agregate_df["DTA"], marker = "^", color = "orange",x = get_index_pos(agregate_df), label = "DTA", **key_words)
+        ax = plt.scatter(y = agregate_df["DTA"], marker = "^", color = "orange", x = get_index_pos(agregate_df), label = "DTA", **key_words)
     if "SSMA" in plot_methods:
-        ax = plt.scatter(y = agregate_df["SSMA"],  marker = '^', label = "SSMA",x = get_index_pos(agregate_df), **key_words) 
+        ax = plt.scatter(y = agregate_df["SSMA"],  marker = '^', label = "SSMA", x = get_index_pos(agregate_df), **key_words) 
     if "BL_A" in plot_methods:
-        ax = plt.scatter(y = agregate_df["BL_A"], marker = '.', color = "red",x = get_index_pos(agregate_df), label = "BL_A", **key_words)
+        ax = plt.scatter(y = agregate_df["BL_A"], marker = '.', color = "red", x = get_index_pos(agregate_df), label = "BL_A", **key_words)
     if "BL_B" in plot_methods:
         ax = plt.scatter(y = agregate_df["BL_B"], marker = '.', color = "pink", x = get_index_pos(agregate_df), label = "BL_B", **key_words)
 
@@ -300,7 +301,7 @@ def plt_methods_by_metric(df, sort_by = "MASH", return_df =False, plot_methods =
     move_index = -0.03
 
     #Show Legend
-    plt.xticks(ticks= agregate_df.index,labels=agregate_df["csv_file"], rotation = 90)
+    plt.xticks(ticks= agregate_df.index,labels=agregate_df["index"], rotation = 45)
     plt.title(f"Metric Scores vs. Methods")
     plt.ylabel("Metric")
     plt.grid(visible=True, axis = "x")
