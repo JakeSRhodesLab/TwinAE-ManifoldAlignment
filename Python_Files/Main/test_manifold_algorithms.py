@@ -26,6 +26,10 @@ Changes Log:
 
 
 TASKS:
+0. > Check PCA for the embedding correlation (Picture)
+1. Use Mantel's Correlation to compare the autoencoder embeddings to the MASH and SPUD embeddings
+
+
 1. Create a data class of tma instead of the franken-object
 9. Freeze layer of GRAE and building and A to B projection
 
@@ -54,6 +58,7 @@ help with this we can find the anchors and their corresponding points in the off
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
+KanbanFlow: https://kanbanflow.com/board/g25iW5x
 
 """
 #I should fix these imports to be more localized
