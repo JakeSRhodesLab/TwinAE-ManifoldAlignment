@@ -2,12 +2,6 @@
 
 """
 QUESTIONS:
-See num 9 on Tasks. Pipeline tests were run with RF GAP off diagonal set to False (which means that the values were not given to be closest to themselves... it does make a difference). Should it be set to True?
-
-Strategy for Doing Grae A to B:
-Grae doesn't have an embedding layer, but only a bottleneck layer z. It uses the embedding to calculate loss, which makes it look similar to 
-the embedding eventually. Because of this, we should train one of the Graes, then maybe turn down the learning rate and train the other grae?
-Then we can take the resulting Z layer, input it to both graes, and then retrain them both. 
 
 Changes Log: 
 3. Adding Logging to tell easier why tests fail
