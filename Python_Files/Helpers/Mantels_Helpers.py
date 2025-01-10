@@ -50,7 +50,7 @@ def split_features(csv_file, split, seed):
             split_features(csv_file, split, seed)
 
 # Create function to Extract best fit information from the results
-def extract_all_fits():
+def extract_all_files():
     #Get the regression results and classification results
     df = read_json_files_to_dataframe("/yunity/arusty/Graph-Manifold-Alignment/Results")
 
@@ -97,7 +97,7 @@ def create_and_fit_method(method_data, data, params):
 def get_embeddings(method, dataset, split, params):
 
     #Create a TMA spoof class
-    data = split_data(dataset, split)
+    data = split_data(dataset + ".csv", split)
 
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
     n_comps = max(min(data.split_a.shape[1], data.split_b.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
