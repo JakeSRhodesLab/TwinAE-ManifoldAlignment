@@ -4,20 +4,6 @@
 QUESTIONS:
 
 Changes Log: 
-3. Adding Logging to tell easier why tests fail
-9. Checked non_zero_diagonal should be False when you create the similarity measure for RF GAP. It dosn't cause an error, and so changed it to be false. Correction -> It sets the off-diagonal to be the opposite of what it should be
-28. Added A to B domain on Grae testing -> See Grae Tests for visualization
-29. Fixed RF-oob scores to only be on train data
-30. Fixed Errors in get_scores functions when labels aren't provided for MASH and SPUD
-31. MASH had memory challenges. Chunked functions so they take longer but require less memory. (If we wanted, we could make it parrelizable. Bigger memory chunks = Faster than more processors though)
-32. Ran tests for regression (And currently running more)
-33. Fixed error with MALI in the tests (also fixed that our methods were reporting less than they should be)
-34. Created plot to show GRAE versus not Grae scores
-35. Updated method to reduce memory restraints
-36. Created new baseline scores
-37. Created new way to run baseline results
-38. Updated different distance measurements and how they could run for MASH. Testing them in addition. 
-
 
 TASKS:
 0. > Check PCA for the embedding correlation (Picture)
