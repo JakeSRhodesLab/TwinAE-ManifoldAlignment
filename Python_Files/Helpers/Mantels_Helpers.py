@@ -81,6 +81,18 @@ def create_tasks_for_parrelization(df):
 
     return tasks
 
+# To keep code cleaner
+def create_and_fit_method(method_data, data, params):
+    if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
+        method_class = method_data["Model"](knn = params["knn"], page_rank = params["page_rank"], DTM = params["DTM"], density_normalization = params["density_normalization"])
+        method_class = method_data["Fit"](method_class, data, data.anchors[len(data.anchors)//2:])
+        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"])
+
+    else:
+        method_class = method_data["Model"](**params)
+        method_class = method_data["Fit"](method_class, data, data.anchors)
+    
+    return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
 def get_embeddings(method, dataset, split, params):
@@ -95,45 +107,27 @@ def get_embeddings(method, dataset, split, params):
     #Get the method data, fit it and prepare it to extract the block
     method_data = method_dict[method]
     
-    if method == "MASH" or method == "RF-MASH":
-        method_class = method_data["Model"](knn = params["knn"], page_rank = params["page_rank"], DTM = params["DTM"], density_normalization = params["density_normalization"])
-        method_class = method_data["Fit"](method_class, data, data.anchors[len(data.anchors)//2:])
-        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"])
-
-    else:
-        method_class = method_data["Model"](**params)
-        method_class = method_data["Fit"](method_class, data, data.anchors)
+    
 
     #Get the true embedding
     emb_full = mds.fit_transform(method_data["Block"](method_class))
 
-    #To avoid using the data on the text and Train, we will need to split it
+    """GET GRAE's EMBEDDING below"""
     X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
     X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
 
+    #reformat data using x train
+    data.split_A = X_A_train
+    data.split_B = X_B_train
+    data.labels = y_A_train # y_A_train will equal y_B_train
+    anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
+
     #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
-    if method_data["Name"][-4:] == "MASH":
-
-        optimize_dict = {"hold_out_anchors": data.anchors[len(data.anchors)//2:]}
-
-        #Select half of the anchors for training
-        anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
-        
-        for param in ["connection_limit", "threshold", "epochs"]:
-            optimize_dict[param] = best_fit[param]
-            del best_fit[param]
-
-        #Delete hold out anchors
-        if "hold_out_anchors" in best_fit.keys():
-            del best_fit["hold_out_anchors"]
+    if method == "MASH" or method == "RF-MASH":
         
     else:
         anchors = create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))
 
-    #Fit using x train
-    tma.split_A = X_A_train
-    tma.split_B = X_B_train
-    tma.labels = y_A_train # y_A_train will equal y_B_train
     
     #Create model
     rf_method_class = self.method_data["Model"](**self.overide_defaults, **best_fit)
