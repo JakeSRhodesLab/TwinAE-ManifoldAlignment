@@ -91,19 +91,18 @@ def create_tasks_for_parrelization(df):
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
 def get_embeddings(method, dataset, split, params):
 
+    data = split_data(dataset, split)
+
     #Get the method data
     method_data = method_dict[method]
 
     try:
         method_class = method_data["Model"](**params)
-        method_class = method_data["Fit"](method_class, tma, anchors) #This usually just returns self, except with MAGAN
+        method_class = method_data["Fit"](method_class, data, data.anchors)
 
-        # FOSCTTM Evaluation Metrics
-        f_score = method_data["FOSCTTM"](method_class)
-
-        #Create a custom MDS where we keep only 1 job (Not to have nested parrelization and lower n_init)
-        mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 1,
-                    n_jobs=1, random_state = self.seed, n_components = tma.n_comp)
+        #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
+        mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 4,
+                    n_jobs=1, random_state = 42, n_components = min(data.split_a.shape[1], data.split_b.shape[1]))
         emb = mds.fit_transform(self.method_data["Block"](method_class))
 
         
