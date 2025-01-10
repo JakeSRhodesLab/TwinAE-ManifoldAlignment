@@ -20,6 +20,8 @@ from joblib import Parallel, delayed
 from Helpers.utils import dataprep
 from tqdm import tqdm
 from tqdm_joblib import tqdm_joblib
+from Helpers.Mantels_Helpers import split_features
+
 print("Imports completed.\n-------------------------------------------------\n\n")
 
 
@@ -63,29 +65,6 @@ def cross_embedding_knn(embedding, Y, knn_args = {'n_neighbors': 4}):
             return knn.score(embedding[n1:], Y[n1:])
 
 
-import os
-#Directory Constant
-def split_features(csv_file, split, seed):
-
-        #Step 1. Check if a file exists already
-        #Create filename 
-        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/Splits_Data/" + csv_file[:-4] + "/"
-        filename += split[0] + str(seed) + ".npz"
-
-        #Step 2b. If so, simply load the files into split A and split B
-        if os.path.exists(filename):
-
-            #Load in the file
-            data = np.load(filename) 
-
-            #Grab the splits
-            return data['split_a'], data["split_b"]
-        
-        else:
-            from test_manifold_algorithms import test_manifold_algorithms as tma
-            tma(csv, random_state= seed, split = split)
-            print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
-            split_features(csv_file, split, seed)
 
 # Data Prep Function
 def prep_data_file(csv_file, seed, split):
