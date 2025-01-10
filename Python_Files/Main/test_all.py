@@ -21,19 +21,19 @@ from Main.Pipeline import pipe
 
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
-csv_files = [
-             "zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
-              "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
+files = [
+        #      "zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+        #       "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
         #       "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
         #      "S-curve", "blobs", 'winequality-red.csv', 'car.csv',
-        #     "crx.csv", "breast_cancer.csv", "titanic.csv", 
+             "crx.csv", "breast_cancer.csv", "titanic.csv", 
         #       "diabetes.csv", "tic-tac-toe.csv",
         #       'Medicaldataset.csv', "water_potability.csv", 
         #      'treeData.csv', 
         #       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
              ]
 
-reg_files = [ #REGRESSION 
+#files = [ #REGRESSION 
 #     "EnergyEfficiency.csv", 
 #     "Hydrodynamics.csv",
 #     "OpticalNetwork.csv",
@@ -48,7 +48,7 @@ reg_files = [ #REGRESSION
 #     "Automobile.csv",
 #   "ConcreteCompressiveStrength.csv",
 #  "SML2010.csv"
-]
+#]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -59,7 +59,7 @@ nope = not state
 #Skewed
 
 
-tma.run_all_tests(csv_files = reg_files, test_random = [1825],#, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = files, test_random = [1825],#, 2830, 2969],# 3407, 3430, 5198], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "skewed", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -77,7 +77,7 @@ tma.run_all_tests(csv_files = reg_files, test_random = [1825],#, 2830, 2969],# 3
                             run_CSPUD = state) #SPUD key arguments
 
 #Even
-tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = files, test_random = [1738],#, 1825, 2830],# 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "even", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -95,7 +95,7 @@ tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 1825, 2830],# 3
                             run_CSPUD = state) #SPUD key arguments
 
 #turn
-tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = files, test_random = [1738],#, 9515, 1825], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "turn", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -113,7 +113,7 @@ tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 9515, 1825], #G
                             run_CSPUD = state) #SPUD key arguments
 
 #Random
-tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = files, test_random = [1738],#, 1825, 2830],#, 3407, 3430, 5198, 7667, 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "random", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -131,7 +131,7 @@ tma.run_all_tests(csv_files = reg_files, test_random = [1738],#, 1825, 2830],#, 
                             run_CSPUD = state) #SPUD key arguments
 
 #distort
-tma.run_all_tests(csv_files = reg_files, test_random =  [1738],#, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
+tma.run_all_tests(csv_files = files, test_random =  [1738],#, 5198, 7667],# 9515], #General function arguments: 1738, 1825, 2830, 3407, 3430, 5198, 7667, 9515
                             split = "distort", verbose = 0, percent_of_anchors = [0.3], #Init Key arguments
                             run_DIG = state, 
                             run_DTA = state,
@@ -171,16 +171,16 @@ Files 7-10 still on Parkinsons with MASH-.
 RF Methods Below -> \/
 """
 
-pipe("RF-SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("RF-SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "Jaccard"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("RF-SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "similarities"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("RF-NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
@@ -190,16 +190,16 @@ Our methods below -> \/
 
 
 #We sorted out the overide methods between each of the spuds
-pipe("SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "Jaccard"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "similarities"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
-pipe("NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
@@ -208,43 +208,43 @@ pipe("NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], pa
 Other methods below -> \/
 
 
-pipe("JLMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("JLMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, PF], mu = [0.01, 0.5, 1, 2])
 
-pipe("DTA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("DTA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         distances = ["DPT", "Not_DPT"])
 
-pipe("SSMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("SSMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         Uincluded = [True, False], Dincluded = [True, False])
 
-pipe("MAPA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("MAPA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         r = [2,5,10,20, 50, 100, 1000])
 
-pipe("MALI", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("MALI", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         mu = [0.01, 0.1, 0.3, 0.5, 0.75, 0.99], t = ["auto", "auto-I", "DPT", "DPT-I", 3, 5, 30], transition_only = [True, False],
         ot = [True, False], normalize_M = [True, False])
 
-pipe("RF-MALI", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-MALI", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         mu = [0.01, 0.1, 0.3, 0.5, 0.75, 0.99], t = ["auto", "auto-I", "DPT", "DPT-I", 3, 5, 30], transition_only = [True, False],
         ot = [True, False], normalize_M = [True, False], interclass_distance = ["rfgap", "cosine"],
         overide_defaults= {"graph_distance" : "rfgap"}) 
 
-pipe("MAGAN", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("MAGAN", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      learning_rate = [0.01, 0.005, 0.001])
 
 
 Mash Methods Below \/
 """
 
-pipe("MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-pipe("MASH", csv_files=reg_files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("MASH", csv_files=files, splits = SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-pipe("RF-MASH-", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
-pipe("RF-MASH", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
+pipe("RF-MASH", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
