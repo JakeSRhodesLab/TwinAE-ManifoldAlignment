@@ -24,13 +24,13 @@ from Main.Pipeline import pipe
 csv_files = [
              "zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
               "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-              "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-             "S-curve", "blobs", 'winequality-red.csv', 'car.csv',
-            "crx.csv", "breast_cancer.csv", "titanic.csv", 
-              "diabetes.csv", "tic-tac-toe.csv",
-              'Medicaldataset.csv', "water_potability.csv", 
-             'treeData.csv', 
-              #"optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
+        #       "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
+        #      "S-curve", "blobs", 'winequality-red.csv', 'car.csv',
+        #     "crx.csv", "breast_cancer.csv", "titanic.csv", 
+        #       "diabetes.csv", "tic-tac-toe.csv",
+        #       'Medicaldataset.csv', "water_potability.csv", 
+        #      'treeData.csv', 
+        #       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
              ]
 
 reg_files = [ #REGRESSION 
@@ -43,7 +43,7 @@ reg_files = [ #REGRESSION
 #       "CommunityCrime.csv",
 #      "ConcreteSlumpTest.csv", 
 #          "FacebookMetrics.csv",
-     "Parkinsons.csv",
+#    "Parkinsons.csv",
 #     "IstanbulStock.csv",
 #     "Automobile.csv",
 #   "ConcreteCompressiveStrength.csv",
@@ -153,7 +153,7 @@ tma.run_all_tests(csv_files = reg_files, test_random =  [1738],#, 5198, 7667],# 
 from Pipeline import pipe
 
 SPLITS = ["distort", "even", "random", "skewed", "turn"]
-PF = 1
+PF = 10
 
 """
 Files 1-3 ran. 
@@ -169,7 +169,7 @@ Files 7-10 still on Parkinsons with MASH-.
 
 
 RF Methods Below -> \/
-
+"""
 
 pipe("RF-SPUD", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
@@ -184,9 +184,9 @@ pipe("RF-NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3],
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
-
+"""
 Our methods below -> \/
-
+"""
 
 
 #We sorted out the overide methods between each of the spuds
@@ -204,7 +204,7 @@ pipe("NAMA", csv_files=reg_files, splits =  SPLITS, percent_of_anchors=[0.3], pa
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
 
-
+"""
 Other methods below -> \/
 
 
