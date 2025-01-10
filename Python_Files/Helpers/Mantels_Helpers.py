@@ -94,8 +94,15 @@ def get_embeddings(method, dataset, split, params):
 
     #Get the method data, fit it and prepare it to extract the block
     method_data = method_dict[method]
-    method_class = method_data["Model"](**params)
-    method_class = method_data["Fit"](method_class, data, data.anchors)
+    
+    if method == "MASH" or method == "RF-MASH":
+        method_class = method_data["Model"](knn = params["knn"], page_rank = params["page_rank"], DTM = params["DTM"], density_normalization = params["density_normalization"])
+        method_class = method_data["Fit"](method_class, data, data.anchors[len(data.anchors)//2:])
+        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"])
+
+    else:
+        method_class = method_data["Model"](**params)
+        method_class = method_data["Fit"](method_class, data, data.anchors)
 
     #Get the true embedding
     emb_full = mds.fit_transform(method_data["Block"](method_class))
@@ -107,7 +114,7 @@ def get_embeddings(method, dataset, split, params):
     #Because of RF MASH, we need to specialize the initilization so we can call optimize on it later
     if method_data["Name"][-4:] == "MASH":
 
-        optimize_dict = {"hold_out_anchors": create_unique_pairs(len(X_A_train), int(len(tma.anchors) * tma.percent_of_anchors[0]))}
+        optimize_dict = {"hold_out_anchors": data.anchors[len(data.anchors)//2:]}
 
         #Select half of the anchors for training
         anchors = optimize_dict["hold_out_anchors"][:int(len(tma.anchors) * tma.percent_of_anchors[0]/2)]
