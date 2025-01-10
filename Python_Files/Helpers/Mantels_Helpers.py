@@ -18,13 +18,17 @@ class split_data():
         except:
             df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
 
-        self.labels = df.pop(df.columns[0])
+        #If categorical strings :)
+        if df[0].dtype == 'object':
+            df[0] = pd.Categorical(df[0]).codes
+            
+        self.labels = np.array(df.pop(df.columns[0]))
 
         #Upload cached split
-        self.split_a, self.split_b = split_features(csv_file, split, 42) #NOTE: We usually use 42 as a seed
+        self.split_A, self.split_B = split_features(csv_file, split, 42) #NOTE: We usually use 42 as a seed
 
         #Anchors are assumed to be .3 of the dataset
-        self.anchors = create_unique_pairs(self.split_a.shape[0], int(self.split_a.shape[0] * .3))
+        self.anchors = create_unique_pairs(self.split_A.shape[0], int(self.split_A.shape[0] * .3))
 
 #Directory Constant
 def split_features(csv_file, split, seed):
@@ -100,7 +104,7 @@ def get_embeddings(method, dataset, split, params):
     data = split_data(dataset + ".csv", split)
 
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
-    n_comps = max(min(data.split_a.shape[1], data.split_b.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
+    n_comps = max(min(data.split_A.shape[1], data.split_B.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
     mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 4,
                 n_jobs=1, random_state = 42, n_components = n_comps) 
 
@@ -110,13 +114,14 @@ def get_embeddings(method, dataset, split, params):
 
     #Get the true embedding
     emb_full = mds.fit_transform(method_data["Block"](method_class))
+    print("Full Embedding Complete")
 
     """GET GRAE's EMBEDDING below"""
     X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
     X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
 
     # Reformat data using x train
-    anchors = create_unique_pairs(len(X_A_train), int(data.split_a.shape[0] * .3)) #NOTE: we choose to keep the same amount of anchors. 
+    data.anchors = create_unique_pairs(len(X_A_train), int(data.split_A.shape[0] * .3)) #NOTE: we choose to keep the same amount of anchors. 
     data.split_A = X_A_train
     data.split_B = X_B_train
     data.labels = y_A_train # y_A_train will equal y_B_train
@@ -125,6 +130,8 @@ def get_embeddings(method, dataset, split, params):
 
     #Get the partial embedding
     emb_partial = mds.fit_transform(method_data["Block"](method_class))
+    print("Partial Embedding Complete")
+
 
     #GRAE on domain A
     myGrae = GRAEBase(n_components = n_comps)
@@ -144,6 +151,7 @@ def get_embeddings(method, dataset, split, params):
     A_train = emb_partial[:int(len(emb_partial)/2)]
     B_train = emb_partial[int(len(emb_partial)/2):]
     emb_pred = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
-    
+    print("GRAE Embedding Complete")
+
     return emb_partial, emb_pred, emb_full
 
