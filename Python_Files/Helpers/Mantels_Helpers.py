@@ -114,7 +114,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
 
     #Get the true embedding
     emb_full = mds.fit_transform(method_data["Block"](method_class))
-    print("Full Embedding Complete")
+    #print("Full Embedding Complete")
 
     if return_labels:
         normal_labels = np.vstack([data.labels, data.labels])
@@ -133,7 +133,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
 
     #Get the partial embedding
     emb_partial = mds.fit_transform(method_data["Block"](method_class))
-    print("Partial Embedding Complete")
+    #print("Partial Embedding Complete")
 
 
     #GRAE on domain A
@@ -154,10 +154,23 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     A_train = emb_partial[:int(len(emb_partial)/2)]
     B_train = emb_partial[int(len(emb_partial)/2):]
     emb_pred = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
-    print("GRAE Embedding Complete")
+    #print("GRAE Embedding Complete")
 
     if return_labels:
         return emb_partial, emb_pred, emb_full, normal_labels, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
     
     return emb_partial, emb_pred, emb_full
 
+def stub_function_for_MARSHALL(method, dataset, split, params, *, return_labels = False): #DON'T Delete any of these parameters - though you can add your own if you want
+    #Get the embeddings 
+
+    # #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
+    emb_partial, emb_pred, emb_full, full_labels, pred_labels = get_embeddings(method, dataset, split, params, return_labels = return_labels)
+
+    #TODO: Compare the embeddings in the results using Mantels correlation
+    #NOTE: The results are a list of tuples. The elements of each tuple are "partial, pred, full, full_labels, pred_labels"
+    
+
+    #TODO: Save the result.
+
+    #NOTE: This is set up to do comparision one task at a time so it can be trivially paralylized
