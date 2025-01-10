@@ -19,9 +19,9 @@ class split_data():
             df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
 
         #If categorical strings :)
-        if df[0].dtype == 'object':
-            df[0] = pd.Categorical(df[0]).codes
-            
+        if df[df.columns[0]].dtype == 'object':
+            df[df.columns[0]] = pd.Categorical(df[df.columns[0]]).codes
+
         self.labels = np.array(df.pop(df.columns[0]))
 
         #Upload cached split
@@ -98,7 +98,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params):
+def get_embeddings(method, dataset, split, params, *, return_labels = False):
 
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
@@ -153,5 +153,8 @@ def get_embeddings(method, dataset, split, params):
     emb_pred = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
     print("GRAE Embedding Complete")
 
+    if return_labels:
+        return emb_partial, emb_pred, emb_full, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
+    
     return emb_partial, emb_pred, emb_full
 
