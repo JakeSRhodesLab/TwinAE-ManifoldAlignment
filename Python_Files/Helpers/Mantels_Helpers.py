@@ -116,6 +116,9 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     emb_full = mds.fit_transform(method_data["Block"](method_class))
     print("Full Embedding Complete")
 
+    if return_labels:
+        normal_labels = np.vstack([data.labels, data.labels])
+
     """GET GRAE's EMBEDDING below"""
     X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
     X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
@@ -154,7 +157,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     print("GRAE Embedding Complete")
 
     if return_labels:
-        return emb_partial, emb_pred, emb_full, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
+        return emb_partial, emb_pred, emb_full, normal_labels, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
     
     return emb_partial, emb_pred, emb_full
 
