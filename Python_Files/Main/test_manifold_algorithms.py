@@ -1,45 +1,10 @@
 #This tests all of our models against each other
 
 """
-QUESTIONS:
-
-Changes Log: 
-
-TASKS:
-0. > Check PCA for the embedding correlation (Picture)
-1. Use Mantel's Correlation to compare the autoencoder embeddings to the MASH and SPUD embeddings
-
-
-1. Create a data class of tma instead of the franken-object
-9. Freeze layer of GRAE and building and A to B projection
-
-MORE TASKS
-1. MD things
-2. Time data for MASH
-7. Set n_pca default to eqaul 100
-
-
-If time things:
-6. Figure out how to make NaN processing faster. Use the pdist?
-7. Test the Nystrom Methodology. Maybe apply the method to MASh first?
-8. Add in the other way Marshall asked to be able to format anchors
-9. Compare the different method parameters within SPUD with plot_in_fig
-10. Currently we are applying the density normalization to the joined domains. Is that what we want, or do we want to apply it seperately to each domain?
-11. Shared embedding bottle neck nueral networks to extend points the embedding was not trained on. 
-
-Ideas:
- - > SHARE WITH RHODES: MASH has a divergence (like its mirrored) when using few anchors. This is because the off-diagonal matrix is larger than others. To 
-help with this we can find the anchors and their corresponding points in the off-diagonal and see how far away they are and then subtract the average distance fromt he entire off diagonal
--> Think about how we can add new points without rerunning the embedding -- Nystrom method
--> MASH optimization function to work something like a nueral network. At the least, make it so connections are adjustable
--> Weighting feature importance
--> Class based feature importance (Dr. Rhodes)
-
 ----------------------------------------------------------     Helpful Information      ----------------------------------------------------------
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 KanbanFlow: https://kanbanflow.com/board/g25iW5x
-
 """
 #I should fix these imports to be more localized
 #Import libraries
