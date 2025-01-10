@@ -49,8 +49,6 @@ def split_features(csv_file, split, seed):
             print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
             split_features(csv_file, split, seed)
 
-
-
 # Create function to Extract best fit information from the results
 def extract_all_fits():
     #Get the regression results and classification results
@@ -149,6 +147,3 @@ def get_embeddings(method, dataset, split, params):
     
     return emb_partial, emb_pred, emb_full
 
-
-
-# Create the GRAE model evaluation
