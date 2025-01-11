@@ -1445,7 +1445,10 @@ class DomainTranslation():
         # B_reconstructed = self.graeB.inverse_transform(self.graeA.transform(B_Z_A_data))  # -> Z -> B
         # cycle_loss_B = self.cycle_weight * self.graeB.criterion(B, B_reconstructed)
 
-        return loss_A + anchor_loss_A * 2 + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
+        if anchor_loss_A > 0:
+            return loss_A + anchor_loss_A * 2 + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
+        else:
+            return loss_A + cycle_loss_A
 
     def custom_collate_fn(self, batch):
         A_batch = np.stack([item[0] for item in batch])
@@ -1493,15 +1496,21 @@ class DomainTranslation():
         
         loader = torch.utils.data.DataLoader(tupled_data, batch_size=32, shuffle=True, collate_fn=self.custom_collate_fn)
 
-        self.optimizer = torch.optim.Adam(self.graeA.torch_module.parameters(),
-                                          lr=self.graeA.lr,
-                                          weight_decay=self.graeA.weight_decay)
+        # Move graeA and graeB parameters to the correct device
+        self.graeA.torch_module.to(DEVICE)
+        self.graeB.torch_module.to(DEVICE)
+
+        # Initialize the optimizer after moving parameters to the correct device
+        self.optimizer = torch.optim.Adam(
+            list(self.graeA.torch_module.parameters()) + list(self.graeB.torch_module.parameters()),
+            lr=self.graeA.lr * 0.1, #Fine tuning
+            weight_decay=self.graeA.weight_decay
+        )
 
         print('\n ---------------------------------\nBeginning Training Loop...')
         for epoch in range(epochs):
             for batch in loader:
                 A_batch, B_batch, is_anchor = batch
-
 
                 idx = np.where(is_anchor)
 
