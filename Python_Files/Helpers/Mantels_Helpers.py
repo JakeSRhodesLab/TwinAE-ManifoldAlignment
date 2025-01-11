@@ -8,6 +8,11 @@ from Pipeline_Helpers import method_dict, create_unique_pairs
 from sklearn.manifold import MDS
 from sklearn.model_selection import train_test_split
 from Grae import GRAEBase, BaseDataset
+from scipy.spatial.distance import pdist, squareform
+from sklearn.metrics import pairwise_distances
+from scipy.stats import pearsonr
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -161,16 +166,56 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     
     return emb_partial, emb_pred, emb_full
 
-def stub_function_for_MARSHALL(method, dataset, split, params, *, return_labels = False): #DON'T Delete any of these parameters - though you can add your own if you want
-    #Get the embeddings 
-
-    # #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
-    emb_partial, emb_pred, emb_full, full_labels, pred_labels = get_embeddings(method, dataset, split, params, return_labels = return_labels)
-
-    #TODO: Compare the embeddings in the results using Mantels correlation
+def mantel_test(method, dataset, split, params, *, return_labels = False, permutations = 10000, plot = True): #DON'T Delete any of these parameters - though you can add your own if you want
+    #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
+    
     #NOTE: The results are a list of tuples. The elements of each tuple are "partial, pred, full, full_labels, pred_labels"
     
+    """
+    Perform a Mantel test to compute the correlation between two embeddings
+    
+    Returns:
+        r (float): Observed correlation.
+        p_value (float): Significance of the observed correlation.
+    """
 
-    #TODO: Save the result.
+    #Get the embeddings
+    emb_partial, emb_pred, emb_full, full_labels, pred_labels = get_embeddings(method, dataset, split, params, return_labels = return_labels)
 
-    #NOTE: This is set up to do comparision one task at a time so it can be trivially paralylized
+    # Store the embeddings are numpy arrays
+    matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
+    
+    # Extract the upper triangle of the distance matrices (excluding the diagonal)
+    mask = np.triu_indices_from(matrix1, k=1)
+    dist1, dist2 = matrix1[mask], matrix2[mask]
+    
+    # Compute the observed Pearson correlation
+    r_obs, _ = pearsonr(dist1, dist2)
+    
+    # Permutation test to find the null distribution of the correlation
+    perm_r = []
+    for _ in range(permutations):
+        permuted = np.random.permutation(dist2)
+        perm_r.append(pearsonr(dist1, permuted)[0])
+    
+    # Compute the p-value
+    perm_r = np.array(perm_r)
+    p_value = np.sum(perm_r >= r_obs) / permutations
+    
+    if plot == True:
+        # Plot the smoothed distribution curve of the null distribution of correlations
+        plt.figure(figsize=(10, 6))
+        sns.kdeplot(perm_r, color='blue', lw=2)  # KDE line
+        
+        # Add a vertical line to represent the observed correlation
+        plt.axvline(x=r_obs, color='red', linestyle='--', lw=2)
+        
+        # Title and labels
+        plt.title('Null Distribution of Correlations Between Embeddings with Observed Correlation', fontsize=14)
+        plt.xlabel('Correlation', fontsize=12)
+        plt.ylabel('Density', fontsize=12)
+        
+        # Show plot
+        plt.show()
+    
+    return r_obs, p_value
