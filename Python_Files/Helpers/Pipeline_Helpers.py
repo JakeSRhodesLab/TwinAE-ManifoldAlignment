@@ -218,9 +218,9 @@ def rf_test_proximities(self, data_tuple):
     X_train, X_test, y_train = data_tuple
     
     if np.issubdtype(np.array(y_train).dtype, np.integer):
-        rf_class = RFGAP(prediction_type="classification", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        rf_class = RFGAP(prediction_type="classification", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
     else:
-        rf_class = RFGAP(prediction_type="regression", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=False)
+        rf_class = RFGAP(prediction_type="regression", y=y_train, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
         
     #Fit it for Data A
     rf_class.fit(X_train, y =y_train)
