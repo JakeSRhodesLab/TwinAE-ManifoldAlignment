@@ -332,7 +332,7 @@ class test_manifold_algorithms():
         self.labels_doubled = np.concatenate((self.labels, self.labels))
 
         #We just assume they want the scomponents to be the number of features
-        self.n_comp = max(min(self.split_B[1], self.split_A[1]), 2)
+        self.n_comp = max(min(len(self.split_B[1]), len(self.split_A[1])), 2)
         self.mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.random_state, n_components = self.n_comp)
 
         if self.verbose > 1:
