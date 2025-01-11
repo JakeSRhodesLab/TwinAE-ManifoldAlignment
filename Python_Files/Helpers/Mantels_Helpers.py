@@ -1,13 +1,12 @@
 #Imports 
-from regression_helpers import read_json_files_to_dataframe
+from Helpers.regression_helpers import read_json_files_to_dataframe
 import os
 import numpy as np
 import pandas as pd
-import random
-from Pipeline_Helpers import method_dict, create_unique_pairs
+from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs
 from sklearn.manifold import MDS
 from sklearn.model_selection import train_test_split
-from Grae import GRAEBase, BaseDataset
+from Helpers.Grae import GRAEBase, BaseDataset
 from scipy.spatial.distance import pdist, squareform
 from sklearn.metrics import pairwise_distances
 from scipy.stats import pearsonr
@@ -104,6 +103,10 @@ def create_and_fit_method(method_data, data, params):
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
 def get_embeddings(method, dataset, split, params, *, return_labels = False):
+    """
+    Returns embeddings for the full and partial datasets using the specified method.
+    Also returns the heatmap.
+    """
 
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
@@ -118,6 +121,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     method_class = create_and_fit_method(method_data, data, params)
 
     #Get the true embedding
+    block_full = method_data["Block"](method_class)
     emb_full = mds.fit_transform(method_data["Block"](method_class))
     #print("Full Embedding Complete")
 
@@ -164,7 +168,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     if return_labels:
         return emb_partial, emb_pred, emb_full, normal_labels, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
     
-    return emb_partial, emb_pred, emb_full
+    return emb_pred, emb_full, block_full
 
 def mantel_test(method, dataset, split, params, *, return_labels = False, permutations = 10000, plot = True): #DON'T Delete any of these parameters - though you can add your own if you want
     #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
