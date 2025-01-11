@@ -1445,7 +1445,7 @@ class DomainTranslation():
         # B_reconstructed = self.graeB.inverse_transform(self.graeA.transform(B_Z_A_data))  # -> Z -> B
         # cycle_loss_B = self.cycle_weight * self.graeB.criterion(B, B_reconstructed)
 
-        return loss_A + anchor_loss_A + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
+        return loss_A + anchor_loss_A * 2 + cycle_loss_A #+ loss_B + anchor_loss_B + cycle_loss_B
 
     def custom_collate_fn(self, batch):
         A_batch = np.stack([item[0] for item in batch])
