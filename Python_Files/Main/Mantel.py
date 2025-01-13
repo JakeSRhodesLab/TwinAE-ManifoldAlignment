@@ -1,5 +1,5 @@
 #Imports
-from Helpers.Mantels_Helpers import extract_all_files, create_tasks_for_parrelization, get_embeddings, stub_function_for_MARSHALL
+from Helpers.Mantels_Helpers import extract_all_files, create_tasks_for_parrelization, get_embeddings, mantel_test
 from joblib import Parallel, delayed
 from tqdm_joblib import tqdm_joblib
 from tqdm import tqdm
@@ -19,7 +19,7 @@ print("Tasks created.")
 with tqdm_joblib(tqdm(total=len(tasks))): #This includes a progress bar :)
     with Parallel(n_jobs=-1) as parallel:
         results = parallel(
-            delayed(stub_function_for_MARSHALL)(*task, return_labels=True)
+            delayed(mantel_test)(*task, return_labels=True)
             for task in tasks
         )
 
