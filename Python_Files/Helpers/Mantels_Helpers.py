@@ -191,7 +191,6 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
             print("Plotting is disabled for existing files.")
 
         return np.nan, np.nan
-
     
     #Get the embeddings
     emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
