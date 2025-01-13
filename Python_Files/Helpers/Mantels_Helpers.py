@@ -183,6 +183,11 @@ def mantel_test(method, dataset, split, params, *, return_labels = False, permut
         p_value (float): Significance of the observed correlation.
     """
 
+    #Return null values if file already exsists
+    if file_already_exists(method, dataset, split):
+        print(f"Results already exist for {method}, {dataset}, {split}.")
+        return np.nan, np.nan
+
     #Get the embeddings
     emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = return_labels)
 
@@ -224,7 +229,7 @@ def mantel_test(method, dataset, split, params, *, return_labels = False, permut
 
     save_mantel_results(method, dataset, split, r_obs, p_value)
     
-    return r_obs, p_value
+    return r_obs, p_value #Results are saved above
 
 def save_mantel_results(method, dataset, split, r_obs, p_value):
 
@@ -245,3 +250,11 @@ def save_mantel_results(method, dataset, split, r_obs, p_value):
         json.dump(results_data, out_file, indent=4)
 
     print(f"Mantel results saved to: {file_path}")
+
+def file_already_exists(method, dataset, split):
+    """
+    Checks if a results file already exists for the given method, dataset, and split.
+    Returns True if it is found, else False.
+    """
+    file_name = f"{method}_{dataset}_{split}.json"
+    return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel", file_name))
