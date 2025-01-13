@@ -194,7 +194,7 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
 
     
     #Get the embeddings
-    emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = return_labels)
+    emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
 
     # Store the embeddings are numpy arrays
     matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
