@@ -13,6 +13,11 @@ def read_json_files_to_dataframe(directory_path):
 
     # Walk through the directory and its subdirectories
     for root, dirs, files in os.walk(directory_path):
+        
+        # Remove "Mantel" directory because its results are of a different type
+        if "Mantel" in dirs:
+            dirs.remove("Mantel")
+
         for file in files:
             if file.endswith('.json'):
                 # Construct full file path
