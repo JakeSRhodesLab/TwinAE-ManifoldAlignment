@@ -1294,19 +1294,21 @@ class GRAEBase(AE):
         #                          n_components=self.n_components,
         #                          **embedder_params)  # To compute target embedding.
 
-    def fit(self, x, emb):
+    def fit(self, x, emb, verbose = 0):
         """Fit model to data.
 
         Args:
             x(BaseDataset): Dataset to fit.
 
         """
-        print('       Fitting GRAE...')
-        print('           Fitting manifold learning embedding...')
+        if verbose != 0:
+            print('       Fitting GRAE...')
+            print('           Fitting manifold learning embedding...')
         #emb = scipy.stats.zscore(self.embedder.fit_transform(x))  # Normalize embedding
         self.target_embedding = torch.from_numpy(emb).float().to(DEVICE)
 
-        print('           Fitting encoder & decoder...')
+        if verbose != 0:
+            print('           Fitting encoder & decoder...')
         super().fit(x)
 
     def compute_loss(self, x, x_hat, z, idx):
