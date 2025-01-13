@@ -7,11 +7,11 @@ from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs
 from sklearn.manifold import MDS
 from sklearn.model_selection import train_test_split
 from Helpers.Grae import GRAEBase, BaseDataset
-from scipy.spatial.distance import pdist, squareform
-from sklearn.metrics import pairwise_distances
 from scipy.stats import pearsonr
 import seaborn as sns
 import matplotlib.pyplot as plt
+import json
+import os
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -184,7 +184,7 @@ def mantel_test(method, dataset, split, params, *, return_labels = False, permut
     """
 
     #Get the embeddings
-    _, emb_pred, emb_full = get_embeddings(method, dataset, split, params, return_labels = return_labels)
+    emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = return_labels)
 
     # Store the embeddings are numpy arrays
     matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
@@ -221,5 +221,27 @@ def mantel_test(method, dataset, split, params, *, return_labels = False, permut
         
         # Show plot
         plt.show()
+
+    save_mantel_results(method, dataset, split, r_obs, p_value)
     
     return r_obs, p_value
+
+def save_mantel_results(method, dataset, split, r_obs, p_value):
+
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+
+    file_name = f"{method}_{dataset}_{str(split)}.json"
+    file_path = os.path.join(results_dir, file_name)
+
+    results_data = {
+        "method": method,
+        "dataset": dataset,
+        "split": split,
+        "r_obs": r_obs,
+        "p_value": p_value
+    }
+
+    with open(file_path, "w") as out_file:
+        json.dump(results_data, out_file, indent=4)
+
+    print(f"Mantel results saved to: {file_path}")
