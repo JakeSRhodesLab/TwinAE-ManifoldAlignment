@@ -19,7 +19,7 @@ print("Tasks created.")
 with tqdm_joblib(tqdm(total=len(tasks))): #This includes a progress bar :)
     with Parallel(n_jobs=-1) as parallel:
         parallel(
-            delayed(mantel_test)(*task, return_labels=False)
+            delayed(mantel_test)(*task)
             for task in tasks
         )
 
