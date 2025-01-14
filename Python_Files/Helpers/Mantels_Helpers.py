@@ -244,23 +244,32 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
         # Show plot
         plt.show()
 
-    save_mantel_results(method, dataset, split, r_obs, p_value)
+    save_mantel_results(method, dataset, split, r_obs, p_value, perm_r)
     
     return r_obs, p_value #Results are saved above
 
-def save_mantel_results(method, dataset, split, r_obs, p_value):
+def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
 
     file_name = f"{method}_{dataset}_{str(split)}.json"
     file_path = os.path.join(results_dir, file_name)
 
+    five_point_summary = {
+        "min": float(np.min(perm_r)),
+        "Q1": float(np.percentile(perm_r, 25)),
+        "median": float(np.percentile(perm_r, 50)),
+        "Q3": float(np.percentile(perm_r, 75)),
+        "max": float(np.max(perm_r))
+    }
+
     results_data = {
         "method": method,
         "dataset": dataset,
         "split": split,
         "r_obs": r_obs,
-        "p_value": p_value
+        "p_value": p_value,
+        "five_point_summary": five_point_summary
         }
 
     with open(file_path, "w") as out_file:
