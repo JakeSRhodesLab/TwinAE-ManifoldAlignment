@@ -96,7 +96,8 @@ def create_and_fit_method(method_data, data, params):
     if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
         method_class = method_data["Model"](knn = params["knn"], page_rank = params["page_rank"], DTM = params["DTM"], density_normalization = params["density_normalization"])
         method_class = method_data["Fit"](method_class, data, data.anchors[len(data.anchors)//2:])
-        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"])
+        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"],
+                                                      hold_out_anchors = data.anchors[:len(data.anchors)//2])
 
     else:
         method_class = method_data["Model"](**params)
