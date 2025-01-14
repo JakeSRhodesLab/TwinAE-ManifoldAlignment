@@ -12,6 +12,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import json
 import os
+from scipy.spatial.distance import pdist, squareform
+
+
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -111,6 +114,15 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
 
+    #Splits to preserve order
+    X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
+    X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
+
+    #Recreate data to be in the same order
+    data.split_A = np.vstack([X_A_train, X_A_test])
+    data.split_B = np.vstack([X_B_train, X_B_test])
+    data.labels = np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
+
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
     n_comps = max(min(data.split_A.shape[1], data.split_B.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
     mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 4,
@@ -126,12 +138,9 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     #print("Full Embedding Complete")
 
     if return_labels:
-        normal_labels = np.vstack([data.labels, data.labels])
+        normal_labels = np.array(data.labels)
 
     """GET GRAE's EMBEDDING below"""
-    X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
-    X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
-
     # Reformat data using x train
     data.anchors = create_unique_pairs(len(X_A_train), int(data.split_A.shape[0] * .3)) #NOTE: we choose to keep the same amount of anchors. 
     data.split_A = X_A_train
@@ -195,8 +204,11 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
     #Get the embeddings
     emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
 
+    matrix1 = squareform(pdist(emb_pred))
+    matrix2 = squareform(pdist(emb_full))
+
     # Store the embeddings are numpy arrays
-    matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
+    #matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
     
     # Extract the upper triangle of the distance matrices (excluding the diagonal)
     mask = np.triu_indices_from(matrix1, k=1)
