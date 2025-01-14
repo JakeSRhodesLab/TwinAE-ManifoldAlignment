@@ -96,7 +96,8 @@ def create_and_fit_method(method_data, data, params):
     if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
         method_class = method_data["Model"](knn = params["knn"], page_rank = params["page_rank"], DTM = params["DTM"], density_normalization = params["density_normalization"])
         method_class = method_data["Fit"](method_class, data, data.anchors[len(data.anchors)//2:])
-        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"])
+        method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"],
+                                                      hold_out_anchors = data.anchors[:len(data.anchors)//2])
 
     else:
         method_class = method_data["Model"](**params)
@@ -241,23 +242,32 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
         # Show plot
         plt.show()
 
-    save_mantel_results(method, dataset, split, r_obs, p_value)
+    save_mantel_results(method, dataset, split, r_obs, p_value, perm_r)
     
     return r_obs, p_value #Results are saved above
 
-def save_mantel_results(method, dataset, split, r_obs, p_value):
+def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
 
     file_name = f"{method}_{dataset}_{str(split)}.json"
     file_path = os.path.join(results_dir, file_name)
 
+    five_point_summary = {
+        "min": float(np.min(perm_r)),
+        "Q1": float(np.percentile(perm_r, 25)),
+        "median": float(np.percentile(perm_r, 50)),
+        "Q3": float(np.percentile(perm_r, 75)),
+        "max": float(np.max(perm_r))
+    }
+
     results_data = {
         "method": method,
         "dataset": dataset,
         "split": split,
         "r_obs": r_obs,
-        "p_value": p_value
+        "p_value": p_value,
+        "five_point_summary": five_point_summary
         }
     
     try:
@@ -267,6 +277,44 @@ def save_mantel_results(method, dataset, split, r_obs, p_value):
         print(f"Error saving Mantel results: {e}")
 
     print(f"Mantel results saved to: {file_path}")
+
+def read_all_mantel_results():
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+    all_data = []
+
+    for file in os.listdir(results_dir):
+        if file.endswith(".json"):
+            file_path = os.path.join(results_dir, file)
+            with open(file_path, "r") as f:
+                data = json.load(f)
+            all_data.append(data)
+
+    return pd.DataFrame(all_data)
+
+def plot_averaged_mantel_stats(df):
+    # Average r_obs and plot distribution with vertical line
+    avg_r = df["r_obs"].mean()
+
+    # Compute average of five point summaries and create single boxplot
+    vals = df["five_point_summary"].apply(lambda x: [x["min"], x["Q1"], x["median"], x["Q3"], x["max"]])
+    min_avg = vals.apply(lambda v: v[0]).mean()
+    q1_avg = vals.apply(lambda v: v[1]).mean()
+    med_avg = vals.apply(lambda v: v[2]).mean()
+    q3_avg = vals.apply(lambda v: v[3]).mean()
+    max_avg = vals.apply(lambda v: v[4]).mean()
+
+    plt.figure()
+    plt.boxplot([{
+        'label': 'Avg 5-Point',
+        'whislo': min_avg,
+        'q1': q1_avg,
+        'med': med_avg,
+        'q3': q3_avg,
+        'whishi': max_avg
+    }], showfliers=False)
+    plt.title("Averaged Five-Point Summary Boxplot")
+    plt.axvline(avg_r, color='red', linestyle='--')
+    plt.legend(), plt.show()
 
 def file_already_exists(method, dataset, split):
     """
