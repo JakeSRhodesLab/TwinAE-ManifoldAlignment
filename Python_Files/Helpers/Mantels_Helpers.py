@@ -179,7 +179,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     
     return emb_pred, emb_full, block_full
 
-def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = False): #DON'T Delete any of these parameters - though you can add your own if you want
+def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = False, repeat_results = False): #DON'T Delete any of these parameters - though you can add your own if you want
     #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
     
     #NOTE: The results are a list of tuples. The elements of each tuple are "partial, pred, full, full_labels, pred_labels"
@@ -193,22 +193,20 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
     """
 
     #Return null values if file already exsists
-    if file_already_exists(method, dataset, split):
-        print(f"Results already exist for {method}, {dataset}, {split}.")
-        
-        if plot:
-            print("Plotting is disabled for existing files.")
+    if repeat_results == False:
+        if file_already_exists(method, dataset, split):
+            print(f"Results already exist for {method}, {dataset}, {split}.")
+            
+            if plot:
+                print("Plotting is disabled for existing files.")
 
-        return np.nan, np.nan
+            return np.nan, np.nan
     
     #Get the embeddings
     emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
 
     matrix1 = squareform(pdist(emb_pred))
     matrix2 = squareform(pdist(emb_full))
-
-    # Store the embeddings are numpy arrays
-    #matrix1, matrix2 = np.asarray(emb_pred), np.asarray(emb_full)
     
     # Extract the upper triangle of the distance matrices (excluding the diagonal)
     mask = np.triu_indices_from(matrix1, k=1)
@@ -261,9 +259,12 @@ def save_mantel_results(method, dataset, split, r_obs, p_value):
         "r_obs": r_obs,
         "p_value": p_value
         }
-
-    with open(file_path, "w") as out_file:
-        json.dump(results_data, out_file, indent=4)
+    
+    try:
+        with open(file_path, "w") as out_file:
+            json.dump(results_data, out_file, indent=4)
+    except Exception as e:
+        print(f"Error saving Mantel results: {e}")
 
     print(f"Mantel results saved to: {file_path}")
 
