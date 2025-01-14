@@ -277,6 +277,19 @@ def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
 
     print(f"Mantel results saved to: {file_path}")
 
+def read_all_mantel_results():
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+    all_data = []
+
+    for file in os.listdir(results_dir):
+        if file.endswith(".json"):
+            file_path = os.path.join(results_dir, file)
+            with open(file_path, "r") as f:
+                data = json.load(f)
+            all_data.append(data)
+
+    return pd.DataFrame(all_data)
+
 def file_already_exists(method, dataset, split):
     """
     Checks if a results file already exists for the given method, dataset, and split.
