@@ -3,6 +3,7 @@ from Helpers.Mantels_Helpers import extract_all_files, create_tasks_for_parreliz
 from joblib import Parallel, delayed
 from tqdm_joblib import tqdm_joblib
 from tqdm import tqdm
+import random
 
 
 
@@ -14,10 +15,12 @@ df = extract_all_files()
 #Create the tasks
 tasks = create_tasks_for_parrelization(df)
 
+random.shuffle(tasks)
+
 print("Tasks created.")
 
 with tqdm_joblib(tqdm(total=len(tasks))): #This includes a progress bar :)
-    with Parallel(n_jobs=-1) as parallel:
+    with Parallel(n_jobs=5) as parallel:
         parallel(
             delayed(mantel_test)(*task)
             for task in tasks
