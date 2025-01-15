@@ -196,7 +196,7 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
     #Return null values if file already exsists
     if repeat_results == False:
         if file_already_exists(method, dataset, split):
-            print(f"Results already exist for {method}, {dataset}, {split}.")
+            #print(f"Results already exist for {method}, {dataset}, {split}.")
             
             if plot:
                 print("Plotting is disabled for existing files.")
