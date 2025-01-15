@@ -19,6 +19,8 @@ from scipy.spatial.distance import pdist, squareform
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
     def __init__(self, csv_file, split):
+
+
         #Get the labels
         try:
             df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Classification_CSV/" + csv_file)
@@ -83,11 +85,16 @@ def create_tasks_for_parrelization(df):
         dataset = row["csv_file"]
         split = row["split"]
 
+        if method in ["MASH", "RF-MASH", "MASH-", "RF-SPUD", "SPUD", "RF-MASH-"]:
+            #Set a PCA for faster computation
+            params["n_pca"] = 75
+
         #Create the task
         task = (method, dataset, split, params)
 
         #Append the task to the tasks list
-        tasks.append(task)  
+        if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+            tasks.append(task)  
 
     return tasks
 
