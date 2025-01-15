@@ -297,23 +297,17 @@ def plot_averaged_mantel_stats(df):
 
     # Compute average of five point summaries and create single boxplot
     vals = df["five_point_summary"].apply(lambda x: [x["min"], x["Q1"], x["median"], x["Q3"], x["max"]])
-    min_avg = vals.apply(lambda v: v[0]).mean()
-    q1_avg = vals.apply(lambda v: v[1]).mean()
-    med_avg = vals.apply(lambda v: v[2]).mean()
-    q3_avg = vals.apply(lambda v: v[3]).mean()
-    max_avg = vals.apply(lambda v: v[4]).mean()
-
     plt.figure()
-    plt.boxplot([{
-        'label': 'Avg 5-Point',
-        'whislo': min_avg,
-        'q1': q1_avg,
-        'med': med_avg,
-        'q3': q3_avg,
-        'whishi': max_avg
-    }], showfliers=False)
+    #Set figure to strecth form -0.3 to 1
+    plt.xlim(-0.3, 1)
+    plt.boxplot([[vals.apply(lambda v: v[0]).mean(),
+                   vals.apply(lambda v: v[1]).mean(),
+                   vals.apply(lambda v: v[2]).mean(),
+                   vals.apply(lambda v: v[3]).mean(),
+                   vals.apply(lambda v: v[4]).mean()]],
+                   vert=False)
     plt.title("Averaged Five-Point Summary Boxplot")
-    plt.axvline(avg_r, color='red', linestyle='--')
+    plt.axvline(avg_r, color='red', linestyle='--', label = "Average r_obs")
     plt.legend(), plt.show()
 
 def file_already_exists(method, dataset, split):
