@@ -13,10 +13,10 @@ from Main.Pipeline import pipe
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
 files = [
-        #       "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
-        #       "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-        #       "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 
-        #       "diabetes.csv", "tic-tac-toe.csv",
+              "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+              "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
+              "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 
+              "diabetes.csv", "tic-tac-toe.csv",
         #       'Medicaldataset.csv',
         ###      'treeData.csv', 'Medicaldataset.csv', "water_potability.csv", 
         ###       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
@@ -24,22 +24,20 @@ files = [
         ### "crx.csv", "breast_cancer.csv", "titanic.csv",
              ]
 
-#files = [ #REGRESSION 
-#     "EnergyEfficiency.csv", 
-#     "Hydrodynamics.csv",
-#     "OpticalNetwork.csv",
-#     "AirfoilSelfNoise.csv",  
+# files = [ #REGRESSION 
+#     "EnergyEfficiency.csv",  
 #        "AutoMPG.csv",
 #       "ComputerHardware.csv",
 #       "CommunityCrime.csv",
 #      "ConcreteSlumpTest.csv", 
-#     "IstanbulStock.csv",
 #     "Automobile.csv",
 #   "ConcreteCompressiveStrength.csv",
 ####          "FacebookMetrics.csv",
-####    "Parkinsons.csv",
-####"SML2010.csv"
-#]
+# ###    "Parkinsons.csv", #     "Hydrodynamics.csv",
+# #   "OpticalNetwork.csv",
+#  #   "AirfoilSelfNoise.csv", 
+####"SML2010.csv"#     "IstanbulStock.csv",
+# ]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -160,7 +158,7 @@ Files 7-10 still on Parkinsons with MASH-.
 
 
 RF Methods Below -> \/
-"""
+
 
 pipe("RF-SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
@@ -175,7 +173,7 @@ pipe("RF-NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], par
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
-"""
+
 Our methods below -> \/
 """
 
@@ -187,6 +185,8 @@ pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parall
 pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "Jaccard"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
+
+
 pipe("SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "similarities"},
         OD_method = ["default", "absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
@@ -197,7 +197,7 @@ pipe("NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parall
 
 """
 Other methods below -> \/
-
+"""
 
 pipe("JLMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      normalized_laplacian = [True, False], d = [1, 2, 3, 4, 5, PF], mu = [0.01, 0.5, 1, 2])
@@ -223,9 +223,9 @@ pipe("RF-MALI", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], par
 pipe("MAGAN", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
      learning_rate = [0.01, 0.005, 0.001])
 
-
-Mash Methods Below \/
 """
+Mash Methods Below \/
+
 
 pipe("MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
@@ -239,3 +239,4 @@ pipe("RF-MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], pa
 pipe("RF-MASH", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
+"""
