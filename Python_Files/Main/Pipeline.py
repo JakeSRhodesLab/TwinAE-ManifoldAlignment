@@ -301,7 +301,7 @@ class pipe():
             #Grab the scores
             A_train = emb[:int(len(emb)/2)]
             B_train = emb[int(len(emb)/2):]
-            emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
+            emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE -> We want to get a score for each embedding
             knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
 
             #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
@@ -458,13 +458,13 @@ class pipe():
         self.tma.percent_of_anchors = [anchor_percent]
 
         #Create file name
-        filename, AP_values = self.tma.create_filename(self.method_data["Name"], **self.overide_defaults)
+        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/GRAE" + self.method_data["Name"] + '-' + str(self.tma.split)[0] + "_" + self.csv_file[self.csv_file.rfind("/") + 1:-4] + "_AP" + str(anchor_percent) + ".json"
 
         #Remove .npy and replace with json
         filename = filename[:-4] + ".json"
 
         # #If file aready exists, then we are done :)
-        if os.path.exists(filename) or len(AP_values) < 1: # NOTE: For MASH, we can instead check if MASH- has been run. If it hasn't, we can force it to run MASH- first, and then have a different off-shoot for MASH to run
+        if os.path.exists(filename): # NOTE: For MASH, we can instead check if MASH- has been run. If it hasn't, we can force it to run MASH- first, and then have a different off-shoot for MASH to run
             print(f"<><><><><>    File {filename} already exists   <><><><><>")
             return True
         
