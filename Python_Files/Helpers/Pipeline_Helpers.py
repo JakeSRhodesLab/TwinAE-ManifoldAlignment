@@ -89,8 +89,6 @@ def get_embedding_scores(emb, labels, seed):
     
     # Create X_train and X_test
     y_train = np.hstack((y_A_train, y_B_train))
-    y_test = np.hstack((y_A_test, y_B_test))
-
     # Fit and score KNN model
     knn_model.fit(X_train, y_train)
 
@@ -99,7 +97,8 @@ def get_embedding_scores(emb, labels, seed):
 
     results = []
 
-    for X_test in [X_test_domainA, X_test_domainB]:
+    for X_test, y_test in [(X_test_domainA, y_A_test), (X_test_domainB, y_B_test)]: 
+
         
         knn_predictions = knn_model.predict(X_test)
         knn_score = knn_model.score(X_test, y_test)
