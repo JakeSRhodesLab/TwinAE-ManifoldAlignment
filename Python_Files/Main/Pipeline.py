@@ -212,15 +212,15 @@ class pipe():
 
             #Get scores
             rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
-            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
+            knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
             
-            print(f"                KNN Score {knn_score}")
-            print(f"                RF on embedding Score {rf_score}")
+            print(f"                KNN Score {knn_scoreA}")
+            print(f"                RF on embedding Score {rf_scoreA}")
             print(f"                Random Forest out of bag score {rf_oob_score}")
-            print(f"                KNN's f1 or Root mean square error score {rf_score}")
+            print(f"                KNN's f1 or Root mean square error score {rf_metricA}")
             print(f"                Random Forest f1 or Root mean square error score {rf_oob_score}")
 
-            return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
+            return rf_oob_score, knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB
         
         except Exception as e:
             logger.warning(f"Failure with get_validation scores: ")
@@ -302,7 +302,7 @@ class pipe():
             A_train = emb[:int(len(emb)/2)]
             B_train = emb[int(len(emb)/2):]
             emb = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE -> We want to get a score for each embedding
-            knn_score, rf_score, knn_metric, rf_metric = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
+            knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB = get_embedding_scores(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
 
             #Methods with Andres fit have an enlarged embedding... so we need to concanenate the lables differently
             if self.method_data["Name"] in ["DTA", "SSMA", "MAPA"]:
@@ -311,14 +311,13 @@ class pipe():
                 rf_oob_score = get_RF_score(emb, (y_A_train, y_A_test, y_B_train, y_B_test), seed)
 
 
-            print(f"                GRAE KNN Score {knn_score}")
-            print(f"                GRAE RF on embedding Score {rf_score}")
+            print(f"                GRAE KNN Score {knn_scoreA}")
+            print(f"                GRAE RF on embedding Score {rf_scoreA}")
             print(f"                GRAE Random Forest out of bag score {rf_oob_score}")
-            print(f"                GRAE KNN's f1 or Root mean square error score {rf_score}")
+            print(f"                GRAE KNN's f1 or Root mean square error score {rf_metricA}")
             print(f"                GRAE Random Forest f1 or Root mean square error score {rf_oob_score}")
 
-            return rf_oob_score, knn_score, rf_score, knn_metric, rf_metric
-        
+            return rf_oob_score, knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB
         except Exception as e:
             logger.warning(f"Failure with Get_Grae_validation: ")
             raise Exception(e)
@@ -331,8 +330,6 @@ class pipe():
         best_fit = {}
         best_f_score = np.NaN
         best_c_score = np.NaN
-        best_rf_oob_score= np.NaN
-        best_knn_score = np.NaN
         best_emb = np.NaN
 
         # Step 1: Test the KNN parameter first
@@ -386,31 +383,39 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
                 
-        best_rf_oob_score, best_knn_score, best_rf_score, best_knn_metric, best_rf_metric = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
+        best_rf_oob_score, best_knn_scoreA, best_rf_scoreA, best_knn_metricA, best_rf_metricA, best_knn_scoreB, best_rf_scoreB, best_knn_metricB, best_rf_metricB = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
 
         print(f"\n------> Best Parameters: {best_fit}")
         print(f"------------------> Best CE score {best_c_score}")
         print(f"-----------------------------> Best FOSCTTM score {best_f_score}")
         print(f"----------------------------------------> Best Random Forest score {best_rf_oob_score}")
-        print(f"---------------------------------------------------> Best Nearest Neighbor score {best_knn_score}")
-        print(f"--------------------------------------------------------------> Best KNN metric score {best_knn_metric}")
-        print(f"-----------------------------------------------------------------------> Best random Forest score {best_rf_metric}")
+        print(f"---------------------------------------------------> Best Nearest Neighbor score {best_knn_scoreA}")
+        print(f"--------------------------------------------------------------> Best KNN metric score {best_knn_metricA}")
+        print(f"-----------------------------------------------------------------------> Best random Forest score {best_rf_metricA}")
 
-        grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+        grae_rf_oob_score, grae_knn_scoreA, grae_rf_scoreA, grae_knn_metricA, grae_rf_metricA, grae_knn_scoreB, grae_rf_scoreB, grae_knn_metricB, grae_rf_metricB = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
 
 
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
         RF_oob_score = {42 : best_rf_oob_score}
-        KNN_scores = {42 : best_knn_score}
-        RF_score = {42: best_rf_score}
-        KNN_metric = {42: best_knn_metric}
-        RF_metric = {42: best_rf_metric}
+        KNN_scoresA = {42 : best_knn_scoreA}
+        KNN_scoresB = {42 : best_knn_scoreB}
+        RF_scoreA = {42: best_rf_scoreA}
+        RF_scoreB = {42: best_rf_scoreB}
+        KNN_metricA = {42: best_knn_metricA}
+        KNN_metricB = {42: best_knn_metricB}
+        RF_metricA = {42: best_rf_metricA}
+        RF_metricB = {42: best_rf_metricB}
         GRAE_results = { 42 : {"RF-OOB" : grae_rf_oob_score,
-                        "KNN" :grae_knn_score, 
-                        "RF" : grae_rf_score,
-                        "KNN-metric" : grae_knn_metric,
-                        "RF-metric": grae_rf_metric}
+                        "KNN_A" :grae_knn_scoreA, 
+                        "RF_A" : grae_rf_scoreA,
+                        "KNN-metric_A" : grae_knn_metricA,
+                        "RF-metric_A": grae_rf_metricA,
+                        "KNN_B" :grae_knn_scoreB, 
+                        "RF_B" : grae_rf_scoreB,
+                        "KNN-metric_B" : grae_knn_metricB,
+                        "RF-metric_B": grae_rf_metricB}
         }
 
         #Step 3: Repeat the process with different seeds
@@ -438,19 +443,23 @@ class pipe():
                 seed = params["random_state"]
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
-                RF_oob_score[seed], KNN_scores[seed], RF_score[seed], KNN_metric[seed], RF_metric[seed] = self.get_validation_scores(emb, tma_config, seed, best_fit)
-                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, tma_config, 42, best_fit)
+                RF_oob_score[seed], KNN_scoresA[seed], RF_scoreA[seed], KNN_metricA[seed], RF_metricA[seed], KNN_scoresB[seed], RF_scoreB[seed], KNN_metricB[seed], RF_metricB[seed] = self.get_validation_scores(emb, tma_config, seed, best_fit)
+                grae_rf_oob_score, grae_knn_scoreA, grae_rf_scoreA, grae_knn_metricA, grae_rf_metricA, grae_knn_scoreB, grae_rf_scoreB, grae_knn_metricB, grae_rf_metricB = self.get_GRAE_validation_scores(best_emb, tma_config, 42, best_fit)
                 GRAE_results[seed] = {"RF-OOB" : grae_rf_oob_score,
-                        "KNN" :grae_knn_score, 
-                        "RF" : grae_rf_score,
-                        "KNN-metric" : grae_knn_metric,
-                        "RF-metric": grae_rf_metric}
+                        "KNN_A" :grae_knn_scoreA, 
+                        "RF_A" : grae_rf_scoreA,
+                        "KNN-metric_A" : grae_knn_metricA,
+                        "RF-metric_A": grae_rf_metricA,
+                        "KNN_B" :grae_knn_scoreB, 
+                        "RF_B" : grae_rf_scoreB,
+                        "KNN-metric_B" : grae_knn_metricB,
+                        "RF-metric_B": grae_rf_metricB}
                         
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric, GRAE_results
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scoresA, RF_scoreA, KNN_metricA, RF_metricA, KNN_scoresB, RF_scoreB, KNN_metricB, RF_metricB, GRAE_results
 
     def save_tests(self, anchor_percent):
 
@@ -469,9 +478,9 @@ class pipe():
             return True
         
         if self.method_data["Name"] in ["MASH", "RF-MASH"]:
-            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric, grae_results =self.run_MASH(anchor_percent, filename)
+            best_fit, c_score, f_score, rf_oob_score, knn_scoreA, rf_emb_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_emb_scoreB, knn_metricB, rf_metricB, grae_results =self.run_MASH(anchor_percent, filename)
         else:
-            best_fit, c_score, f_score, rf_oob_score, knn_score, rf_emb_score, knn_metric, rf_metric, grae_results = self.run_tests(anchor_percent)
+            best_fit, c_score, f_score, rf_oob_score, knn_scoreA, rf_emb_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_emb_scoreB, knn_metricB, rf_metricB, grae_results = self.run_tests(anchor_percent)
 
         # Combine them into a single dictionary
         combined_data = {
@@ -483,10 +492,10 @@ class pipe():
             "CE": c_score,
             "FOSCTTM": f_score,
             "Random Forest OOB": rf_oob_score,
-            "Random Forest Emb": rf_emb_score,
-            "Nearest Neighbor": knn_score,
-            "Nearest Neighbor (F1 score or RMSE)": knn_metric,
-            "Random Forest (F1 score or RMSE)": rf_metric,
+            "Random Forest Emb A": rf_emb_scoreA, "Random Forest Emb B": rf_emb_scoreB,
+            "Nearest Neighbor A": knn_scoreA, "Nearest Neighbor B": knn_scoreB,
+            "Nearest Neighbor (F1 score or RMSE) A": knn_metricA, "Nearest Neighbor (F1 score or RMSE) B": knn_metricB,
+            "Random Forest (F1 score or RMSE) A": rf_metricA, "Random Forest (F1 score or RMSE) B": rf_metricB,
             "GRAE" : grae_results,
             "Parameter STD": self.param_std_dict
         }
@@ -554,22 +563,32 @@ class pipe():
 
             print(f"----------------------------------------------->     Best value for {parameter}: {best_fit[parameter]}")
 
-        rf_oob_score, knn_score, rf_score, knn_metric, rf_metric = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
+        #Calculate scores
+        best_rf_oob_score, best_knn_scoreA, best_rf_scoreA, best_knn_metricA, best_rf_metricA, best_knn_scoreB, best_rf_scoreB, best_knn_metricB, best_rf_metricB = self.get_validation_scores(best_emb, self.tma, 42, best_fit)
+        grae_rf_oob_score, grae_knn_scoreA, grae_rf_scoreA, grae_knn_metricA, grae_rf_metricA, grae_knn_scoreB, grae_rf_scoreB, grae_knn_metricB, grae_rf_metricB = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
 
+        #Save results
         C_scores = {42 : best_c_score}
         F_scores = {42 : best_f_score}
-        RF_oob_score = {42 : rf_oob_score}
-        KNN_scores = {42 : knn_score}
-        RF_score = {42: rf_score}
-        KNN_metric = {42: knn_metric}
-        RF_metric = {42: rf_metric}
-
-        grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
-        GRAE_results = {42: {"RF-OOB" : grae_rf_oob_score,
-                        "KNN" :grae_knn_score, 
-                        "RF" : grae_rf_score,
-                        "KNN-metric" : grae_knn_metric,
-                        "RF-metric": grae_rf_metric}}
+        RF_oob_score = {42 : best_rf_oob_score}
+        KNN_scoresA = {42 : best_knn_scoreA}
+        KNN_scoresB = {42 : best_knn_scoreB}
+        RF_scoreA = {42: best_rf_scoreA}
+        RF_scoreB = {42: best_rf_scoreB}
+        KNN_metricA = {42: best_knn_metricA}
+        KNN_metricB = {42: best_knn_metricB}
+        RF_metricA = {42: best_rf_metricA}
+        RF_metricB = {42: best_rf_metricB}
+        GRAE_results = { 42 : {"RF-OOB" : grae_rf_oob_score,
+                        "KNN_A" :grae_knn_scoreA, 
+                        "RF_A" : grae_rf_scoreA,
+                        "KNN-metric_A" : grae_knn_metricA,
+                        "RF-metric_A": grae_rf_metricA,
+                        "KNN_B" :grae_knn_scoreB, 
+                        "RF_B" : grae_rf_scoreB,
+                        "KNN-metric_B" : grae_knn_metricB,
+                        "RF-metric_B": grae_rf_metricB}
+        }
 
         #Step 3: Repeat the process with different seeds 
         if self.tma.split in ["random", "turn", "distort"]:
@@ -592,23 +611,21 @@ class pipe():
                 C_scores[seed] = c_score
                 F_scores[seed] = f_score
 
-                rf_oob_score, knn_score, rf_score, knn_metric, rf_metric = self.get_validation_scores(emb, self.tma, seed, params)
+                RF_oob_score[seed], KNN_scoresA[seed], RF_scoreA[seed], KNN_metricA[seed], RF_metricA[seed], KNN_scoresB[seed], RF_scoreB[seed], KNN_metricB[seed], RF_metricB[seed] = self.get_validation_scores(emb, self.tma, seed, params)
 
-                RF_oob_score[seed] = rf_oob_score
-                KNN_scores[seed] = knn_score
-                RF_score[seed] = rf_score
-                KNN_metric[seed] = knn_metric
-                RF_metric[seed] = rf_metric
-
-                grae_rf_oob_score, grae_knn_score, grae_rf_score, grae_knn_metric, grae_rf_metric = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
+                grae_rf_oob_score, grae_knn_scoreA, grae_rf_scoreA, grae_knn_metricA, grae_rf_metricA, grae_knn_scoreB, grae_rf_scoreB, grae_knn_metricB, grae_rf_metricB = self.get_GRAE_validation_scores(best_emb, self.tma, 42, best_fit)
                 GRAE_results[seed] = {"RF-OOB" : grae_rf_oob_score,
-                        "KNN" :grae_knn_score, 
-                        "RF" : grae_rf_score,
-                        "KNN-metric" : grae_knn_metric,
-                        "RF-metric": grae_rf_metric}
+                        "KNN_A" :grae_knn_scoreA, 
+                        "RF_A" : grae_rf_scoreA,
+                        "KNN-metric_A" : grae_knn_metricA,
+                        "RF-metric_A": grae_rf_metricA,
+                        "KNN_B" :grae_knn_scoreB, 
+                        "RF_B" : grae_rf_scoreB,
+                        "KNN-metric_B" : grae_knn_metricB,
+                        "RF-metric_B": grae_rf_metricB}
             
             #Reset seed default
             self.overide_defaults["random_state"] = self.seed  
 
-        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scores, RF_score, KNN_metric, RF_metric, GRAE_results
+        return best_fit, C_scores, F_scores, RF_oob_score, KNN_scoresA, RF_scoreA, KNN_metricA, RF_metricA, KNN_scoresB, RF_scoreB, KNN_metricB, RF_metricB, GRAE_results
     
