@@ -466,11 +466,10 @@ class pipe():
         #Reset the tma anchor percent values to be right
         self.tma.percent_of_anchors = [anchor_percent]
 
-        #Create file name
-        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/GRAE" + self.method_data["Name"] + '-' + str(self.tma.split)[0] + "_" + self.csv_file[self.csv_file.rfind("/") + 1:-4] + "_AP" + str(anchor_percent) + ".json"
+        param_token = str(sum(ord(char) for char in str(self.overide_defaults.values())))
 
-        #Remove .npy and replace with json
-        filename = filename[:-4] + ".json"
+        #Create file name
+        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/GRAE_Data/" + self.method_data["Name"] + '-' + param_token + "-" + str(self.tma.split)[0] + "_" + self.csv_file[self.csv_file.rfind("/") + 1:-4] + "_AP" + str(anchor_percent)[:-1]  + ".json"
 
         # #If file aready exists, then we are done :)
         if os.path.exists(filename): # NOTE: For MASH, we can instead check if MASH- has been run. If it hasn't, we can force it to run MASH- first, and then have a different off-shoot for MASH to run
