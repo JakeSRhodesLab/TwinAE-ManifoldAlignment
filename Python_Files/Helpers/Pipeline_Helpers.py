@@ -65,7 +65,10 @@ def get_embedding_scores(emb, labels, seed):
 
     # Create X_train and X_test
     X_train = np.vstack((emb[:len(y_A_train)], emb[len(y_A_train) + len(y_A_test): len(y_A_train) + len(y_A_test) + len(y_B_train)]))
-    X_test = np.vstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):]))
+    #X_test = np.vstack((emb[len(y_A_train):len(y_A_train) + len(y_A_test)], emb[-len(y_B_test):])) #Original
+
+    X_test_domainA = emb[len(y_A_train):len(y_A_train) + len(y_A_test)]
+    X_test_domainB = emb[-len(y_B_test):]
 
     labels = np.hstack((y_A_train, y_A_test, y_B_train, y_B_test))
 
@@ -83,31 +86,40 @@ def get_embedding_scores(emb, labels, seed):
         knn_model = KNeighborsRegressor(n_neighbors=knn)
         rf_model = RandomForestRegressor(random_state=seed)
         classification_task = False
-
+    
     # Create X_train and X_test
     y_train = np.hstack((y_A_train, y_B_train))
     y_test = np.hstack((y_A_test, y_B_test))
 
     # Fit and score KNN model
     knn_model.fit(X_train, y_train)
-    knn_predictions = knn_model.predict(X_test)
-    knn_score = knn_model.score(X_test, y_test)
 
     # Fit and score Random Forest model
     rf_model.fit(X_train, y_train)
-    rf_predictions = rf_model.predict(X_test)
-    rf_score = rf_model.score(X_test, y_test)
 
-    if classification_task:
-        # Compute F1-score for classification
-        knn_f1 = f1_score(y_test, knn_predictions, average="weighted")
-        rf_f1 = f1_score(y_test, rf_predictions, average="weighted")
-        return knn_score, rf_score, knn_f1, rf_f1
-    else:
-        # Compute RMSE for regression
-        knn_rmse = np.sqrt(mean_squared_error(y_test, knn_predictions))
-        rf_rmse = np.sqrt(mean_squared_error(y_test, rf_predictions))
-        return knn_score, rf_score, knn_rmse, rf_rmse
+    results = []
+
+    for X_test in [X_test_domainA, X_test_domainB]:
+        
+        knn_predictions = knn_model.predict(X_test)
+        knn_score = knn_model.score(X_test, y_test)
+
+        rf_predictions = rf_model.predict(X_test)
+        rf_score = rf_model.score(X_test, y_test)
+
+        if classification_task:
+            # Compute F1-score for classification
+            knn_f1 = f1_score(y_test, knn_predictions, average="weighted")
+            rf_f1 = f1_score(y_test, rf_predictions, average="weighted")
+            
+            results.append([knn_score, rf_score, knn_f1, rf_f1])
+        else:
+            # Compute RMSE for regression
+            knn_rmse = np.sqrt(mean_squared_error(y_test, knn_predictions))
+            rf_rmse = np.sqrt(mean_squared_error(y_test, rf_predictions))
+            results.append([knn_score, rf_score, knn_rmse, rf_rmse])
+
+    return results[0][0], results[0][1], results[0][2], results[0][3], results[1][0], results[1][1], results[1][2], results[1][3]
 
 def get_default_parameters(cls):
     signature = inspect.signature(cls.__init__)
