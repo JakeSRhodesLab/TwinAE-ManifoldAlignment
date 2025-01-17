@@ -10,27 +10,18 @@ warnings.filterwarnings("ignore")
 #import Main.test_manifold_algorithms as tma
 from Main.Pipeline import pipe
 
-
-# file_names = ["artificial_tree", "audiology", "balance_scale", "breast_cancer", "Cancer_Data", "car", "chess", 
-#                 "crx", "diabetes", "ecoli_5", "flare1", "glass", "heart_disease", "heart_failure", "hepatitis",
-#                 "hill_valley", "ionosphere", "iris", "Medicaldataset", "optdigits", "parkinsons",
-#                 "seeds", "segmentation", "tic-tac-toe", "titanic", "treeData", "water_potability", "waveform",
-#                 "winequality-red", "zoo"]
-
-
-
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
 files = [
-        #      "zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
+        #       "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
         #       "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
-        #       "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv",
-        #      "S-curve", "blobs", 'winequality-red.csv', 'car.csv',
-             "crx.csv", "breast_cancer.csv", "titanic.csv", 
+        #       "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 
         #       "diabetes.csv", "tic-tac-toe.csv",
-        #       'Medicaldataset.csv', "water_potability.csv", 
-        #      'treeData.csv', 
-        #       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
+        #       'Medicaldataset.csv',
+        ###      'treeData.csv', 'Medicaldataset.csv', "water_potability.csv", 
+        ###       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
+        ### "S-curve", "blobs", "zoo.csv",'winequality-red.csv', 'car.csv',
+        ### "crx.csv", "breast_cancer.csv", "titanic.csv",
              ]
 
 #files = [ #REGRESSION 
@@ -42,12 +33,12 @@ files = [
 #       "ComputerHardware.csv",
 #       "CommunityCrime.csv",
 #      "ConcreteSlumpTest.csv", 
-#          "FacebookMetrics.csv",
-#    "Parkinsons.csv",
 #     "IstanbulStock.csv",
 #     "Automobile.csv",
 #   "ConcreteCompressiveStrength.csv",
-#  "SML2010.csv"
+####          "FacebookMetrics.csv",
+####    "Parkinsons.csv",
+####"SML2010.csv"
 #]
 
 """
