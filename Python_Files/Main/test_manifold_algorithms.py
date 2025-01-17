@@ -5,6 +5,9 @@
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 KanbanFlow: https://kanbanflow.com/board/g25iW5x
+
+Sampta Paper
+- Three different angles: Reconstruction, Mantels, the Accuracy of the model
 """
 #I should fix these imports to be more localized
 #Import libraries
