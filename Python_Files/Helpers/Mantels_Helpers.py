@@ -60,7 +60,7 @@ def split_features(csv_file, split, seed):
             from Main.test_manifold_algorithms import test_manifold_algorithms as tma
             tma(csv_file, random_state= seed, split = split)
             print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
-            split_features(csv_file, split, seed)
+            return split_features(csv_file, split, seed)
 
 # Create function to Extract best fit information from the results
 def extract_all_files():
