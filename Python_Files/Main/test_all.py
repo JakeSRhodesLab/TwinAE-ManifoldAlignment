@@ -17,7 +17,7 @@ files = [
               "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
               "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 
               "diabetes.csv", "tic-tac-toe.csv",
-        #       'Medicaldataset.csv',
+              'Medicaldataset.csv',
         ###      'treeData.csv', 'Medicaldataset.csv', "water_potability.csv", 
         ###       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
         ### "S-curve", "blobs", "zoo.csv",'winequality-red.csv', 'car.csv',
@@ -37,7 +37,7 @@ files = [
 # #   "OpticalNetwork.csv",
 #  #   "AirfoilSelfNoise.csv", 
 ####"SML2010.csv"#     "IstanbulStock.csv",
-# ]
+#  ]
 
 """
 <><><><><<><><><><><><><><><><><><><><><>   Testing All functions      <><><><><><><><><><><><><><><><><><><><>><><><><><><
@@ -175,7 +175,7 @@ pipe("RF-NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], par
 
 
 Our methods below -> \/
-"""
+
 
 
 #We sorted out the overide methods between each of the spuds
@@ -195,7 +195,7 @@ pipe("NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parall
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
 
-"""
+
 Other methods below -> \/
 """
 
@@ -225,7 +225,7 @@ pipe("MAGAN", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], paral
 
 """
 Mash Methods Below \/
-
+"""
 
 pipe("MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
@@ -239,4 +239,5 @@ pipe("RF-MASH-", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], pa
 pipe("RF-MASH", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
     page_rank = ["None", "off-diagonal", "full"],  DTM = ["hellinger", "kl", "log"], density_normalization = [True, False])
 
+"""
 """

@@ -71,23 +71,28 @@ class pipe():
                 #Loop through each csv_file
                 for csv_file in csv_files:
 
-                    self.csv_file = csv_file
+                    try:
 
-                    print(f"---------------------------------------------      {self.csv_file}     ---------------------------------------------")
-                    self.tma = tma(csv_file = self.csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
+                        self.csv_file = csv_file
 
-                    #loop for each anchor 
-                    
-                    #For Looping each anchor percent
-                    #Parallel(n_jobs=min(self.parallel_factor, len(self.percent_of_anchors)))(delayed(self.save_tests)(anchor_percent) for anchor_percent in self.percent_of_anchors)
-                    
-                    #Normal looping -- Not parrelized
-                    for anchor_percent in self.percent_of_anchors:
-                        self.save_tests(anchor_percent)
-        
+                        print(f"---------------------------------------------      {self.csv_file}     ---------------------------------------------")
+                        self.tma = tma(csv_file = self.csv_file, split = split, percent_of_anchors = self.percent_of_anchors, random_state=self.seed, verbose = 0)
+
+                        #loop for each anchor 
+                        
+                        #For Looping each anchor percent
+                        #Parallel(n_jobs=min(self.parallel_factor, len(self.percent_of_anchors)))(delayed(self.save_tests)(anchor_percent) for anchor_percent in self.percent_of_anchors)
+                        
+                        #Normal looping -- Not parrelized
+                        for anchor_percent in self.percent_of_anchors:
+                            self.save_tests(anchor_percent)
+
+                    except Exception as e:
+                        logger.warning(f"Unexpected crash with {self.method_data['Name']} on file {self.csv_file}. Error: {e}")
+
         except Exception as e:
             logger.warning(f"Unexpected Failure with {self.method_data['Name']}. Error: {e}")
-            raise Exception(e)
+            #raise Exception(e)
 
     def get_parameter_std(self, parameter, results):
         """Finds the std from within the differing parameter tests"""
@@ -150,7 +155,7 @@ class pipe():
             if np.isscalar(emb): #Check to see if embedding is NaN
                 print("\nMETHOD EMBEDDING FAILED. It is missing\n")
                 logger.warning(f"Embedding is equal to NaN. Name: {self.method_data['Name']}. CSV: {self.csv_file}. Parameters: {best_fit}.")
-                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
             #Update tma labels if needed for Andres fit methods
             if self.method_data["Name"] in ["DTA", "SSMA", "MALI", "MAPA"]:
@@ -233,7 +238,7 @@ class pipe():
         try:
 
             if np.isscalar(emb): #We print and log warnings already above
-                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
+                return np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN
 
             #Update tma labels if needed for Andres fit methods
             #tma.labels, tma.labels_doubled = adjust_tma_labels(emb, tma)
