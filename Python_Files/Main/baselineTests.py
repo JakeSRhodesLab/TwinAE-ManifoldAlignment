@@ -46,7 +46,7 @@ print("Running...\n")
 if not run_regression:  
     csv_files = [
         "zoo.csv", "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", "ecoli_5.csv", "ionosphere.csv",
-        "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", "S-curve", "blobs", 'winequality-red.csv', 'car.csv', "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
+        "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 'winequality-red.csv', 'car.csv', "crx.csv", "breast_cancer.csv", "titanic.csv", "diabetes.csv", "tic-tac-toe.csv",
         'Medicaldataset.csv', "water_potability.csv", 'treeData.csv', "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
         ]
 else: 
@@ -210,7 +210,7 @@ else:
 
 # Get the results and show progress
 with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
-    results = Parallel(n_jobs=1)(delayed(method)(csv, seed, split) for csv, seed, split in csv_seed_list)
+    results = Parallel(n_jobs=10)(delayed(method)(csv, seed, split) for csv, seed, split in csv_seed_list)
 
 #Unpack and make into dataframe
 flattened_results = [item for sublist in results for item in sublist]
