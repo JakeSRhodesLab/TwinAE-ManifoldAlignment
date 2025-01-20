@@ -1014,6 +1014,21 @@ class AE(BaseModel):
                                                   noise=self.noise,
                                                   vae=vae,
                                                   sigmoid=sigmoid)
+            
+        elif len(data_shape) == 2:
+            # Treat 2D data as a single-channel image
+            in_channel = 1
+            height, width = data_shape
+            self.torch_module = ConvAutoencoderModule(H=height,
+                                  W=width,
+                                  input_channel=in_channel,
+                                  channel_list=self.conv_dims,
+                                  hidden_dims=self.conv_fc_dims,
+                                  z_dim=self.n_components,
+                                  noise=self.noise,
+                                  vae=vae,
+                                  sigmoid=sigmoid)
+            
         elif len(data_shape) == 3:
             in_channel, height, width = data_shape
             #  Samples are 3D tensors (i.e. images). Convolutional case.
@@ -1536,9 +1551,6 @@ class DomainTranslation():
 
             print(f"Epoch {epoch}, Loss: {loss.item()}")
 
-
-
-
 class EmbeddingProber:
     """Class to benchmark MSE, the coefficient of determination (R2) for ground truth continuous variables and
     classification accuracy of dataset has labels.
@@ -1663,3 +1675,50 @@ class EmbeddingProber:
             metrics.update({'Acc': -1})
 
         return z, metrics
+
+def get_GRAE_networks(dataA, dataB, emb, n_comp = 2, labelsA = None, labelsB = None):  
+    """
+    Generate two GRAE networks from dataA and dataB.
+    Parameters
+    ----------
+    dataA : array-like of shape (n_samples_A, n_features)
+        Input data for the first dataset.
+    dataB : array-like of shape (n_samples_B, n_features)
+        Input data for the second dataset.
+    emb : array-like of shape (n_samples_A + n_samples_B, emb_dim)
+        Embeddings for both datasets concatenated. The first segment corresponds to dataA, 
+        and the second segment corresponds to dataB.
+    n_comp : int, optional
+        Number of components (dimensions) for the GRAE networks, by default 2.
+    labelsA : array-like of shape (n_samples_A,), optional
+        Class labels for the first dataset. If None, zeros are used.
+    labelsB : array-like of shape (n_samples_B,), optional
+        Class labels for the second dataset. If None, zeros are used.
+    Returns
+    -------
+    myGraeA : GRAEBase
+        Trained GRAE model for dataA.
+    myGraeB : GRAEBase
+        Trained GRAE model for dataB.
+    Notes
+    -----
+    This function prepares the data for each dataset, sets default labels if not provided, 
+    and fits the respective GRAEBase models using the provided embeddings.
+    """
+
+    if labelsA is None:
+        labelsA = np.zeros(len(dataA))
+     
+    if labelsB is None:
+        labelsB = np.zeros(len(dataB))
+
+    split_A = BaseDataset(x = dataA, y = np.array(labelsA), split_ratio = 0.8, random_state = 42, split = "none")
+    myGraeA = GRAEBase(n_components = n_comp)
+    myGraeA.fit(split_A, emb= emb[:len(dataA)]) 
+
+
+    split_B = BaseDataset(x = dataB, y = np.array(labelsB), split_ratio = 0.8, random_state = 42, split = "none")
+    myGraeB = GRAEBase(n_components = n_comp)
+    myGraeB.fit(split_B, emb= emb[len(dataA):])
+
+    return myGraeA, myGraeB
