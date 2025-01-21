@@ -168,29 +168,42 @@ def get_train_test_results(csv_file, seed, split):
         dict: A dictionary containing the classification score for Domain A.
         dict: A dictionary containing the classification score for Domain B.
     """
+    try:
 
-    # Evaluation function - train test split on the data file
-    embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed, split)
+        # Evaluation function - train test split on the data file
+        embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed, split)
 
-    labelsA = np.hstack(labelsA)
-    labelsB = np.hstack(labelsB)
-    
-    #Use KNN to get the score of four
-    knn = KNeighborsClassifier(n_neighbors=4)
+        labelsA = np.hstack(labelsA)
+        labelsB = np.hstack(labelsB)
+        
+        #Use KNN to get the score of four
+        if run_regression:
+            knn = KNeighborsRegressor(n_neighbors=4)
+        else:
+            knn = KNeighborsClassifier(n_neighbors=4)
 
-    #Domain A
-    X_train, X_test, y_train, y_test = train_test_split(embA, labelsA, test_size=0.2, random_state=seed)
-    knn.fit(X_train, y_train)
-    knn_scoreA = knn.score(X_test, y_test)
+        #Domain A
+        X_train, X_test, y_train, y_test = train_test_split(embA, labelsA, test_size=0.2, random_state=seed)
+        knn.fit(X_train, y_train)
+        knn_scoreA = knn.score(X_test, y_test)
 
-    #Domain B
-    X_train, X_test, y_train, y_test = train_test_split(embB, labelsB, test_size=0.2, random_state=seed)
-    knn.fit(X_train, y_train)
-    knn_scoreB = knn.score(X_test, y_test)
+        #Use KNN to get the score of four
+        if run_regression:
+            knn = KNeighborsRegressor(n_neighbors=4)
+        else:
+            knn = KNeighborsClassifier(n_neighbors=4)
 
-    #Return it as a dictionary so we can make a Pandas table easier later
-    return {"csv_file" : csv_file, "Method": "Train Test Baseline", "split": split, "A_Classification_Score": knn_scoreA}, {"csv_file" : csv_file,
-                                                            "Method": "Train Test Baseline", "split": split, "B_Classification_Score": knn_scoreB}
+        #Domain B
+        X_train, X_test, y_train, y_test = train_test_split(embB, labelsB, test_size=0.2, random_state=seed)
+        knn.fit(X_train, y_train)
+        knn_scoreB = knn.score(X_test, y_test)
+
+        #Return it as a dictionary so we can make a Pandas table easier later
+        return {"csv_file" : csv_file, "Method": "Train Test Baseline", "split": split, "A_Classification_Score": knn_scoreA, "B_Classification_Score": knn_scoreB}
+
+    except Exception as e:
+        return {"csv_file" : csv_file, "Method": "Train Test Baseline", "split": split, "A_Classification_Score": np.NaN, "B_Classification_Score": np.NaN}
+
 
 
 
@@ -213,11 +226,16 @@ with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as pro
     results = Parallel(n_jobs=10)(delayed(method)(csv, seed, split) for csv, seed, split in csv_seed_list)
 
 #Unpack and make into dataframe
-flattened_results = [item for sublist in results for item in sublist]
+if test_to_run:
+    flattened_results = results
+else:
+    flattened_results = [item for sublist in results for item in sublist]
+
+
 new_df = pd.DataFrame(flattened_results)
 
 #Write Pandas dataframe
-if run_regression:
+if not run_regression:
     new_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldData/" + file_string + ".csv")
 else:
     new_df.to_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/RegressionData/" + file_string + ".csv")
