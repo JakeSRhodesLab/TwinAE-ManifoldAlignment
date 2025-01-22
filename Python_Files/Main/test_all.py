@@ -13,11 +13,11 @@ from Main.Pipeline import pipe
 # csv_files = [f"{file_name}.csv" for file_name in file_names]
 
 files = [
+              "diabetes.csv", "tic-tac-toe.csv",
+              'Medicaldataset.csv',
               "hepatitis.csv", "iris.csv", "audiology.csv", "parkinsons.csv", "seeds.csv", 
               "segmentation.csv", "glass.csv", "heart_disease.csv", "heart_failure.csv", "flare1.csv", 
               "ecoli_5.csv", "ionosphere.csv", "Cancer_Data.csv", "hill_valley.csv", "balance_scale.csv", 
-              "diabetes.csv", "tic-tac-toe.csv",
-              'Medicaldataset.csv',
         ###      'treeData.csv', 'Medicaldataset.csv', "water_potability.csv", 
         ###       "optdigits.csv", "waveform.csv", "chess.csv", "artificial_tree.csv"
         ### "S-curve", "blobs", "zoo.csv",'winequality-red.csv', 'car.csv',
@@ -158,7 +158,7 @@ Files 7-10 still on Parkinsons with MASH-.
 
 
 RF Methods Below -> \/
-
+"""
 
 pipe("RF-SPUD", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parallel_factor = PF,
         overide_defaults= {"overide_method" : "none"},
@@ -173,9 +173,9 @@ pipe("RF-NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], par
         overide_defaults= {"overide_method" : "NAMA"},
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
-
+"""
 Our methods below -> \/
-
+"""
 
 
 #We sorted out the overide methods between each of the spuds
@@ -195,7 +195,7 @@ pipe("NAMA", csv_files=files, splits =  SPLITS, percent_of_anchors=[0.3], parall
         OD_method = ["absolute_distance", "mean"],  agg_method = ['sqrt', 'log', 0.5, 'None'])
 
 
-
+"""
 Other methods below -> \/
 """
 
