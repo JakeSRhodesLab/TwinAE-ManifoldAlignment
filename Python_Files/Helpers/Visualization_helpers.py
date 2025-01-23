@@ -64,16 +64,13 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
     # Filter the DataFrame
     #df = df[~df["csv_file"].isin(["b", "blobs", "S-c", "S-curve"])]
 
-    global og_df
-    global rf_df
-
     if metric == "FOSCTTM": #Because for the FOSCTTM the smaller score is better
         agregate_df = pd.DataFrame({
             'SSMA': df[df["method"] == "SSMA"].groupby("csv_file")[metric].min(),
             'MAGAN': df[df["method"] == "MAGAN"].groupby("csv_file")[metric].min(),
             'DTA': df[df["method"] == "DTA"].groupby("csv_file")[metric].min(),
-            'SPUD_D': df[df["algorithm"]== "distance"].groupby("csv_file")[metric].min(),
-            'SPUD': df[df["algorithm"] == "merge"].groupby("csv_file")[metric].min(),
+            #'SPUD_D': df[df["algorithm"]== "distance"].groupby("csv_file")[metric].min(),
+            'SPUD': df[df["method"] == "merge"].groupby("csv_file")[metric].min(),
             'DIG': df[df["method"] == "DIG"].groupby("csv_file")[metric].min(),
             'CwDIG': df[df["method"] == "CwDIG"].groupby("csv_file")[metric].min(),
             'NAMA': df[df["method"] == "NAMA"].groupby("csv_file")[metric].min(),
@@ -96,18 +93,18 @@ def plt_methods_by_CSV_max(df, sort_by = "DIG", metric = "Combined_Metric", retu
             'SSMA': df[df["method"] == "SSMA"].groupby("csv_file")[metric].max(),
             'MAGAN': df[df["method"] == "MAGAN"].groupby("csv_file")[metric].max(),
             'DTA': df[df["method"] == "DTA"].groupby("csv_file")[metric].max(),
-            'SPUD_D': df[df["algorithm"]== "distance"].groupby("csv_file")[metric].max(),
-            'SPUD': df[df["algorithm"] == "merge"].groupby("csv_file")[metric].max(),
+            # 'SPUD_D': df[df["algorithm"]== "distance"].groupby("csv_file")[metric].max(),
+            'SPUD': df[df["method"] == "SPUD"].groupby("csv_file")[metric].max(),
             'DIG': df[df["method"] == "DIG"].groupby("csv_file")[metric].max(),
             'CwDIG': df[df["method"] == "CwDIG"].groupby("csv_file")[metric].max(),
             'NAMA': df[df["method"] == "NAMA"].groupby("csv_file")[metric].max(),
             'PCR': df[df["method"] == "PCR"].groupby("csv_file")[metric].max(),
             'JLMA': df[df["method"] == "JLMA"].groupby("csv_file")[metric].max(),
 
-            'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].max(),
-            'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
-            'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].max(),
+            # 'Split_A': og_df.groupby("csv_file")["A_Classification_Score"].max(),
+            # 'Split_B': og_df.groupby("csv_file")["B_Classification_Score"].max(),
+            # 'RFBL1': rf_df.groupby("csv_file")["A_Classification_Score"].max(),
+            # 'RFBL2': rf_df.groupby("csv_file")["B_Classification_Score"].max(),
 
             'MASH_RF': df[df["method"] == "MASH_RF"].groupby("csv_file")[metric].max(),
             'MALI_RF': df[df["method"] == "MALI_RF"].groupby("csv_file")[metric].max(),
@@ -398,7 +395,7 @@ def get_mean_std_df(split = "all", scoring = "Combined_Metric", columns_to_drop 
 
 
     #Drop unneeded columns
-    csv_df = split_df.drop(columns= ["SPUD_D", "csv_file", "Split_A", "Split_B"] + columns_to_drop).dropna()
+    csv_df = split_df.drop(columns= ["csv_file"] + columns_to_drop).dropna()
     
     #Get column size 
     n_cols = len(csv_df.columns)
