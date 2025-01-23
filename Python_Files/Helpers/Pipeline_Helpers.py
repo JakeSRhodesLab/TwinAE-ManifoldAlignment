@@ -284,14 +284,7 @@ def Rhodes_fit(self, tma, anchors):
     self.distance_measure_A = get_rf_proximites
     self.distance_measure_B = get_rf_proximites
 
-    if len(tma.split_A) != len(tma.labels):
-        labels_A = tma.labels[:len(tma.split_A)]
-        labels_B = tma.labels[len(tma.split_A):]
-    else:
-        labels_A = tma.labels
-        labels_B = tma.labels
-
-    self.fit(dataA = (tma.split_A, labels_A), dataB = (tma.split_B, labels_B), known_anchors=anchors)
+    self.fit(dataA = (tma.split_A, tma.labels), dataB = (tma.split_B, tma.labels), known_anchors=anchors)
     return self
 
 def Rhodes_test_fit(self, data_tupleA, data_tupleB, anchors):
@@ -306,6 +299,7 @@ def Rhodes_test_fit(self, data_tupleA, data_tupleB, anchors):
 
 def Andres_fit(self, tma, anchors):
     #Reformat the anchors 
+
     sharedD1 = tma.split_A[anchors.T[0]] 
     sharedD2 = tma.split_B[anchors.T[1]]
     labelsh1 = tma.labels[anchors.T[0]]
