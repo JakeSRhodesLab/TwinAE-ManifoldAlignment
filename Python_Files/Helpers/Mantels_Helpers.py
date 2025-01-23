@@ -68,7 +68,7 @@ def extract_all_files():
     df = read_json_files_to_dataframe("/yunity/arusty/Graph-Manifold-Alignment/Results")
 
     #Filter the dataframe to only include the valid methods
-    filtered_df = df[df["method"].isin(["SPUD", "RF-SPUD", "NAMA", "RF-NAMA", "MASH", "MASH-", "RF-MASH", "RF-MASH-"])]
+    filtered_df = df[df["method"].isin(["MAGAN", "DTA", "SSMA", "MAPA", "JLMA", "MALI", "RF-MALI"])]
 
     return filtered_df
 
@@ -84,10 +84,6 @@ def create_tasks_for_parrelization(df):
         method = row["method"]
         dataset = row["csv_file"]
         split = row["split"]
-
-        if method in ["MASH", "RF-MASH", "MASH-", "RF-SPUD", "SPUD", "RF-MASH-"]:
-            #Set a PCA for faster computation
-            params["n_pca"] = 75
 
         #Create the task
         task = (method, dataset, split, params)
@@ -122,14 +118,28 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
 
-    #Splits to preserve order
-    X_A_train, X_A_test, y_A_train, y_A_test = train_test_split(data.split_A, data.labels[:len(data.split_A)], test_size=0.2, random_state=42)
-    X_B_train, X_B_test, y_B_train, y_B_test = train_test_split(data.split_B, data.labels[:len(data.split_B)], test_size=0.2, random_state=42)
+    # Ensure both domains share the same shuffled indices
+    indices = np.arange(len(data.split_A))
+    np.random.seed(42)
+    np.random.shuffle(indices)
+
+    train_size = int(0.8 * len(indices))
+    train_idx = indices[:train_size]
+    test_idx = indices[train_size:]
+
+    X_A_train = data.split_A[train_idx]
+    X_A_test = data.split_A[test_idx]
+    y_A_train = data.labels[train_idx]
+    y_A_test = data.labels[test_idx]
+    X_B_train = data.split_B[train_idx]
+    X_B_test = data.split_B[test_idx]
+    y_B_train = data.labels[train_idx]
+    y_B_test = data.labels[test_idx]
 
     #Recreate data to be in the same order
     data.split_A = np.vstack([X_A_train, X_A_test])
     data.split_B = np.vstack([X_B_train, X_B_test])
-    data.labels = np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
+    data.labels = np.hstack([y_A_train, y_A_test]) #This will equal the same for B
 
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
     n_comps = max(min(data.split_A.shape[1], data.split_B.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
@@ -146,7 +156,7 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     #print("Full Embedding Complete")
 
     if return_labels:
-        normal_labels = np.array(data.labels)
+        normal_labels = np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
 
     """GET GRAE's EMBEDDING below"""
     # Reformat data using x train
