@@ -67,8 +67,17 @@ def extract_all_files():
     #Get the regression results and classification results
     df = read_json_files_to_dataframe("/yunity/arusty/Graph-Manifold-Alignment/Results")
 
-    #Filter the dataframe to only include the valid methods
-    filtered_df = df[df["method"].isin(["MAGAN", "DTA", "SSMA", "MAPA", "JLMA", "MALI", "RF-MALI"])]
+    files = ["EnergyEfficiency",  
+    "AutoMPG", "ComputerHardware", "diabetes", "tic-tac-toe", 'Medicaldataset',
+    "hepatitis", "iris", "audiology", "parkinsons", "seeds", 
+    "segmentation", "glass", "heart_disease", "heart_failure", "flare1", 
+    "ecoli_5", "ionosphere", "Cancer_Data", "hill_valley", "balance_scale", 
+    "CommunityCrime", "ConcreteSlumpTest", "Automobile", "ConcreteCompressiveStrength"
+    ]
+
+    #Filter the dataframe to only include the valid methods and exclude rf-mali
+    filtered_df = df[df["csv_file"].isin(files) & (~df["method"].isin(["RF-MALI", "MALI-RF", "RF-SPUD", "RF-NAMA", 
+                                                                                   "RF-MASH", "MALI", "RF-MASH-"]))]
 
     return filtered_df
 
@@ -209,59 +218,63 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
         r (float): Observed correlation.
         p_value (float): Significance of the observed correlation.
     """
+    try:
 
-    #Return null values if file already exsists
-    if repeat_results == False:
-        if file_already_exists(method, dataset, split):
-            #print(f"Results already exist for {method}, {dataset}, {split}.")
+        #Return null values if file already exsists
+        if repeat_results == False:
+            if file_already_exists(method, dataset, split):
+                #print(f"Results already exist for {method}, {dataset}, {split}.")
+                
+                if plot:
+                    print("Plotting is disabled for existing files.")
+
+                return np.nan, np.nan
+        
+        #Get the embeddings
+        emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
+
+        matrix1 = squareform(pdist(emb_pred))
+        matrix2 = squareform(pdist(emb_full))
+        
+        # Extract the upper triangle of the distance matrices (excluding the diagonal)
+        mask = np.triu_indices_from(matrix1, k=1)
+        dist1, dist2 = matrix1[mask], matrix2[mask]
+        
+        # Compute the observed Pearson correlation
+        r_obs, _ = pearsonr(dist1, dist2)
+        
+        # Permutation test to find the null distribution of the correlation
+        perm_r = []
+        for _ in range(permutations):
+            permuted = np.random.permutation(dist2)
+            perm_r.append(pearsonr(dist1, permuted)[0])
+        
+        # Compute the p-value
+        perm_r = np.array(perm_r)
+        p_value = np.sum(perm_r >= r_obs) / permutations
+        
+        if plot == True:
+            # Plot the smoothed distribution curve of the null distribution of correlations
+            plt.figure(figsize=(10, 6))
+            sns.kdeplot(perm_r, color='blue', lw=2)  # KDE line
             
-            if plot:
-                print("Plotting is disabled for existing files.")
+            # Add a vertical line to represent the observed correlation
+            plt.axvline(x=r_obs, color='red', linestyle='--', lw=2)
+            
+            # Title and labels
+            plt.title('Null Distribution of Correlations Between Embeddings with Observed Correlation', fontsize=14)
+            plt.xlabel('Correlation', fontsize=12)
+            plt.ylabel('Density', fontsize=12)
+            
+            # Show plot
+            plt.show()
 
-            return np.nan, np.nan
-    
-    #Get the embeddings
-    emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
-
-    matrix1 = squareform(pdist(emb_pred))
-    matrix2 = squareform(pdist(emb_full))
-    
-    # Extract the upper triangle of the distance matrices (excluding the diagonal)
-    mask = np.triu_indices_from(matrix1, k=1)
-    dist1, dist2 = matrix1[mask], matrix2[mask]
-    
-    # Compute the observed Pearson correlation
-    r_obs, _ = pearsonr(dist1, dist2)
-    
-    # Permutation test to find the null distribution of the correlation
-    perm_r = []
-    for _ in range(permutations):
-        permuted = np.random.permutation(dist2)
-        perm_r.append(pearsonr(dist1, permuted)[0])
-    
-    # Compute the p-value
-    perm_r = np.array(perm_r)
-    p_value = np.sum(perm_r >= r_obs) / permutations
-    
-    if plot == True:
-        # Plot the smoothed distribution curve of the null distribution of correlations
-        plt.figure(figsize=(10, 6))
-        sns.kdeplot(perm_r, color='blue', lw=2)  # KDE line
+        save_mantel_results(method, dataset, split, r_obs, p_value, perm_r)
         
-        # Add a vertical line to represent the observed correlation
-        plt.axvline(x=r_obs, color='red', linestyle='--', lw=2)
-        
-        # Title and labels
-        plt.title('Null Distribution of Correlations Between Embeddings with Observed Correlation', fontsize=14)
-        plt.xlabel('Correlation', fontsize=12)
-        plt.ylabel('Density', fontsize=12)
-        
-        # Show plot
-        plt.show()
-
-    save_mantel_results(method, dataset, split, r_obs, p_value, perm_r)
+        return r_obs, p_value #Results are saved above
     
-    return r_obs, p_value #Results are saved above
+    except:
+        return np.nan, np.nan
 
 def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
 
