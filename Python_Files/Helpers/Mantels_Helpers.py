@@ -14,8 +14,6 @@ import json
 import os
 from scipy.spatial.distance import pdist, squareform
 
-
-
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
     def __init__(self, csv_file, split):
@@ -88,18 +86,20 @@ def create_tasks_for_parrelization(df):
 
     #Iterate through the dataframe
     for index, row in df.iterrows():
-        #Get the parameters, method, and dataset
-        params = row["Best_Params"]
-        method = row["method"]
-        dataset = row["csv_file"]
-        split = row["split"]
 
-        #Create the task
-        task = (method, dataset, split, params)
+        for lam in [0, 10, 1000, 10000]:
+            #Get the parameters, method, and dataset
+            params = row["Best_Params"]
+            method = row["method"]
+            dataset = row["csv_file"]
+            split = row["split"]
 
-        #Append the task to the tasks list
-        if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
-            tasks.append(task)  
+            #Create the task
+            task = (method, dataset, split, params, lam)
+
+            #Append the task to the tasks list
+            if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+                tasks.append(task)  
 
     return tasks
 
@@ -118,7 +118,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, *, return_labels = False):
+def get_embeddings(method, dataset, split, params,  lam = 100, *, return_labels = False):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
@@ -182,14 +182,14 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
 
 
     #GRAE on domain A
-    myGrae = GRAEBase(n_components = n_comps)
+    myGrae = GRAEBase(lam = lam, n_components = n_comps)
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
     testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = 42, split = "none")
     pred_A, _ = myGrae.score(testA)
 
     #Grae on domain B 
-    myGrae = GRAEBase(n_components = n_comps)
+    myGrae = GRAEBase(lam = lam, n_components = n_comps)
     split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
     testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = 42, split = "none")
@@ -206,7 +206,8 @@ def get_embeddings(method, dataset, split, params, *, return_labels = False):
     
     return emb_pred, emb_full, block_full
 
-def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = False, repeat_results = False): #DON'T Delete any of these parameters - though you can add your own if you want
+def mantel_test(method, dataset, split, params, lam = 100, *, permutations = 10000, 
+                plot = False, repeat_results = False): #DON'T Delete any of these parameters - though you can add your own if you want
     #NOTE: I'm assuming you want the labels Marshall. You may not, and you can switch this to be false
     
     #NOTE: The results are a list of tuples. The elements of each tuple are "partial, pred, full, full_labels, pred_labels"
@@ -222,7 +223,7 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
 
         #Return null values if file already exsists
         if repeat_results == False:
-            if file_already_exists(method, dataset, split):
+            if file_already_exists(method, dataset, split, lam):
                 #print(f"Results already exist for {method}, {dataset}, {split}.")
                 
                 if plot:
@@ -231,7 +232,7 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
                 return np.nan, np.nan
         
         #Get the embeddings
-        emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False)
+        emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False, lam = lam)
 
         matrix1 = squareform(pdist(emb_pred))
         matrix2 = squareform(pdist(emb_full))
@@ -269,18 +270,21 @@ def mantel_test(method, dataset, split, params, *, permutations = 10000, plot = 
             # Show plot
             plt.show()
 
-        save_mantel_results(method, dataset, split, r_obs, p_value, perm_r)
+        save_mantel_results(method, dataset, split, r_obs, p_value, perm_r, lam = lam)
         
         return r_obs, p_value #Results are saved above
     
     except:
         return np.nan, np.nan
 
-def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
+def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r, lam = 100):
 
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam"
 
-    file_name = f"{method}_{dataset}_{str(split)}.json"
+    if lam == 100:
+        file_name = f"{method}_{dataset}_{str(split)}.json"
+    else:
+        file_name = f"{method}_{dataset}_{str(split)}_lam_{lam}.json"
     file_path = os.path.join(results_dir, file_name)
 
     five_point_summary = {
@@ -296,6 +300,7 @@ def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r):
         "dataset": dataset,
         "split": split,
         "r_obs": r_obs,
+        "lam": lam,
         "p_value": p_value,
         "five_point_summary": five_point_summary
         }
@@ -321,6 +326,25 @@ def read_all_mantel_results():
 
     return pd.DataFrame(all_data)
 
+def read_all_mantel_results_lam():
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam"
+    all_data = []
+
+    for file in os.listdir(results_dir):
+        if file.endswith(".json"):
+            file_path = os.path.join(results_dir, file)
+            with open(file_path, "r") as f:
+                data = json.load(f)
+            all_data.append(data)
+
+    lam_df = pd.DataFrame(all_data)
+    normal_df = read_all_mantel_results()
+
+    #Add lambda column to df 
+    normal_df["lam"] = 100
+
+    return pd.concat([normal_df, lam_df])
+
 def plot_averaged_mantel_stats(df):
     # Average r_obs and plot distribution with vertical line
     avg_r = df["r_obs"].mean()
@@ -340,10 +364,15 @@ def plot_averaged_mantel_stats(df):
     plt.axvline(avg_r, color='red', linestyle='--', label = "Average r_obs")
     plt.legend(), plt.show()
 
-def file_already_exists(method, dataset, split):
+def file_already_exists(method, dataset, split, lam):
     """
     Checks if a results file already exists for the given method, dataset, and split.
     Returns True if it is found, else False.
     """
-    file_name = f"{method}_{dataset}_{split}.json"
-    return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel", file_name))
+
+    if lam == 100:
+        file_name = f"{method}_{dataset}_{str(split)}.json"
+        return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel", file_name))
+
+    file_name = f"{method}_{dataset}_{str(split)}_lam_{lam}.json"
+    return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam", file_name))
