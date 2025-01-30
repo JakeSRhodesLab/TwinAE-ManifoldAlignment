@@ -123,7 +123,11 @@ def get_results(csv_file, seed, split):
     embA, labelsA, embB, labelsB = prep_data_file(csv_file, seed, split)
 
     """Domain A"""
-    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embA, labelsA, seed)
+    knn_score, rf_score, knn_rmse, rf_rmse, knn_score2, rf_score2, knn_rmse2, rf_rmse2 = get_embedding_scores(embA, labelsA, seed)
+    knn_score = np.mean(knn_score + knn_score2)
+    rf_score = np.mean(rf_score + rf_score2)
+    knn_rmse = np.mean(knn_rmse + knn_rmse2)
+    rf_rmse = np.mean(rf_rmse + rf_rmse2)
     rf_oob = get_RF_score(embA, labelsA, seed)
     knn = cross_embedding_knn(embA, np.hstack(labelsA))
 
@@ -138,7 +142,11 @@ def get_results(csv_file, seed, split):
             }
     
     """Domain B"""
-    knn_score, rf_score, knn_rmse, rf_rmse = get_embedding_scores(embB, labelsB, seed)
+    knn_score, rf_score, knn_rmse, rf_rmse, knn_score2, rf_score2, knn_rmse2, rf_rmse2 = get_embedding_scores(embB, labelsB, seed)
+    knn_score = np.mean(knn_score + knn_score2)
+    rf_score = np.mean(rf_score + rf_score2)
+    knn_rmse = np.mean(knn_rmse + knn_rmse2)
+    rf_rmse = np.mean(rf_rmse + rf_rmse2)
     rf_oob = get_RF_score(embB, labelsB, seed)
     knn = cross_embedding_knn(embB, np.hstack(labelsB))
 

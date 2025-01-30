@@ -145,8 +145,8 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
             'MALI_RF': df[df["method"].isin(["MALI_RF", "MALI-RF"])].groupby("csv_file")[metric].max(),
             'MALI': df[df["method"] == "MALI"].groupby("csv_file")[metric].max(),
             'SPUD_RF': df[df["method"].isin(["SPUD_RF", "RF-SPUD"])].groupby("csv_file")[metric].max(),
-            'BL_A': df.groupby("csv_file")["A_Classification_Score"].max(),
-            'BL_B': df.groupby("csv_file")["B_Classification_Score"].max(),
+            #'BL_A': df.groupby("csv_file")["A_Classification_Score"].max(),
+            #'BL_B': df.groupby("csv_file")["B_Classification_Score"].max(),
     })
 
     agregate_df = agregate_df.sort_values(by = sort_by).reset_index()
@@ -181,10 +181,10 @@ def plt_methods_by_CSV_max(df, sort_by = "MASH", metric = "Combined_Metric", ret
         ax = plt.scatter(y = agregate_df["DTA"], marker = "^", color = "orange",x = get_index_pos(agregate_df), label = "DTA", **key_words)
     if "SSMA" in plot_methods:
         ax = plt.scatter(y = agregate_df["SSMA"],  marker = '^', label = "SSMA",x = get_index_pos(agregate_df), **key_words) 
-    if "BL_A" in plot_methods:
-        ax = plt.scatter(y = agregate_df["BL_A"], marker = '.', color = "red",x = get_index_pos(agregate_df), label = "BL_A", **key_words)
-    if "BL_B" in plot_methods:
-        ax = plt.scatter(y = agregate_df["BL_B"], marker = '.', color = "pink", x = get_index_pos(agregate_df), label = "BL_B", **key_words)
+    # if "BL_A" in plot_methods:
+    #     ax = plt.scatter(y = agregate_df["BL_A"], marker = '.', color = "red",x = get_index_pos(agregate_df), label = "BL_A", **key_words)
+    # if "BL_B" in plot_methods:
+    #     ax = plt.scatter(y = agregate_df["BL_B"], marker = '.', color = "pink", x = get_index_pos(agregate_df), label = "BL_B", **key_words)
 
     #To make it easier to add edits
     key_words = {
