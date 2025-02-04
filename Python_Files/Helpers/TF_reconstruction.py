@@ -40,10 +40,17 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         if self.verbose > 1:
             self.decoder.summary()
 
-    def emb_and_reconstr_loss(self, inputs, decoded, encoded, embedding):
-        reconstruction_loss = tf.keras.losses.MeanSquaredError()(inputs, decoded)
-        embedding_loss = tf.keras.losses.MeanSquaredError()(embedding, encoded)
-        return reconstruction_loss + embedding_loss
+    def emb_and_reconstr_loss(self, data, embedding):
+        """Custom Loss function to regularize it to the embedding space and the reconstruction space"""
+        mse = tf.keras.losses.MeanSquaredError()
+
+        encoded = self.encoder(data)
+        decoded = self.decoder(encoded)
+
+        reconstruction_loss = mse(data, decoded)
+        embedding_loss = mse(embedding, encoded)
+
+        return reconstruction_loss + embedding_loss# * 0.1
 
     def fit(self, data, embedding, epochs=50, batch_size=256):
         if self.verbose > 0:
@@ -64,11 +71,10 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         self.autoencoder = models.Model(inputs, decoded, name='autoencoder')
         
         # Compile the autoencoder with the custom loss function
-        self.autoencoder.add_loss(self.emb_and_reconstr_loss(inputs, decoded, encoded, embedding))
-        self.autoencoder.compile(optimizer='adam')
+        self.autoencoder.compile(optimizer='adam', loss=self.emb_and_reconstr_loss(data, embedding))
 
         # Train the autoencoder
-        self.autoencoder.fit(data, epochs=epochs, batch_size=batch_size, shuffle=True)
+        self.autoencoder.fit(data, data, epochs=epochs, batch_size=batch_size, shuffle=True)
         if self.verbose > 0:
             print("Training complete.")
 
