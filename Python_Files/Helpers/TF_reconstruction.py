@@ -40,6 +40,11 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         if self.verbose > 1:
             self.decoder.summary()
 
+    def emb_and_reconstr_loss(self, inputs, decoded, encoded, embedding):
+        reconstruction_loss = tf.keras.losses.MeanSquaredError()(inputs, decoded)
+        embedding_loss = tf.keras.losses.MeanSquaredError()(embedding, encoded)
+        return reconstruction_loss + embedding_loss
+
     def fit(self, data, embedding, epochs=50, batch_size=256):
         if self.verbose > 0:
             print("Fitting the autoencoder model...")
@@ -57,10 +62,13 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         decoded = self.decoder(encoded)
 
         self.autoencoder = models.Model(inputs, decoded, name='autoencoder')
-        self.autoencoder.compile(optimizer='adam', loss='mse')
+        
+        # Compile the autoencoder with the custom loss function
+        self.autoencoder.add_loss(self.emb_and_reconstr_loss(inputs, decoded, encoded, embedding))
+        self.autoencoder.compile(optimizer='adam')
 
         # Train the autoencoder
-        self.autoencoder.fit(data, data, epochs=epochs, batch_size=batch_size, shuffle=True)
+        self.autoencoder.fit(data, epochs=epochs, batch_size=batch_size, shuffle=True)
         if self.verbose > 0:
             print("Training complete.")
 
