@@ -172,7 +172,6 @@ class DTA():
         self.DistancesLabels = cdist(self.gamma1_c, self.gamma2_c, self.distance)
         self.DistancesLabels[np.isnan(self.DistancesLabels)] = 1
 
-    
     def compute_corres_distance(self): 
         
             # compute distance using correspondences 
@@ -190,8 +189,6 @@ class DTA():
         self.DistancesCorres = cdist(gamma1_c, gamma2_c, self.distance)
         self.DistancesCorres[np.isnan(self.DistancesCorres)] = 1
             
-        
-
     def compute_diffusion_distances(self):
 
         self.Distances12 = None
@@ -213,9 +210,6 @@ class DTA():
         elif self.met == "dta":
            self.compute_corres_distance()
            self.Distances12 = self.DistancesCorres 
-
-            
-
             
     def compute_dpt(self):    
 
@@ -236,9 +230,6 @@ class DTA():
             self.M1 = min_max_scaler.fit_transform(self.M1.transpose()).transpose()
             self.M2 = min_max_scaler.fit_transform(self.M2.transpose()).transpose()
 
-                
-            
-                
     def optimal_transport(self):
         
         if self.N1 == self.N2:
