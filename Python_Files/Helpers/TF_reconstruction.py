@@ -2,13 +2,16 @@ import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
 
 class GeoTAETr: #Geometric Transformation Autoencoder with Translation
-    def __init__(self):
+    def __init__(self, verbose=0):
         # Initialize the encoder, decoder, and autoencoder models as None
         self.encoder = None
         self.decoder = None
         self.autoencoder = None
+        self.verbose = verbose
 
     def build_encoder(self, input_shape, embedding_dim):
+        if self.verbose > 0:
+            print("Building encoder...")
         # Build the encoder model
         inputs = layers.Input(shape=input_shape)
         x = layers.Flatten()(inputs)
@@ -18,19 +21,28 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         # Output layer with L2 regularization
         z = layers.Dense(embedding_dim, activation='relu', activity_regularizer=regularizers.l2(1e-5))(x)
         self.encoder = models.Model(inputs, z, name='encoder')
+        if self.verbose > 1:
+            self.encoder.summary()
 
     def build_decoder(self, embedding_dim, original_shape):
+        if self.verbose > 0:
+            print("Building decoder...")
         # Build the decoder model
         inputs = layers.Input(shape=(embedding_dim,))
         x = layers.Dense(64, activation='relu')(inputs)
         x = layers.Dense(128, activation='relu')(x)
         
         # Output layer reshaped to the original input shape
-        x = layers.Dense(tf.reduce_prod(original_shape), activation='sigmoid')(x)
+        x = layers.Dense(tf.reduce_prod(original_shape).numpy(), activation='sigmoid')(x)
         outputs = layers.Reshape(original_shape)(x)
+
         self.decoder = models.Model(inputs, outputs, name='decoder')
+        if self.verbose > 1:
+            self.decoder.summary()
 
     def fit(self, data, embedding, epochs=50, batch_size=256):
+        if self.verbose > 0:
+            print("Fitting the autoencoder model...")
         # Fit the autoencoder model to the data
         input_shape = data.shape[1:]
         embedding_dim = embedding.shape[1]
@@ -49,11 +61,17 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
 
         # Train the autoencoder
         self.autoencoder.fit(data, data, epochs=epochs, batch_size=batch_size, shuffle=True)
+        if self.verbose > 0:
+            print("Training complete.")
 
     def encode(self, data):
+        if self.verbose > 0:
+            print("Encoding data...")
         # Encode the data using the encoder model
         return self.encoder.predict(data)
 
     def decode(self, encoded_data):
+        if self.verbose > 0:
+            print("Decoding data...")
         # Decode the encoded data using the decoder model
         return self.decoder.predict(encoded_data)
