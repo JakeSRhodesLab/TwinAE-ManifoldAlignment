@@ -362,6 +362,36 @@ class MAGAN(object):
 
         return lstring
 
+    #Built by Adam
+    def translate_1_to_2(self, b1_data):
+        feed = {
+            tbn('xb1:0'): b1_data,
+            tbn('is_training:0'): False
+        }
+        # Fetch the tensor "Gb2:0" instead of the op "Gb2"
+        return self.sess.run(tbn('Gb2:0'), feed_dict=feed)
+
+    def translate_2_to_1(self, b2_data):
+        feed = {
+            tbn('xb2:0'): b2_data,
+            tbn('is_training:0'): False
+        }
+        return self.sess.run(tbn('Gb1:0'), feed_dict=feed)
+    
+    def reconstruct_2(self, b2_data):
+        feed = {
+            tbn('xb2:0'): b2_data,
+            tbn('is_training:0'): False
+        }
+        return self.sess.run(tbn('xb1_reconstructed:0'), feed_dict=feed)
+
+    def reconstruct_1(self, b1_data):
+        feed = {
+            tbn('xb1:0'): b1_data,
+            tbn('is_training:0'): False
+        }
+        return self.sess.run(tbn('xb2_reconstructed:0'), feed_dict=feed)
+    
 class Generator(tf.keras.Model):
     """MAGAN's generator."""
 
@@ -437,7 +467,7 @@ def get_data(n_batches=2, n_pts_per_cluster=5000): #This only provides two featu
 
     return xb1, xb2, labels1, labels2
 
-def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01, random_state = 42): 
+def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01, random_state = 42, return_MAGAN = False): 
     """xb1 should be split_a
     xb2 should be split_b """
 
@@ -520,4 +550,7 @@ def run_MAGAN(xb1, xb2, anchors, learning_rate = 0.01, random_state = 42):
     Gb2 = magan.get_layer(xb1, xb2, 'Gb2')
 
 
+    if return_MAGAN:
+        return xb1, xb2, Gb1, Gb2, magan
+    
     return xb1, xb2, Gb1, Gb2 
