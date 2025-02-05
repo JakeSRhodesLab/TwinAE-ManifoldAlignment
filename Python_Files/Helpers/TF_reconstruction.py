@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
+import numpy as np
 
 class GeoTAETr: #Geometric Transformation Autoencoder with Translation
     def __init__(self, verbose=0):
@@ -40,17 +41,21 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         if self.verbose > 1:
             self.decoder.summary()
 
-    def emb_and_reconstr_loss(self, data, embedding):
+    def emb_and_reconstr_loss(self, inputs, decoded, encoded, embedding):
         """Custom Loss function to regularize it to the embedding space and the reconstruction space"""
         mse = tf.keras.losses.MeanSquaredError()
-
-        encoded = self.encoder(data)
-        decoded = self.decoder(encoded)
-
-        reconstruction_loss = mse(data, decoded)
+        reconstruction_loss = mse(inputs, decoded)
         embedding_loss = mse(embedding, encoded)
+        return reconstruction_loss + embedding_loss
 
-        return reconstruction_loss + embedding_loss# * 0.1
+    def custom_loss(self, embedding):
+        def loss(y_true, y_pred):
+            batch_size = y_true.shape[0]
+            batch_embedding = embedding[:batch_size]
+            encoded = self.encoder(y_true)
+            decoded = self.decoder(encoded)
+            return self.emb_and_reconstr_loss(y_true, decoded, encoded, batch_embedding)
+        return loss
 
     def fit(self, data, embedding, epochs=50, batch_size=256):
         if self.verbose > 0:
@@ -71,10 +76,14 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         self.autoencoder = models.Model(inputs, decoded, name='autoencoder')
         
         # Compile the autoencoder with the custom loss function
-        self.autoencoder.compile(optimizer='adam', loss=self.emb_and_reconstr_loss(data, embedding))
+        self.autoencoder.compile(optimizer='adam', loss=self.custom_loss(embedding))
+
+        # Create a dataset to ensure the data and embedding are batched together
+        dataset = tf.data.Dataset.from_tensor_slices((data, embedding))
+        dataset = dataset.batch(batch_size).shuffle(buffer_size=len(data))
 
         # Train the autoencoder
-        self.autoencoder.fit(data, data, epochs=epochs, batch_size=batch_size, shuffle=True)
+        self.autoencoder.fit(dataset, epochs=epochs)
         if self.verbose > 0:
             print("Training complete.")
 
