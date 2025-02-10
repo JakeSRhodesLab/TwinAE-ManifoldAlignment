@@ -13,8 +13,9 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
     def build_encoder(self, input_shape, embedding_dim):
         if self.verbose > 0:
             print("Building encoder...")
+        
         # Build the encoder model
-        inputs = layers.Input(shape=input_shape)
+        inputs = layers.Input(shape=input_shape, name='input_data')
         x = layers.Flatten()(inputs)
         x = layers.Dense(128, activation='relu')(x)
         x = layers.Dense(64, activation='relu')(x)
@@ -46,22 +47,28 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         mse = tf.keras.losses.MeanSquaredError()
         reconstruction_loss = mse(inputs, decoded)
         embedding_loss = mse(embedding, encoded)
-        return reconstruction_loss + embedding_loss
+        return reconstruction_loss + embedding_loss #* 0.001
 
-    def custom_loss(self, embedding):
+    def custom_loss(self):
         def loss(y_true, y_pred):
-            batch_size = y_true.shape[0]
-            batch_embedding = embedding[:batch_size]
-            encoded = self.encoder(y_true)
-            decoded = self.decoder(encoded)
-            return self.emb_and_reconstr_loss(y_true, decoded, encoded, batch_embedding)
+            data_dim = self.data.shape[1]  # e.g., 4
+            # Split the combined target tensor into input_data and embedding parts.
+            batch_inputs = y_true[:, :data_dim]
+            batch_embedding = y_true[:, data_dim:]
+            encoded = self.encoder(batch_inputs)
+            return self.emb_and_reconstr_loss(batch_inputs, y_pred, encoded, batch_embedding)
         return loss
 
     def fit(self, data, embedding, epochs=50, batch_size=256):
         if self.verbose > 0:
             print("Fitting the autoencoder model...")
+
+        # Save the data and the embedding
+        self.data = data
+        self.embedding = embedding
+        
         # Fit the autoencoder model to the data
-        input_shape = data.shape[1:]
+        input_shape = self.data.shape[1:]
         embedding_dim = embedding.shape[1]
 
         # Build encoder and decoder models
@@ -69,20 +76,26 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         self.build_decoder(embedding_dim, input_shape)
 
         # Create the autoencoder model by connecting encoder and decoder
-        inputs = layers.Input(shape=input_shape)
-        encoded = self.encoder(inputs)
+        encoded = self.encoder.output
         decoded = self.decoder(encoded)
 
-        self.autoencoder = models.Model(inputs, decoded, name='autoencoder')
+        self.autoencoder = models.Model(self.encoder.input, decoded, name='autoencoder')
         
         # Compile the autoencoder with the custom loss function
-        self.autoencoder.compile(optimizer='adam', loss=self.custom_loss(embedding))
+        self.autoencoder.compile(optimizer='adam', loss=self.custom_loss())
 
-        # Create a dataset to ensure the data and embedding are batched together
-        dataset = tf.data.Dataset.from_tensor_slices((data, embedding))
-        dataset = dataset.batch(batch_size).shuffle(buffer_size=len(data))
+        # Instead of providing a tuple as target, concatenate data and embedding.
+        target = tf.concat([self.data, embedding], axis=1)
+        dataset = tf.data.Dataset.from_tensor_slices((self.data, target))
+        dataset = dataset.shuffle(buffer_size=self.data.shape[0]).batch(batch_size)
+        
+        # Inspect one sample (one row) from the dataset:
+        for sample in dataset.take(1):
+            inputs, targets = sample
+            # targets is a tuple: (input_data, embedding)
+            print("Sample input:", inputs.numpy()[0])
+            print("Sample embedding:", targets[1].numpy()[0])
 
-        # Train the autoencoder
         self.autoencoder.fit(dataset, epochs=epochs)
         if self.verbose > 0:
             print("Training complete.")
