@@ -1300,7 +1300,7 @@ class GRAEBase(AE):
             relax(bool): Use the lambda relaxation scheme. Set to false to use constant lambda throughout training.
             **kwargs: All other arguments with keys are passed to the AE parent class.
         """
-        super().__init__(**kwargs)
+        super().__init__(device = device, **kwargs)
         self.lam = lam
         self.lam_original = lam  # Needed to compute the lambda relaxation
         self.target_embedding = None  # To store the target embedding as computed by embedder
@@ -1549,42 +1549,48 @@ class DomainTranslation():
 
             print(f"Epoch {epoch}, Loss: {loss.item()}")
 
-class SwappedGRAE(nn.Module):
+class SwappedGRAE(GRAEBase):
     """Helper Class that swaps the encoder and decoder of a GRAE model."""
-    def __init__(self, encoder, decoder):
-        super().__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+    def __init__(self, encoder, decoder, lam_anchor = 0.01, **kwargs):
+        #Create a new device to complete the secondary training
+        self.device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
 
-    def forward(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z)
-        return x_hat, z
-    
+        self.encoder = encoder.to(self.device)
+        self.decoder = decoder.to(self.device)
+
+        super().__init__(device = self.device, **kwargs)
+
+
+    def fit(self, x,  emb, anchors):
+        """Fit model to data.
+        
+        Anchors need to be so that the encoder is first, then Decoder second"""
+        #Save the anchors
+        self.anchors = anchors #TODO: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies
+
+        super().fit(x, emb)
+
     #Overide from GRAE
     def compute_loss(self, x, x_hat, z, idx):
         """Compute torch-compatible geometric loss.
 
         Args:
-            x(torch.Tensor): Input batch.
-            x_hat(torch.Tensor): Reconstructed batch (decoder output).
+            x(torch.Tensor): Input batch -> Data from domain A (Or B)
+            x_hat(torch.Tensor): Reconstructed batch (decoder output). -> Data from domain B (or A)
             z(torch.Tensor): Batch embedding (encoder output).
             idx(torch.Tensor): Indices of samples in batch.
 
         """
         if self.lam > 0:
-            loss = self.criterion(x, x_hat) + self.lam * self.criterion(z, self.target_embedding[idx])
+            #Reconstruction loss - We only want to do this if its an anchor point!!!
+            loss = self.criterion(x, x_hat)
+
+            #Embedding loss
+            loss += self.lam * self.criterion(z, self.target_embedding[idx])
         else:
             loss = self.criterion(x, x_hat)
 
         loss.backward()
-
-    combined_model = CombinedAE(encoder, decoder)
-    self.torch_module = combined_model
-
-
-    if self.verbose > 0:
-        print("\nPreparing Anchor Data...")
 
 class TAEROE():
     """
