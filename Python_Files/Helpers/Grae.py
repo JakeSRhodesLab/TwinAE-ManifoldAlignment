@@ -1131,7 +1131,7 @@ class AE(BaseModel):
         x_hat, z = self.torch_module(data)  # Forward pass
         self.compute_loss(data, x_hat, z, idx)
 
-    def compute_loss(self, x, x_hat, z, idx):
+    def compute_loss(self, x, x_hat, z, idx): #This is overidden for the grae
         """Apply loss to update parameters following a forward pass.
 
         Args:
