@@ -3,12 +3,13 @@ from tensorflow.keras import layers, models, regularizers
 import numpy as np
 
 class GeoTAETr: #Geometric Transformation Autoencoder with Translation
-    def __init__(self, verbose=0):
+    def __init__(self, verbose=0, lmb = 0.001):
         # Initialize the encoder, decoder, and autoencoder models as None
         self.encoder = None
         self.decoder = None
         self.autoencoder = None
         self.verbose = verbose
+        self.lmb = lmb
 
     def build_encoder(self, input_shape, embedding_dim):
         if self.verbose > 0:
@@ -47,7 +48,7 @@ class GeoTAETr: #Geometric Transformation Autoencoder with Translation
         mse = tf.keras.losses.MeanSquaredError()
         reconstruction_loss = mse(inputs, decoded)
         embedding_loss = mse(embedding, encoded)
-        return reconstruction_loss + embedding_loss #* 0.001
+        return reconstruction_loss + embedding_loss * self.lmb
 
     def custom_loss(self):
         def loss(y_true, y_pred):
