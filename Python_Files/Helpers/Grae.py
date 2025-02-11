@@ -943,7 +943,8 @@ class AE(BaseModel):
                  patience=50,
                  data_val=None,
                  comet_exp=None,
-                 write_path=''):
+                 write_path='', 
+                 device = DEVICE):
         """Init. Arguments specify the architecture of the encoder. Decoder will use the reversed architecture.
 
         Args:
@@ -984,6 +985,7 @@ class AE(BaseModel):
         self.noise = noise
         self.comet_exp = comet_exp
         self.data_shape = None  # Shape of input data
+        self.device = device
 
         # Early stopping attributes
         self.data_val = data_val
@@ -1044,7 +1046,7 @@ class AE(BaseModel):
         else:
             raise Exception(f'Invalid channel number. X has {len(data_shape)}')
 
-        self.torch_module.to(DEVICE)
+        self.torch_module.to(self.device)
 
     def fit(self, x):
         """Fit model to data.
@@ -1126,7 +1128,7 @@ class AE(BaseModel):
 
         """
         data, _, idx = batch  # No need for labels. Training is unsupervised
-        data = data.to(DEVICE)
+        data = data.to(self.device)
 
         x_hat, z = self.torch_module(data)  # Forward pass
         self.compute_loss(data, x_hat, z, idx)
@@ -1169,7 +1171,7 @@ class AE(BaseModel):
 
         for batch in loader:
             data, _, idx = batch  # No need for labels. Training is unsupervised
-            data = data.to(DEVICE)
+            data = data.to(self.device)
 
             x_hat, z = self.torch_module(data)  # Forward pass
             sum_loss += data.shape[0] * self.criterion(data, x_hat).item()
@@ -1234,7 +1236,7 @@ class AE(BaseModel):
         self.torch_module.eval()
         loader = torch.utils.data.DataLoader(x, batch_size=self.batch_size,
                                              shuffle=False)
-        z = [self.torch_module.encoder(batch.to(DEVICE)).cpu().detach().numpy() for batch, _, _ in loader]
+        z = [self.torch_module.encoder(batch.to(self.device)).cpu().detach().numpy() for batch, _, _ in loader]
         return np.concatenate(z)
 
     def inverse_transform(self, x):
@@ -1250,7 +1252,7 @@ class AE(BaseModel):
         x = FromNumpyDataset(x)
         loader = torch.utils.data.DataLoader(x, batch_size=self.batch_size,
                                              shuffle=False)
-        x_hat = [self.torch_module.decoder(batch.to(DEVICE)).cpu().detach().numpy()
+        x_hat = [self.torch_module.decoder(batch.to(self.device)).cpu().detach().numpy()
                  for batch in loader]
 
         return np.concatenate(x_hat)
@@ -1288,7 +1290,7 @@ class GRAEBase(AE):
     learning algorithm.
     """
 
-    def __init__(self, lam=100, relax=False, **kwargs):
+    def __init__(self, lam=100, relax=False, device = DEVICE, **kwargs):
         """Init.
 
         Args:
@@ -1303,6 +1305,7 @@ class GRAEBase(AE):
         self.lam_original = lam  # Needed to compute the lambda relaxation
         self.target_embedding = None  # To store the target embedding as computed by embedder
         self.relax = relax
+        self.device = device
 
 
         # self.embedder = embedder(random_state=self.random_state,
@@ -1320,7 +1323,7 @@ class GRAEBase(AE):
             print('       Fitting GRAE...')
             print('           Fitting manifold learning embedding...')
         #emb = scipy.stats.zscore(self.embedder.fit_transform(x))  # Normalize embedding
-        self.target_embedding = torch.from_numpy(emb).float().to(DEVICE)
+        self.target_embedding = torch.from_numpy(emb).float().to(self.device)
 
         if verbose != 0:
             print('           Fitting encoder & decoder...')
@@ -1359,7 +1362,7 @@ class GRAEBase(AE):
 
             for batch in self.loader:
                 data, _, idx = batch  # No need for labels. Training is unsupervised
-                data = data.to(DEVICE)
+                data = data.to(self.device)
 
                 x_hat, z = self.torch_module(data)  # Forward pass
                 sum_loss += data.shape[0] * self.criterion(data, x_hat).item()
@@ -1393,12 +1396,6 @@ class GRAEBase(AE):
             if self.comet_exp is not None:
                 self.comet_exp.log_metric('relaxation', epoch, epoch=epoch)
 
-        # Sigmoid shape that quickly drops from lam_original to 0 around 50 % of training epochs.
-        # if self.relax:
-        #     self.lam = (-self.lam_original * np.exp((epoch - (self.epochs / 2)) * 0.2)) / (
-        #             1 + np.exp((epoch - (self.epochs / 2)) * 0.2)) \
-        #                + self.lam_original
-
 class DomainTranslation():
     """
     NOTE: This is original to Adam. 
@@ -1424,7 +1421,8 @@ class DomainTranslation():
         self.anchor_weight = anchor_weight
         self.cycle_weight = cycle_weight
 
-    def compute_custom_loss(self, A, B, Z_A, Z_B, idx):
+    def compute_custom_loss(self, A, B, Z_A, Z_B, idx): #    def compute_loss(self, x, x_hat, z, idx):
+
         """
         Compute the combined loss for domain translation.
         
@@ -1550,6 +1548,104 @@ class DomainTranslation():
                 self.optimizer.step()
 
             print(f"Epoch {epoch}, Loss: {loss.item()}")
+
+class SwappedGRAE(nn.Module):
+    """Helper Class that swaps the encoder and decoder of a GRAE model."""
+    def __init__(self, encoder, decoder):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, x):
+        z = self.encoder(x)
+        x_hat = self.decoder(z)
+        return x_hat, z
+    
+    #Overide from GRAE
+    def compute_loss(self, x, x_hat, z, idx):
+        """Compute torch-compatible geometric loss.
+
+        Args:
+            x(torch.Tensor): Input batch.
+            x_hat(torch.Tensor): Reconstructed batch (decoder output).
+            z(torch.Tensor): Batch embedding (encoder output).
+            idx(torch.Tensor): Indices of samples in batch.
+
+        """
+        if self.lam > 0:
+            loss = self.criterion(x, x_hat) + self.lam * self.criterion(z, self.target_embedding[idx])
+        else:
+            loss = self.criterion(x, x_hat)
+
+        loss.backward()
+
+    combined_model = CombinedAE(encoder, decoder)
+    self.torch_module = combined_model
+
+
+    if self.verbose > 0:
+        print("\nPreparing Anchor Data...")
+
+class TAEROE():
+    """
+    Twin AutoEncoders with Regularization to Observed Embedding (TAEROE) class.
+    NOTE: This is original to Adam. 
+    """
+
+    #Overide from GRAE
+    def __init__(self, A_lam=100, A_relax=False, Akwargs={}, B_lam=100, B_relax=False, Bkwargs={}, 
+                 anchor_weight=1.0, cycle_weight=1.0, verbose = 0, epochs = 200):
+        """
+        Args:
+            A_lam, A_relax, Akwargs: Parameters for GRAE A.
+            B_lam, B_relax, Bkwargs: Parameters for GRAE B.
+            anchor_weight: Weight for anchor loss.
+            cycle_weight: Weight for cycle consistency loss.
+        """
+        #Create the twin Regularized AutoEncoders
+        self.graeA = GRAEBase(A_lam, A_relax, **Akwargs)
+        self.graeB = GRAEBase(B_lam, B_relax, **Bkwargs)
+
+        #Set the weights for the anchor and cycle loss
+        self.anchor_weight = anchor_weight
+        self.cycle_weight = cycle_weight
+        self.epochs = epochs
+        self.verbose = verbose
+    
+    def fit(self, A, B, emb, known_anchors, labelsA = None, labelsB = None):
+        """
+        Fit model to data from domains A and B.
+
+        Labels are simply for coloring the graph
+
+        Args:
+            A (torch.Tensor): Data from domain A.
+            B (torch.Tensor): Data from domain B.
+            emb_A (torch.Tensor): Precomputed embeddings for A.
+            emb_B (torch.Tensor): Precomputed embeddings for B.
+        """
+        if self.verbose > 0:
+            print('Fitting GRAE modules...')
+
+        #Save the known Anchors
+        self.known_anchors = known_anchors
+
+        #Add null labels if labels aren't given
+        if labelsA is None:
+            labelsA = np.zeros(len(A))
+        if labelsB is None:
+            labelsB = np.zeros(len(B))
+            
+        dataset_A = BaseDataset(x = A, y = labelsA, split_ratio = 0.8, random_state = 42, split = "none")
+        dataset_B = BaseDataset(x = B, y = labelsB, split_ratio = 0.8, random_state = 42, split = "none")
+        self.graeA.fit(dataset_A, emb[:len(A)])
+        self.graeB.fit(dataset_B, emb[len(A):])
+
+        #Create two Devices, for the two seperate networks
+        new_device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
+        encoder = self.graeA.torch_module.encoder.to(new_device)
+        decoder = self.graeB.torch_module.decoder.to(new_device)
+        
 
 class EmbeddingProber:
     """Class to benchmark MSE, the coefficient of determination (R2) for ground truth continuous variables and
