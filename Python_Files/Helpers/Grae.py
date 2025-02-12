@@ -1785,8 +1785,21 @@ class TAEROE():
         encoderB = self.graeB.torch_module.encoder
         decoderB = self.graeB.torch_module.decoder
 
-        swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **self.SGkwargs)
-        swapped.fit(A, B, emb, known_anchors)
+        if self.verbose > 0:
+            print("\n ---------------------------------\nBeginning Training Loop for Swapped model...")
+
+        self.swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **self.SGkwargs)
+        self.swapped.fit(A, B, emb, known_anchors)
+
+        if self.verbose > 0:
+            print("\n Processed Finished.")
+    
+    def transform(self, A):
+        return self.swapped.transform(A)
+    
+    def inverse_transform(self, B):
+        return self.swapped.inverse_transform(B)
+
         
 
 class EmbeddingProber:
