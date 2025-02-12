@@ -1551,12 +1551,15 @@ class DomainTranslation():
 
 class SwappedGRAE(GRAEBase):
     """Helper Class that swaps the encoder and decoder of a GRAE model."""
-    def __init__(self, encoder, decoder, lam_anchor = 0.01, **kwargs):
+    def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_anchor = 0.01, **kwargs):
         #Create a new device to complete the secondary training
         self.device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
 
-        self.encoder = encoder.to(self.device)
-        self.decoder = decoder.to(self.device)
+        #This represents the full loop expressed as A -> Z -> B -> Z -> A
+        self.encoderA = encoderA.to(self.device)
+        self.decoderB = decoderB.to(self.device)
+        self.encoderB = encoderB.to(self.device)
+        self.decoderA = decoderA.to(self.device)
 
         super().__init__(device = self.device, **kwargs)
 
@@ -1566,7 +1569,7 @@ class SwappedGRAE(GRAEBase):
         
         Anchors need to be so that the encoder is first, then Decoder second"""
         #Save the anchors
-        self.anchors = anchors #TODO: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies
+        self.anchors = anchors #NOTE: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies. I also could keep twin GRAE swaps
 
         super().fit(x, emb)
 
@@ -1591,6 +1594,71 @@ class SwappedGRAE(GRAEBase):
             loss = self.criterion(x, x_hat)
 
         loss.backward()
+
+    #Override from GRAE's parent AE
+    def train_body(self, batch):
+        """Called in main training loop to update torch_module parameters.
+
+        Args:
+            batch(tuple[torch.Tensor]): Training batch.
+
+        """
+        data, _, idx = batch  # No need for labels. Training is unsupervised
+        data = data.to(self.device)
+
+        #TODO: We will want to do this twice
+        x_hat, z = self.torch_module(data)  # Forward pass
+        self.compute_loss(data, x_hat, z, idx)
+
+    #Overide from the Torch_Modules -> Note this is the same despite the archetecture differences
+    def forward(self, x):
+        """Forward pass.
+
+        Args:
+            x(torch.Tensor): Input data.
+
+        Returns:
+            tuple:
+                torch.Tensor: Reconstructions
+                torch.Tensor: Embedding (latent space coordinates)
+
+        """
+        # A to Z
+        a_z = self.encoderA(x)
+        a_z_2 = a_z
+
+        if self.vae:
+            mu, logvar = a_z.chunk(2, dim=-1)
+
+            # Reparametrization trick
+            if self.training:
+                a_z_2 = mu + torch.exp(logvar / 2.) * torch.randn_like(logvar)
+            else:
+                a_z_2 = mu
+
+        #Z to B
+        b = self.decoderB(a_z_2)
+
+        # B to Z
+        b_z = self.encoderB(b)
+        b_z_2 = b_z
+
+        if self.vae:
+            mu, logvar = b_z.chunk(2, dim=-1)
+
+            # Reparametrization trick
+            if self.training:
+                b_z_2 = mu + torch.exp(logvar / 2.) * torch.randn_like(logvar)
+            else:
+                b_z_2 = mu
+
+        # Z to A
+        a = self.decoderA(b_z_2)
+
+        # Standard Autoencoder forward pass
+        # Note : will still return mu and logvar as a single tensor for compatibility with other classes
+        return a, b, a_z, b_z
+
 
 class TAEROE():
     """
