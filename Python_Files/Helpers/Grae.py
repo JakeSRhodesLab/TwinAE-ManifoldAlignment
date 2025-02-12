@@ -1549,68 +1549,17 @@ class DomainTranslation():
 
             print(f"Epoch {epoch}, Loss: {loss.item()}")
 
-class SwappedGRAE(GRAEBase):
-    """Helper Class that swaps the encoder and decoder of a GRAE model."""
-    def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_anchor = 0.01, **kwargs):
-        #Create a new device to complete the secondary training
-        self.device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
+# Define a custom module that chains encoderA -> decoderB -> encoderB -> decoderA
+class SwappedModule(nn.Module):
+    def __init__(self, encoderA, decoderB, encoderB, decoderA, vae=False):
+        super().__init__()
+        self.encoderA = encoderA
+        self.decoderB = decoderB
+        self.encoderB = encoderB
+        self.decoderA = decoderA
+        self.vae = vae
 
-        #This represents the full loop expressed as A -> Z -> B -> Z -> A
-        self.encoderA = encoderA.to(self.device)
-        self.decoderB = decoderB.to(self.device)
-        self.encoderB = encoderB.to(self.device)
-        self.decoderA = decoderA.to(self.device)
-
-        super().__init__(device = self.device, **kwargs)
-
-
-    def fit(self, x,  emb, anchors):
-        """Fit model to data.
-        
-        Anchors need to be so that the encoder is first, then Decoder second"""
-        #Save the anchors
-        self.anchors = anchors #NOTE: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies. I also could keep twin GRAE swaps
-
-        super().fit(x, emb)
-
-    #Overide from GRAE
-    def compute_loss(self, x, x_hat, z, idx):
-        """Compute torch-compatible geometric loss.
-
-        Args:
-            x(torch.Tensor): Input batch -> Data from domain A (Or B)
-            x_hat(torch.Tensor): Reconstructed batch (decoder output). -> Data from domain B (or A)
-            z(torch.Tensor): Batch embedding (encoder output).
-            idx(torch.Tensor): Indices of samples in batch.
-
-        """
-        if self.lam > 0:
-            #Reconstruction loss - We only want to do this if its an anchor point!!!
-            loss = self.criterion(x, x_hat)
-
-            #Embedding loss
-            loss += self.lam * self.criterion(z, self.target_embedding[idx])
-        else:
-            loss = self.criterion(x, x_hat)
-
-        loss.backward()
-
-    #Override from GRAE's parent AE
-    def train_body(self, batch):
-        """Called in main training loop to update torch_module parameters.
-
-        Args:
-            batch(tuple[torch.Tensor]): Training batch.
-
-        """
-        data, _, idx = batch  # No need for labels. Training is unsupervised
-        data = data.to(self.device)
-
-        #TODO: We will want to do this twice
-        x_hat, z = self.torch_module(data)  # Forward pass
-        self.compute_loss(data, x_hat, z, idx)
-
-    #Overide from the Torch_Modules -> Note this is the same despite the archetecture differences
+     #Overide from the Torch_Modules -> Note this is the same despite the archetecture differences
     def forward(self, x):
         """Forward pass.
 
@@ -1656,9 +1605,75 @@ class SwappedGRAE(GRAEBase):
         a = self.decoderA(b_z_2)
 
         # Standard Autoencoder forward pass
-        # Note : will still return mu and logvar as a single tensor for compatibility with other classes
         return a, b, a_z, b_z
+    
 
+class SwappedGRAE(GRAEBase):
+    """Helper Class that swaps the encoder and decoder of a GRAE model."""
+    def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_anchor = 0.01, **kwargs):
+        #Create a new device to complete the secondary training
+        self.device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
+
+        super().__init__(device = self.device, **kwargs)
+
+        #This represents the full loop expressed as A -> Z -> B -> Z -> A
+        self.encoderA = encoderA.to(self.device)
+        self.decoderB = decoderB.to(self.device)
+        self.encoderB = encoderB.to(self.device)
+        self.decoderA = decoderA.to(self.device)
+
+        # Instantiate the module with the collected components.
+        self.torch_module = SwappedModule(self.encoderA, self.decoderB, self.encoderB, self.decoderA, vae=getattr(self, "vae", False))
+
+
+    def fit(self, x,  emb, anchors):
+        """Fit model to data.
+        
+        Anchors need to be so that the encoder is first, then Decoder second"""
+        #Save the anchors
+        self.anchors = anchors #NOTE: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies. I also could keep twin GRAE swaps
+
+        super().fit(x, emb)
+
+    #Overide from GRAE
+    def compute_loss(self, x, x_hat, z, idx):
+        """Compute torch-compatible geometric loss.
+
+        Args:
+            x(torch.Tensor): Input batch -> Data from domain A (Or B)
+            x_hat(torch.Tensor): Reconstructed batch (decoder output). -> Data from domain B (or A)
+            z(torch.Tensor): Batch embedding (encoder output).
+            idx(torch.Tensor): Indices of samples in batch.
+
+        """
+        if self.lam > 0:
+            #Reconstruction loss - We only want to do this if its an anchor point!!!
+            loss = self.criterion(x, x_hat)
+
+            #Embedding loss
+            loss += self.lam * self.criterion(z, self.target_embedding[idx])
+        else:
+            loss = self.criterion(x, x_hat)
+
+        loss.backward()
+
+    #Override from GRAE's parent AE
+    def train_body(self, batch):
+        """Called in main training loop to update torch_module parameters.
+
+        Args:
+            batch(tuple[torch.Tensor]): Training batch.
+
+        """
+        data, _, idx = batch  # No need for labels. Training is unsupervised
+        data = data.to(self.device)
+
+        #TODO: We will want to do this twice
+        x_hat, z = self.forward(data)  # Forward pass
+        self.compute_loss(data, x_hat, z, idx)
+
+    
+    #TODO: Relook the transform and inverse transform functions | We will need a full transform (A to Z to B) and an Inverse
 
 class TAEROE():
     """
