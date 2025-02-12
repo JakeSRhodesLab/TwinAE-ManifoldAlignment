@@ -1062,7 +1062,7 @@ class AE(BaseModel):
         torch.backends.cudnn.benchmark = False
 
         # Save data shape
-        self.data_shape = x[0][0].shape #[0].shape ADAM EDIT
+        self.data_shape = x[0][0].shape #EDITED
 
         # Fetch appropriate torch module
         if self.torch_module is None:
@@ -1637,7 +1637,7 @@ class SwappedGRAE(GRAEBase):
         self.anchors = anchors #NOTE: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies. I also could keep twin GRAE swaps
 
         #Save Data B
-        self.B = B
+        self.B = B.data.to(self.device) # We have to index it because its a BaseDataset object
 
         super().fit(A, emb)
 
@@ -1653,7 +1653,7 @@ class SwappedGRAE(GRAEBase):
 
         """
         #Create a subset of the idexes that are also anchors so we can compare anchor to anchor
-        anchor_idx = [idx[i] for i in range(len(idx)) if idx[i] in self.anchors[:, 0]]
+        anchor_idx = [i for i in range(len(idx)) if idx[i] in self.anchors[:, 0]]
 
         #Full Reconstruction loss (A to A)
         if self.lam_A_to_A > 0:
@@ -1663,7 +1663,7 @@ class SwappedGRAE(GRAEBase):
 
         # Domain Translation loss - We only want to do this if its an anchor point!!!
         if self.lam_A_to_B > 0 and len(anchor_idx) > 0:
-            loss += self.criterion(self.B[anchor_idx], b[anchor_idx]) * self.lam_A_to_B # I think we should weight this one the most?
+            loss += self.criterion(self.B[idx[anchor_idx]], b[anchor_idx]) * self.lam_A_to_B # I think we should weight this one the most?
 
         if self.lam > 0:
             #Embedding loss (A to z and B to z)
@@ -1786,10 +1786,10 @@ class TAEROE():
         decoderB = self.graeB.torch_module.decoder
 
         if self.verbose > 0:
-            print("\n ---------------------------------\nBeginning Training Loop for Swapped model...")
+            print("\n------------------------------------------------\nBeginning Training Loop for Swapped model...")
 
         self.swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **self.SGkwargs)
-        self.swapped.fit(A, B, emb, known_anchors)
+        self.swapped.fit(dataset_A, dataset_B, emb, known_anchors)
 
         if self.verbose > 0:
             print("\n Processed Finished.")
