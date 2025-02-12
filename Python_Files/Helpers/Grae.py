@@ -1610,9 +1610,12 @@ class SwappedModule(nn.Module):
 
 class SwappedGRAE(GRAEBase):
     """Helper Class that swaps the encoder and decoder of a GRAE model."""
-    def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_anchor = 0.01, **kwargs):
+    def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **kwargs):
         #Create a new device to complete the secondary training
         self.device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
+
+        self.lam_A_to_B = lam_A_to_B
+        self.lam_A_to_A = lam_A_to_A
 
         super().__init__(device = self.device, **kwargs)
 
@@ -1626,17 +1629,20 @@ class SwappedGRAE(GRAEBase):
         self.torch_module = SwappedModule(self.encoderA, self.decoderB, self.encoderB, self.decoderA, vae=getattr(self, "vae", False))
 
 
-    def fit(self, x,  emb, anchors):
+    def fit(self, A, B,  emb, anchors):
         """Fit model to data.
         
         Anchors need to be so that the encoder is first, then Decoder second"""
         #Save the anchors
         self.anchors = anchors #NOTE: Instead of using the full dataset, I should just use the anchors as the data. I can keep the anchors to check the indicies. I also could keep twin GRAE swaps
 
-        super().fit(x, emb)
+        #Save Data B
+        self.B = B
+
+        super().fit(A, emb)
 
     #Overide from GRAE
-    def compute_loss(self, x, x_hat, z, idx):
+    def compute_loss(self, A, a, b, a_z, b_z, idx):
         """Compute torch-compatible geometric loss.
 
         Args:
@@ -1646,14 +1652,23 @@ class SwappedGRAE(GRAEBase):
             idx(torch.Tensor): Indices of samples in batch.
 
         """
-        if self.lam > 0:
-            #Reconstruction loss - We only want to do this if its an anchor point!!!
-            loss = self.criterion(x, x_hat)
+        #Create a subset of the idexes that are also anchors so we can compare anchor to anchor
+        anchor_idx = [idx[i] for i in range(len(idx)) if idx[i] in self.anchors[:, 0]]
 
-            #Embedding loss
-            loss += self.lam * self.criterion(z, self.target_embedding[idx])
+        #Full Reconstruction loss (A to A)
+        if self.lam_A_to_A > 0:
+            loss = self.criterion(A, a) * self.lam_A_to_A
         else:
-            loss = self.criterion(x, x_hat)
+            loss = 0
+
+        # Domain Translation loss - We only want to do this if its an anchor point!!!
+        if self.lam_A_to_B > 0 and len(anchor_idx) > 0:
+            loss += self.criterion(self.B[anchor_idx], b[anchor_idx]) * self.lam_A_to_B # I think we should weight this one the most?
+
+        if self.lam > 0:
+            #Embedding loss (A to z and B to z)
+            loss += self.lam * self.criterion(a_z, self.target_embedding[idx])
+            loss += self.lam * self.criterion(b_z, self.target_embedding[idx])
 
         loss.backward()
 
@@ -1669,13 +1684,46 @@ class SwappedGRAE(GRAEBase):
         data = data.to(self.device)
 
         #TODO: We will want to do this twice
-        x_hat, z = self.forward(data)  # Forward pass
-        self.compute_loss(data, x_hat, z, idx)
+        a, b, a_z, b_z = self.torch_module(data)  # Forward pass
+        self.compute_loss(data, a, b, a_z, b_z, idx)
 
     
     #TODO: Relook the transform and inverse transform functions | We will need a full transform (A to Z to B) and an Inverse
+    def transform(self, A):
+        "Returns the full process A to Z to B to Z to A. Returns the final A and B."
+
+        self.torch_module.eval()
+        with torch.no_grad():
+            if not torch.is_tensor(A):
+                A = torch.tensor(A, dtype=torch.float32, device=self.device)
+            # Full forward pass through the swapped module:
+            #   encoderA -> decoderB gives the A-to-B translation
+            #   encoderB -> decoderA gives the B-to-A translation (in the cycle)
+            a, b, a_z, b_z = self.torch_module(A)
+
+        #Return the predicted A and B
+        return a.cpu().numpy(), b.cpu().numpy(), a_z.cpu().numpy(), b_z.cpu().numpy()
+        
+    def inverse_transform(self, B):
+        self.torch_module.eval()
+        with torch.no_grad():
+            if not torch.is_tensor(B):
+                B = torch.tensor(B, dtype=torch.float32, device=self.device)
+            # For inverse, we apply the reverse transformation:
+            
+            # Map from domain B back to A via encoderB then decoderA.
+            b_z = self.encoderB(B)
+            a = self.decoderA(b_z)
+        
+            # Map from domain A back to B via encoderA then decoderB.
+            a_z = self.encoderA(a)
+            b = self.decoderB(b_z)
+
+        return a.cpu().numpy(), b.cpu().numpy(), a_z.cpu().numpy(), b_z.cpu().numpy()
+
 
 class TAEROE():
+    #TODO: Right now I am assuming all the anchors are paired [1, 1] and never [2,1]. Write code later to enforce this. 
     """
     Twin AutoEncoders with Regularization to Observed Embedding (TAEROE) class.
     NOTE: This is original to Adam. 
@@ -1683,7 +1731,7 @@ class TAEROE():
 
     #Overide from GRAE
     def __init__(self, A_lam=100, A_relax=False, Akwargs={}, B_lam=100, B_relax=False, Bkwargs={}, 
-                 anchor_weight=1.0, cycle_weight=1.0, verbose = 0, epochs = 200):
+                 anchor_weight=1.0, cycle_weight=1.0, verbose = 0, epochs = 200, SGkwargs = {}):
         """
         Args:
             A_lam, A_relax, Akwargs: Parameters for GRAE A.
@@ -1700,6 +1748,7 @@ class TAEROE():
         self.cycle_weight = cycle_weight
         self.epochs = epochs
         self.verbose = verbose
+        self.SGkwargs = SGkwargs
     
     def fit(self, A, B, emb, known_anchors, labelsA = None, labelsB = None):
         """
@@ -1730,10 +1779,14 @@ class TAEROE():
         self.graeA.fit(dataset_A, emb[:len(A)])
         self.graeB.fit(dataset_B, emb[len(A):])
 
-        #Create two Devices, for the two seperate networks
-        new_device = torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
-        encoder = self.graeA.torch_module.encoder.to(new_device)
-        decoder = self.graeB.torch_module.decoder.to(new_device)
+        #Select the encoders and decoders
+        encoderA = self.graeA.torch_module.encoder
+        decoderA = self.graeA.torch_module.decoder
+        encoderB = self.graeB.torch_module.encoder
+        decoderB = self.graeB.torch_module.decoder
+
+        swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **self.SGkwargs)
+        swapped.fit(A, B, emb, known_anchors)
         
 
 class EmbeddingProber:
