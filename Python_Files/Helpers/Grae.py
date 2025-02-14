@@ -1607,7 +1607,6 @@ class SwappedModule(nn.Module):
         # Standard Autoencoder forward pass
         return a, b, a_z, b_z
     
-
 class SwappedGRAE(GRAEBase):
     """Helper Class that swaps the encoder and decoder of a GRAE model."""
     def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **kwargs):
@@ -1620,6 +1619,8 @@ class SwappedGRAE(GRAEBase):
         super().__init__(device = self.device, **kwargs)
 
         #This represents the full loop expressed as A -> Z -> B -> Z -> A
+        # Normal autoencode A -> Z (compare against this)
+        # A -> Z -> B (compare against this)
         self.encoderA = encoderA.to(self.device)
         self.decoderB = decoderB.to(self.device)
         self.encoderB = encoderB.to(self.device)
@@ -1665,6 +1666,7 @@ class SwappedGRAE(GRAEBase):
         if self.lam_A_to_B > 0 and len(anchor_idx) > 0:
             loss += self.criterion(self.B[idx[anchor_idx]], b[anchor_idx]) * self.lam_A_to_B # I think we should weight this one the most?
 
+        #Geometry Regularization to the Embedding
         if self.lam > 0:
             #Embedding loss (A to z and B to z)
             loss += self.lam * self.criterion(a_z, self.target_embedding[idx])
@@ -1720,7 +1722,6 @@ class SwappedGRAE(GRAEBase):
             b = self.decoderB(b_z)
 
         return a.cpu().numpy(), b.cpu().numpy(), a_z.cpu().numpy(), b_z.cpu().numpy()
-
 
 class TAEROE():
     #TODO: Right now I am assuming all the anchors are paired [1, 1] and never [2,1]. Write code later to enforce this. 
