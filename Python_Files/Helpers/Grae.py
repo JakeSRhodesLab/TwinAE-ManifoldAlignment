@@ -1306,6 +1306,9 @@ class GRAEBase(AE):
         self.target_embedding = None  # To store the target embedding as computed by embedder
         self.relax = relax
         self.device = device
+        self.loss = 0
+        self.history = {"epoch": [], "loss": []}  # NEW: initialize history
+
 
 
         # self.embedder = embedder(random_state=self.random_state,
@@ -1345,6 +1348,7 @@ class GRAEBase(AE):
             loss = self.criterion(x, x_hat)
 
         loss.backward()
+        self.loss += loss.item()
 
     def log_metrics_train(self, epoch):
         """Log train metrics to comet if comet experiment was set.
@@ -1379,6 +1383,12 @@ class GRAEBase(AE):
 
             self.torch_module.train()
 
+    def update_history(self, epoch):
+        """Log loss history for each epoch."""
+        self.history["epoch"].append(epoch)
+        self.history["loss"].append(self.loss)
+        self.loss = 0
+
     def end_epoch(self, epoch):
         """Method called at the end of every training epoch.
 
@@ -1390,6 +1400,8 @@ class GRAEBase(AE):
             epoch(int): Current epoch.
 
         """
+        self.update_history(epoch)
+
         if self.relax and self.lam > 0 and self.early_stopping_count == int(self.patience / 2):
             self.lam = 0  # Turn off constraint
 
@@ -1607,6 +1619,7 @@ class SwappedModule(nn.Module):
         # Standard Autoencoder forward pass
         return a, b, a_z, b_z
     
+
 class SwappedGRAE(GRAEBase):
     """Helper Class that swaps the encoder and decoder of a GRAE model."""
     def __init__(self, encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **kwargs):
@@ -1619,8 +1632,6 @@ class SwappedGRAE(GRAEBase):
         super().__init__(device = self.device, **kwargs)
 
         #This represents the full loop expressed as A -> Z -> B -> Z -> A
-        # Normal autoencode A -> Z (compare against this)
-        # A -> Z -> B (compare against this)
         self.encoderA = encoderA.to(self.device)
         self.decoderB = decoderB.to(self.device)
         self.encoderB = encoderB.to(self.device)
@@ -1628,7 +1639,6 @@ class SwappedGRAE(GRAEBase):
 
         # Instantiate the module with the collected components.
         self.torch_module = SwappedModule(self.encoderA, self.decoderB, self.encoderB, self.decoderA, vae=getattr(self, "vae", False))
-
 
     def fit(self, A, B,  emb, anchors):
         """Fit model to data.
@@ -1673,6 +1683,7 @@ class SwappedGRAE(GRAEBase):
             loss += self.lam * self.criterion(b_z, self.target_embedding[idx])
 
         loss.backward()
+        self.loss += loss.item()
 
     #Override from GRAE's parent AE
     def train_body(self, batch):
@@ -1722,6 +1733,7 @@ class SwappedGRAE(GRAEBase):
             b = self.decoderB(b_z)
 
         return a.cpu().numpy(), b.cpu().numpy(), a_z.cpu().numpy(), b_z.cpu().numpy()
+
 
 class TAEROE():
     #TODO: Right now I am assuming all the anchors are paired [1, 1] and never [2,1]. Write code later to enforce this. 
@@ -1789,7 +1801,7 @@ class TAEROE():
         if self.verbose > 0:
             print("\n------------------------------------------------\nBeginning Training Loop for Swapped model...")
 
-        self.swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, lam_A_to_B = 2, lam_A_to_A = 1, **self.SGkwargs)
+        self.swapped = SwappedGRAE(encoderA, decoderA, encoderB, decoderB, **self.SGkwargs)
         self.swapped.fit(dataset_A, dataset_B, emb, known_anchors)
 
         if self.verbose > 0:
@@ -1797,9 +1809,52 @@ class TAEROE():
     
     def transform(self, A):
         return self.swapped.transform(A)
-    
+
     def inverse_transform(self, B):
         return self.swapped.inverse_transform(B)
+    
+
+    def plot_histories(self, same_plot=True):
+        """Plot loss curves history and return the loss values.
+
+        Args:
+            same_plot (bool): If True, plot all histories on the same plot.
+                              If False, plot each history on separate subplots.
+
+        Returns:
+            dict: Dictionary containing loss history with keys 'epoch' and 'loss'.
+        """
+        import matplotlib.pyplot as plt
+
+        histories = [self.graeA.history, self.graeB.history, self.swapped.history]
+        labels = ['GRAE A', 'GRAE B', 'Swapped']
+        colors = ['b', 'r', 'g']
+
+        if same_plot:
+            plt.figure(figsize=(15, 7))
+            for idx, history in enumerate(histories):
+                plt.plot(history["epoch"], history["loss"], color=colors[idx],
+                         marker='o', label=labels[idx])
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.title('Training Loss Curve')
+            plt.legend()
+            plt.grid(True)
+            plt.show()
+        else:
+            fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+            for idx, history in enumerate(histories):
+                axes[idx].plot(history["epoch"], history["loss"], color=colors[idx],
+                               marker='o', label=labels[idx])
+                axes[idx].set_xlabel('Epoch')
+                axes[idx].set_ylabel('Loss')
+                axes[idx].set_title(f'{labels[idx]} Training Loss Curve')
+                axes[idx].grid(True)
+                axes[idx].legend()
+            plt.tight_layout()
+            plt.show()
+
+        return {"epoch": histories[0]["epoch"], "loss": [history["loss"] for history in histories]}
 
         
 
