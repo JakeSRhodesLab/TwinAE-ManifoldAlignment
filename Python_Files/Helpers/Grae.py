@@ -1698,8 +1698,11 @@ class SwappedGRAE(GRAEBase):
 
         #TODO: We will want to do this twice
         a, b, a_z, b_z = self.torch_module(data)  # Forward pass
-        self.compute_loss(data, a, b, a_z, b_z, idx)
 
+        try:
+            self.compute_loss(data, a, b, a_z, b_z, idx)
+        except Exception as e:
+            raise Exception(f"Error in compute_loss: {e}. CHECK THE DATA YOU ENTERED")
     
     #TODO: Relook the transform and inverse transform functions | We will need a full transform (A to Z to B) and an Inverse
     def transform(self, A):
