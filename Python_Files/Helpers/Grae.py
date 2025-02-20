@@ -353,8 +353,8 @@ class BaseModel:
             # Train data is grayscale and Test data is colored
             z_test = self.transform(x_test)
             y_test = x_test.targets.numpy()
-            plt.scatter(*z_train.T, c=y_train, s=s / 5, alpha=.5)
-            plt.scatter(*z_test.T, c=y_test, cmap=cmap, s=s)
+            plt.scatter(*z_train.T, c=y_train, s=s / 5, alpha=.7, edgecolors='black', linewidths=0.125)
+            plt.scatter(*z_test.T, c=y_test, cmap=cmap, s=s, edgecolors='black', linewidths=0.3)
 
         if self.comet_exp is not None:
             self.comet_exp.log_figure(figure=plt, figure_name=title)
