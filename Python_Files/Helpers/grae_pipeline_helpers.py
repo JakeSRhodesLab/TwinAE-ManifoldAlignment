@@ -6,13 +6,15 @@ import pandas as pd
 from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs
 from sklearn.manifold import MDS
 from sklearn.model_selection import train_test_split
-from Helpers.Grae import GRAEBase, BaseDataset
+from Helpers.Grae import GRAEBase, anchorGRAE, BaseDataset
 from scipy.stats import pearsonr
 import seaborn as sns
 import matplotlib.pyplot as plt
 import json
 import os
 from scipy.spatial.distance import pdist, squareform
+
+from Pipeline_Helpers import get_RF_score, get_embedding_scores
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -118,11 +120,16 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params,  lam = 100, *, return_labels = False):
+def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original", *, return_labels = False):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
     """
+
+    if grae_build == "anchor_loss":
+        grae_class = anchorGRAE
+    else:
+        grae_class = GRAEBase
 
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
@@ -160,12 +167,7 @@ def get_embeddings(method, dataset, split, params,  lam = 100, *, return_labels 
     method_class = create_and_fit_method(method_data, data, params)
 
     #Get the true embedding
-    block_full = method_data["Block"](method_class)
     emb_full = mds.fit_transform(method_data["Block"](method_class))
-    #print("Full Embedding Complete")
-
-    if return_labels:
-        normal_labels = np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
 
     """GET GRAE's EMBEDDING below"""
     # Reformat data using x train
@@ -182,14 +184,14 @@ def get_embeddings(method, dataset, split, params,  lam = 100, *, return_labels 
 
 
     #GRAE on domain A
-    myGrae = GRAEBase(lam = lam, n_components = n_comps)
+    myGrae = grae_class(lam = lam, n_components = n_comps)
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
     testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = 42, split = "none")
     pred_A, _ = myGrae.score(testA)
 
     #Grae on domain B 
-    myGrae = GRAEBase(lam = lam, n_components = n_comps)
+    myGrae = grae_class(lam = lam, n_components = n_comps)
     split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
     testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = 42, split = "none")
@@ -199,12 +201,8 @@ def get_embeddings(method, dataset, split, params,  lam = 100, *, return_labels 
     A_train = emb_partial[:int(len(emb_partial)/2)]
     B_train = emb_partial[int(len(emb_partial)/2):]
     emb_pred = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
-    #print("GRAE Embedding Complete")
-
-    if return_labels:
-        return emb_partial, emb_pred, emb_full, normal_labels, np.hstack([y_A_train, y_A_test, y_B_train, y_B_test])
-    
-    return emb_pred, emb_full, block_full
+ 
+    return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
 def GRAE_tests(method, dataset, split, params, grae_build = "original", *, permutations = 10000, 
                 plot = False, repeat_results = False): #DON'T Delete any of these parameters - though you can add your own if you want
@@ -231,50 +229,17 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", *, permu
         #Get the embeddings
         emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False, lam = lam)
 
-        matrix1 = squareform(pdist(emb_pred))
-        matrix2 = squareform(pdist(emb_full))
-        
-        # Extract the upper triangle of the distance matrices (excluding the diagonal)
-        mask = np.triu_indices_from(matrix1, k=1)
-        dist1, dist2 = matrix1[mask], matrix2[mask]
-        
-        # Compute the observed Pearson correlation
-        r_obs, _ = pearsonr(dist1, dist2)
-        
-        # Permutation test to find the null distribution of the correlation
-        perm_r = []
-        for _ in range(permutations):
-            permuted = np.random.permutation(dist2)
-            perm_r.append(pearsonr(dist1, permuted)[0])
-        
-        # Compute the p-value
-        perm_r = np.array(perm_r)
-        p_value = np.sum(perm_r >= r_obs) / permutations
-        
-        if plot == True:
-            # Plot the smoothed distribution curve of the null distribution of correlations
-            plt.figure(figsize=(10, 6))
-            sns.kdeplot(perm_r, color='blue', lw=2)  # KDE line
-            
-            # Add a vertical line to represent the observed correlation
-            plt.axvline(x=r_obs, color='red', linestyle='--', lw=2)
-            
-            # Title and labels
-            plt.title('Null Distribution of Correlations Between Embeddings with Observed Correlation', fontsize=14)
-            plt.xlabel('Correlation', fontsize=12)
-            plt.ylabel('Density', fontsize=12)
-            
-            # Show plot
-            plt.show()
+        #TODO: Calculate scores
+        #Check to see what functions we can hookly doo upto
 
-        save_mantel_results(method, dataset, split, r_obs, p_value, perm_r, lam = lam)
+        save_GRAE_Build_results(method, dataset, split, r_obs, p_value, perm_r, lam = lam)
         
         return r_obs, p_value #Results are saved above
     
     except:
         return np.nan, np.nan
 
-def save_GRAE_Build_results(method, dataset, split, mse, scores lam = 100, grae_build = "original"):   
+def save_GRAE_Build_results(method, dataset, split, mse, scores, lam = 100, grae_build = "original"):   
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
