@@ -83,7 +83,7 @@ def create_tasks_for_parrelization(df):
     #Iterate through the dataframe
     for index, row in df.iterrows():
 
-        for grae_build in ["anchor_loss", "original"]:
+        for grae_build in ["anchor_loss050", "anchor_loss100", "anchor_loss150", "original"]:
             for seed in [42, 4921, 1906]:
                 #Get the parameters, method, and dataset
                 params = row["Best_Params"]
@@ -175,8 +175,14 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     #GRAE on domain A
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
 
-    if grae_build == "anchor_loss":
-        myGrae = anchorGRAE(lam = lam, n_components = n_comps)
+    if grae_build == "original":
+        if grae_build[-3:] == "050":
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=50)
+        elif grae_build[-3:] == "100":
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=100)
+        else:
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=150)
+
         myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)], anchors = data.anchors)
 
     else:
@@ -189,8 +195,14 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     #Grae on domain B 
     split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
 
-    if grae_build == "anchor_loss":
-        myGrae = anchorGRAE(lam = lam, n_components = n_comps)
+    if grae_build != "original":
+        if grae_build[-3:] == "050":
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=50)
+        elif grae_build[-3:] == "100":
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=100)
+        else:
+            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=150)
+
         myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):], anchors = data.anchors)
 
     else:

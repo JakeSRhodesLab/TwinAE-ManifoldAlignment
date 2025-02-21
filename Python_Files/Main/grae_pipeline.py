@@ -11,7 +11,7 @@ print("Imports complete.")
 df = extract_all_files()
 
 #Create the tasks
-tasks = create_tasks_for_parrelization(df)[:5]
+tasks = create_tasks_for_parrelization(df)
 
 random.shuffle(tasks)
 
