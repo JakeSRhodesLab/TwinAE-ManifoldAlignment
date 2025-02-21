@@ -1696,6 +1696,8 @@ def clear_directory(text_curater = "all", not_text = None, directory = "default"
         directories = [CURR_DIR + "/RegressionData/" + file_name for file_name in file_names]
     elif directory.lower() == "mantel":
         directories = [CURR_DIR + "/Mantel"]
+    elif directory.lower() == "grae_builds":
+        directories = [CURR_DIR + "/Grae_Builds"]
     else:
         directories = [CURR_DIR + "/ManifoldData_RF/" + file_name for file_name in file_names]
 
