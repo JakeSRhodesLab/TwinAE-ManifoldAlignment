@@ -224,9 +224,14 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
             return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, return_labels = False, lam = lam)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, return_labels = False)
 
-        #TODO: Calculate scores
+        # Calculate MSE between embeddings
+        train_len = len(labels[0])
+        test_len = train_len + len(labels[1])
+        mse = np.mean((emb_pred[train_len:test_len, test_len + train_len:] - emb_full[train_len:test_len, test_len + train_len:]) ** 2)
+
+        #Calculate scores
         rf_oob_true = get_RF_score(emb_full, labels, seed)
         rf_oob_pred = get_RF_score(emb_pred, labels, seed)
 
@@ -238,20 +243,18 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
 
         #Check to see what functions we can hookly doo upto
 
-        save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed)
+        save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed)
         
         return True #Indicating sucessful run    
     except:
         return False #Indicating failed run
 
-def save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", seed = 42):   
+def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", seed = 42):   
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
     file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}_seed{str(seed)}.json"
     file_path = os.path.join(results_dir, file_name)
-
-    
 
     full_rf_oob, full_knn_scoreA, full_rf_scoreA, full_knn_metricA, full_rf_metricA, full_knn_scoreB, full_rf_scoreB, full_knn_metricB, full_rf_metricB = emb_full_scores
     pred_rf_oob, pred_knn_scoreA, pred_rf_scoreA, pred_knn_metricA, pred_rf_metricA, pred_knn_scoreB, pred_rf_scoreB, pred_knn_metricB, pred_rf_metricB = emb_pred_scores
@@ -262,6 +265,7 @@ def save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_sc
         "split": split,
         "lam": lam,
         "grae_build": grae_build,
+        "MSE": mse,
         "full_rf_oob": full_rf_oob,
         "full_knn_scoreA": full_knn_scoreA,
         "full_rf_scoreA": full_rf_scoreA,
@@ -290,8 +294,9 @@ def save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_sc
 
     print(f"Mantel results saved to: {file_path}")
 
-def read_all_mantel_results():
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+def read_all_graeBuild_results():
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
+
     all_data = []
 
     for file in os.listdir(results_dir):
@@ -302,44 +307,6 @@ def read_all_mantel_results():
             all_data.append(data)
 
     return pd.DataFrame(all_data)
-
-def read_all_mantel_results_lam():
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam"
-    all_data = []
-
-    for file in os.listdir(results_dir):
-        if file.endswith(".json"):
-            file_path = os.path.join(results_dir, file)
-            with open(file_path, "r") as f:
-                data = json.load(f)
-            all_data.append(data)
-
-    lam_df = pd.DataFrame(all_data)
-    normal_df = read_all_mantel_results()
-
-    #Add lambda column to df 
-    normal_df["lam"] = 100
-
-    return pd.concat([normal_df, lam_df])
-
-def plot_averaged_mantel_stats(df):
-    # Average r_obs and plot distribution with vertical line
-    avg_r = df["r_obs"].mean()
-
-    # Compute average of five point summaries and create single boxplot
-    vals = df["five_point_summary"].apply(lambda x: [x["min"], x["Q1"], x["median"], x["Q3"], x["max"]])
-    plt.figure()
-    #Set figure to strecth form -0.3 to 1
-    plt.xlim(-0.3, 1)
-    plt.boxplot([[vals.apply(lambda v: v[0]).mean(),
-                   vals.apply(lambda v: v[1]).mean(),
-                   vals.apply(lambda v: v[2]).mean(),
-                   vals.apply(lambda v: v[3]).mean(),
-                   vals.apply(lambda v: v[4]).mean()]],
-                   vert=False)
-    plt.title("Averaged Five-Point Summary Boxplot")
-    plt.axvline(avg_r, color='red', linestyle='--', label = "Average r_obs")
-    plt.legend(), plt.show()
 
 def file_already_exists(method, dataset, split, lam = 100, grae_build = "original", seed = 42):
     """
