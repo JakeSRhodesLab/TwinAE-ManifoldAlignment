@@ -90,14 +90,15 @@ def create_tasks_for_parrelization(df):
     for index, row in df.iterrows():
 
         for grae_build in ["anchor_loss", "original"]:
-            #Get the parameters, method, and dataset
-            params = row["Best_Params"]
-            method = row["method"]
-            dataset = row["csv_file"]
-            split = row["split"]
+            for seed in [42, 4921, 1906]:
+                #Get the parameters, method, and dataset
+                params = row["Best_Params"]
+                method = row["method"]
+                dataset = row["csv_file"]
+                split = row["split"]
 
             #Create the task
-            task = (method, dataset, split, params, grae_build)
+            task = (method, dataset, split, params, grae_build, seed)
 
             #Append the task to the tasks list
             if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
@@ -120,7 +121,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original", *, return_labels = False):
+def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original"):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
@@ -182,7 +183,8 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     emb_partial = mds.fit_transform(method_data["Block"](method_class))
     #print("Partial Embedding Complete")
 
-
+    #TODO: GET MSE SCORES! ! ! 
+    
     #GRAE on domain A
     myGrae = grae_class(lam = lam, n_components = n_comps)
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
@@ -204,8 +206,7 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
  
     return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
-def GRAE_tests(method, dataset, split, params, grae_build = "original", *, permutations = 10000, 
-                plot = False, repeat_results = False): #DON'T Delete any of these parameters - though you can add your own if you want
+def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
 
     """
     Perform a Mantel test to compute the correlation between two embeddings
@@ -217,52 +218,69 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", *, permu
     try:
 
         #Return null values if file already exsists
-        if repeat_results == False:
-            if file_already_exists(method, dataset, split, grae_build):
-                #print(f"Results already exist for {method}, {dataset}, {split}.")
-                
-                if plot:
-                    print("Plotting is disabled for existing files.")
+        if file_already_exists(method, dataset, split, grae_build, seed):
+            #print(f"Results already exist for {method}, {dataset}, {split}.")
 
-                return np.nan, np.nan
+            return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, block_full = get_embeddings(method, dataset, split, params, return_labels = False, lam = lam)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, return_labels = False, lam = lam)
 
         #TODO: Calculate scores
+        rf_oob_true = get_RF_score(emb_full, labels, seed)
+        rf_oob_pred = get_RF_score(emb_pred, labels, seed)
+
+        knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB = get_embedding_scores(emb_full, labels, seed)
+        emb_full_scores = (rf_oob_true, knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB)
+
+        knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB = get_embedding_scores(emb_pred, labels, seed)
+        emb_pred_scores = (rf_oob_pred, knn_scoreA, rf_scoreA, knn_metricA, rf_metricA, knn_scoreB, rf_scoreB, knn_metricB, rf_metricB)
+
         #Check to see what functions we can hookly doo upto
 
-        save_GRAE_Build_results(method, dataset, split, r_obs, p_value, perm_r, lam = lam)
+        save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed)
         
-        return r_obs, p_value #Results are saved above
-    
+        return True #Indicating sucessful run    
     except:
-        return np.nan, np.nan
+        return False #Indicating failed run
 
-def save_GRAE_Build_results(method, dataset, split, mse, scores, lam = 100, grae_build = "original"):   
+def save_GRAE_Build_results(method, dataset, split, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", seed = 42):   
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}.json"
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}_seed{str(seed)}.json"
     file_path = os.path.join(results_dir, file_name)
 
-    five_point_summary = {
-        "min": float(np.min(perm_r)),
-        "Q1": float(np.percentile(perm_r, 25)),
-        "median": float(np.percentile(perm_r, 50)),
-        "Q3": float(np.percentile(perm_r, 75)),
-        "max": float(np.max(perm_r))
-    }
+    
+
+    full_rf_oob, full_knn_scoreA, full_rf_scoreA, full_knn_metricA, full_rf_metricA, full_knn_scoreB, full_rf_scoreB, full_knn_metricB, full_rf_metricB = emb_full_scores
+    pred_rf_oob, pred_knn_scoreA, pred_rf_scoreA, pred_knn_metricA, pred_rf_metricA, pred_knn_scoreB, pred_rf_scoreB, pred_knn_metricB, pred_rf_metricB = emb_pred_scores
 
     results_data = {
         "method": method,
         "dataset": dataset,
         "split": split,
-        "r_obs": r_obs,
         "lam": lam,
-        "p_value": p_value,
-        "five_point_summary": five_point_summary
-        }
+        "grae_build": grae_build,
+        "full_rf_oob": full_rf_oob,
+        "full_knn_scoreA": full_knn_scoreA,
+        "full_rf_scoreA": full_rf_scoreA,
+        "full_knn_metricA": full_knn_metricA,
+        "full_rf_metricA": full_rf_metricA,
+        "full_knn_scoreB": full_knn_scoreB,
+        "full_rf_scoreB": full_rf_scoreB,
+        "full_knn_metricB": full_knn_metricB,
+        "full_rf_metricB": full_rf_metricB,
+        "pred_rf_oob": pred_rf_oob,
+        "pred_knn_scoreA": pred_knn_scoreA,
+        "pred_rf_scoreA": pred_rf_scoreA,
+        "pred_knn_metricA": pred_knn_metricA,
+        "pred_rf_metricA": pred_rf_metricA,
+        "pred_knn_scoreB": pred_knn_scoreB,
+        "pred_rf_scoreB": pred_rf_scoreB,
+        "pred_knn_metricB": pred_knn_metricB,
+        "pred_rf_metricB": pred_rf_metricB,
+    }
     
     try:
         with open(file_path, "w") as out_file:
@@ -323,11 +341,11 @@ def plot_averaged_mantel_stats(df):
     plt.axvline(avg_r, color='red', linestyle='--', label = "Average r_obs")
     plt.legend(), plt.show()
 
-def file_already_exists(method, dataset, split, lam = 100, grae_build = "original"):
+def file_already_exists(method, dataset, split, lam = 100, grae_build = "original", seed = 42):
     """
     Checks if a results file already exists for the given method, dataset, and split.
     Returns True if it is found, else False.
     """
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}.json"
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}_seed{str(seed)}.json"
     return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds", file_name))
