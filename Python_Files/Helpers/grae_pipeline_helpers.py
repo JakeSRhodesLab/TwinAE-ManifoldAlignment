@@ -8,6 +8,7 @@ from sklearn.manifold import MDS
 from Helpers.Grae import GRAEBase, anchorGRAE, BaseDataset
 import json
 import os
+from sklearn.metrics import mean_squared_error
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -229,7 +230,9 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
         # Calculate MSE between embeddings
         train_len = len(labels[0])
         test_len = train_len + len(labels[1])
-        mse = np.mean((emb_pred[train_len:test_len, test_len + train_len:] - emb_full[train_len:test_len, test_len + train_len:]) ** 2)
+        mse_emb_pred = np.vstack([emb_pred[train_len:test_len], emb_pred[test_len + train_len:]])
+        mse_emb_full = np.vstack([emb_full[train_len:test_len], emb_full[test_len + train_len:]])
+        mse = mean_squared_error(mse_emb_pred, mse_emb_full)
 
         #Calculate scores
         rf_oob_true = get_RF_score(emb_full, labels, seed)
@@ -254,7 +257,7 @@ def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pr
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}_seed{str(seed)}.json"
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}.json"
     file_path = os.path.join(results_dir, file_name)
 
     full_rf_oob, full_knn_scoreA, full_rf_scoreA, full_knn_metricA, full_rf_metricA, full_knn_scoreB, full_rf_scoreB, full_knn_metricB, full_rf_metricB = emb_full_scores
@@ -309,11 +312,15 @@ def read_all_graeBuild_results():
 
     return pd.DataFrame(all_data)
 
-def file_already_exists(method, dataset, split, lam = 100, grae_build = "original", seed = 42):
-    """
+def file_already_exists(method, dataset, split, grae_build = "original", seed = 42, lam = 100):
+    """ (method, dataset, split, grae_build, seed)
     Checks if a results file already exists for the given method, dataset, and split.
     Returns True if it is found, else False.
     """
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild:{grae_build}_lam_{lam}_seed{str(seed)}.json"
-    return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds", file_name))
+    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
+
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}.json"
+    file_path = os.path.join(results_dir, file_name)
+
+    return os.path.isfile(file_path)
