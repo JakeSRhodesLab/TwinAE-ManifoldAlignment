@@ -3,18 +3,11 @@ from Helpers.regression_helpers import read_json_files_to_dataframe
 import os
 import numpy as np
 import pandas as pd
-from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs
+from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs, get_RF_score, get_embedding_scores
 from sklearn.manifold import MDS
-from sklearn.model_selection import train_test_split
 from Helpers.Grae import GRAEBase, anchorGRAE, BaseDataset
-from scipy.stats import pearsonr
-import seaborn as sns
-import matplotlib.pyplot as plt
 import json
 import os
-from scipy.spatial.distance import pdist, squareform
-
-from Pipeline_Helpers import get_RF_score, get_embedding_scores
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
@@ -121,23 +114,18 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original"):
+def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original", seed = 42):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
     """
-
-    if grae_build == "anchor_loss":
-        grae_class = anchorGRAE
-    else:
-        grae_class = GRAEBase
 
     #Create a TMA spoof class
     data = split_data(dataset + ".csv", split)
 
     # Ensure both domains share the same shuffled indices
     indices = np.arange(len(data.split_A))
-    np.random.seed(42)
+    np.random.seed(seed)
     np.random.shuffle(indices)
 
     train_size = int(0.8 * len(indices))
@@ -161,7 +149,7 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
     n_comps = max(min(data.split_A.shape[1], data.split_B.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
     mds = MDS(metric=True, dissimilarity = 'precomputed', n_init = 4,
-                n_jobs=1, random_state = 42, n_components = n_comps) 
+                n_jobs=1, random_state = seed, n_components = n_comps) 
 
     #Get the method data, fit it and prepare it to extract the block
     method_data = method_dict[method]
@@ -186,14 +174,22 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     #TODO: GET MSE SCORES! ! ! 
     
     #GRAE on domain A
-    myGrae = grae_class(lam = lam, n_components = n_comps)
+    if grae_build == "anchor_loss":
+        myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchors = data.anchors)
+    else:
+        myGrae = GRAEBase(lam = lam, n_components = n_comps)
+
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
     testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = 42, split = "none")
     pred_A, _ = myGrae.score(testA)
 
     #Grae on domain B 
-    myGrae = grae_class(lam = lam, n_components = n_comps)
+    if grae_build == "anchor_loss":
+        myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchors = data.anchors)
+    else:
+        myGrae = GRAEBase(lam = lam, n_components = n_comps)
+        
     split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
     myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
     testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = 42, split = "none")
@@ -219,12 +215,12 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
 
         #Return null values if file already exsists
         if file_already_exists(method, dataset, split, grae_build, seed):
-            #print(f"Results already exist for {method}, {dataset}, {split}.")
+            print(f"Results already exist for {method}, {dataset}, {split}.")
 
             return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, return_labels = False)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, grae_build = grae_build, seed = seed)
 
         # Calculate MSE between embeddings
         train_len = len(labels[0])
@@ -246,7 +242,8 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
         save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed)
         
         return True #Indicating sucessful run    
-    except:
+    except Exception as e:
+        print("Hit error in GRAE_tests: ", e)
         return False #Indicating failed run
 
 def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", seed = 42):   
