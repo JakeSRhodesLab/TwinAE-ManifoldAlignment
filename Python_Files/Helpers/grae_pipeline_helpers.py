@@ -170,28 +170,32 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
     #Get the partial embedding
     emb_partial = mds.fit_transform(method_data["Block"](method_class))
     #print("Partial Embedding Complete")
-
-    #TODO: GET MSE SCORES! ! ! 
     
     #GRAE on domain A
+    split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
+
     if grae_build == "anchor_loss":
-        myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchors = data.anchors)
+        myGrae = anchorGRAE(lam = lam, n_components = n_comps)
+        myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)], anchors = data.anchors)
+
     else:
         myGrae = GRAEBase(lam = lam, n_components = n_comps)
+        myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
 
-    split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
-    myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
     testA = BaseDataset(x = X_A_test, y = y_A_test, split_ratio = 0.8, random_state = 42, split = "none")
     pred_A, _ = myGrae.score(testA)
 
     #Grae on domain B 
+    split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
+
     if grae_build == "anchor_loss":
-        myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchors = data.anchors)
+        myGrae = anchorGRAE(lam = lam, n_components = n_comps)
+        myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):], anchors = data.anchors)
+
     else:
         myGrae = GRAEBase(lam = lam, n_components = n_comps)
-        
-    split_B = BaseDataset(x = X_B_train, y = y_B_train, split_ratio = 0.8, random_state = 42, split = "none")
-    myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
+        myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
+
     testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = 42, split = "none")
     pred_B, _ = myGrae.score(testB)
     
