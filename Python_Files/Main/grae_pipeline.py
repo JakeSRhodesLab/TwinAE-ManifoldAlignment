@@ -1,5 +1,5 @@
 #Imports
-from Helpers.Mantels_Helpers import extract_all_files, mantel_test, create_tasks_for_parrelization
+from Helpers.grae_pipeline_helpers import extract_all_files, GRAE_tests, create_tasks_for_parrelization
 from joblib import Parallel, delayed
 from tqdm_joblib import tqdm_joblib
 from tqdm import tqdm
@@ -11,7 +11,7 @@ print("Imports complete.")
 df = extract_all_files()
 
 #Create the tasks
-tasks = create_tasks_for_parrelization(df)
+tasks = create_tasks_for_parrelization(df)[:5]
 
 random.shuffle(tasks)
 
@@ -20,7 +20,7 @@ print("Tasks created.")
 with tqdm_joblib(tqdm(total=len(tasks))): #This includes a progress bar :)
     with Parallel(n_jobs=-5) as parallel:
         parallel(
-            delayed(mantel_test)(*task)
+            delayed(GRAE_tests)(*task)
             for task in tasks
         )
 
