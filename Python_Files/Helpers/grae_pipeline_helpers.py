@@ -85,18 +85,19 @@ def create_tasks_for_parrelization(df):
 
         for grae_build in ["anchor_loss050", "anchor_loss100", "anchor_loss150", "original"]:
             for seed in [42, 4921, 1906]:
-                #Get the parameters, method, and dataset
-                params = row["Best_Params"]
-                method = row["method"]
-                dataset = row["csv_file"]
-                split = row["split"]
+                for anchor_percent in [0.1, 0.5, 1]:
+                    #Get the parameters, method, and dataset
+                    params = row["Best_Params"]
+                    method = row["method"]
+                    dataset = row["csv_file"]
+                    split = row["split"]
 
-            #Create the task
-            task = (method, dataset, split, params, grae_build, seed)
+                #Create the task
+                task = (method, dataset, split, params, anchor_percent, grae_build, seed)
 
-            #Append the task to the tasks list
-            if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
-                tasks.append(task)  
+                #Append the task to the tasks list
+                if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+                    tasks.append(task)  
 
     return tasks
 
@@ -115,7 +116,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "original", seed = 42):
+def get_embeddings(method, dataset, split, params, anchor_percent, lam = 100, grae_build = "original", seed = 42):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
@@ -161,7 +162,7 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
 
     """GET GRAE's EMBEDDING below"""
     # Reformat data using x train
-    data.anchors = create_unique_pairs(len(X_A_train), int(data.split_A.shape[0] * .3)) #NOTE: we choose to keep the same amount of anchors. 
+    data.anchors = create_unique_pairs(len(X_A_train), int(data.split_A.shape[0] * anchor_percent)) #NOTE: we choose to keep the same amount of anchors. 
     data.split_A = X_A_train
     data.split_B = X_B_train
     data.labels = y_A_train # y_A_train will equal y_B_train
@@ -219,7 +220,7 @@ def get_embeddings(method, dataset, split, params, lam = 100, grae_build = "orig
  
     return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
-def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
+def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
 
     """
     Perform a Mantel test to compute the correlation between two embeddings
@@ -231,13 +232,13 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
     try:
 
         #Return null values if file already exsists
-        if file_already_exists(method, dataset, split, grae_build, seed):
+        if file_already_exists(method, dataset, split, grae_build, seed, anchor_percent = anchor_percent):
             print(f"Results already exist for {method}, {dataset}, {split}.")
 
             return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, grae_build = grae_build, seed = seed)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent,  grae_build = grae_build, seed = seed)
 
         # Calculate MSE between embeddings
         train_len = len(labels[0])
@@ -258,18 +259,18 @@ def GRAE_tests(method, dataset, split, params, grae_build = "original", seed = 4
 
         #Check to see what functions we can hookly doo upto
 
-        save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed)
+        save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed, anchor_percent=anchor_percent)
         
         return True #Indicating sucessful run    
     except Exception as e:
         print("Hit error in GRAE_tests: ", e)
         return False #Indicating failed run
 
-def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", seed = 42):   
+def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", anchor_percent = 0.3, seed = 42):   
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}.json"
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}_an{str(anchor_percent)}.json"
     file_path = os.path.join(results_dir, file_name)
 
     full_rf_oob, full_knn_scoreA, full_rf_scoreA, full_knn_metricA, full_rf_metricA, full_knn_scoreB, full_rf_scoreB, full_knn_metricB, full_rf_metricB = emb_full_scores
@@ -280,6 +281,7 @@ def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pr
         "dataset": dataset,
         "split": split,
         "lam": lam,
+        "Anchor_Percent": anchor_percent,
         "grae_build": grae_build,
         "MSE": mse,
         "full_rf_oob": full_rf_oob,
@@ -324,7 +326,7 @@ def read_all_graeBuild_results():
 
     return pd.DataFrame(all_data)
 
-def file_already_exists(method, dataset, split, grae_build = "original", seed = 42, lam = 100):
+def file_already_exists(method, dataset, split, grae_build = "original", seed = 42, anchor_percent = 0.3, lam = 100):
     """ (method, dataset, split, grae_build, seed)
     Checks if a results file already exists for the given method, dataset, and split.
     Returns True if it is found, else False.
@@ -332,7 +334,7 @@ def file_already_exists(method, dataset, split, grae_build = "original", seed = 
 
     results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
 
-    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}.json"
+    file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}_an{str(anchor_percent)}.json"
     file_path = os.path.join(results_dir, file_name)
 
     return os.path.isfile(file_path)
