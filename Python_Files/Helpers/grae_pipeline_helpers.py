@@ -12,7 +12,7 @@ from sklearn.metrics import mean_squared_error
 
 class split_data():
     """Made to spoof the TMA class but is lightweight"""
-    def __init__(self, csv_file, split):
+    def __init__(self, csv_file, split, anchor_percent):
 
 
         #Get the labels
@@ -31,7 +31,7 @@ class split_data():
         self.split_A, self.split_B = split_features(csv_file, split, 42) #NOTE: We usually use 42 as a seed
 
         #Anchors are assumed to be .3 of the dataset
-        self.anchors = create_unique_pairs(self.split_A.shape[0], int(self.split_A.shape[0] * .3))
+        self.anchors = create_unique_pairs(self.split_A.shape[0], int(self.split_A.shape[0] * anchor_percent))
 
 #Directory Constant
 def split_features(csv_file, split, seed):
@@ -116,14 +116,14 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, anchor_percent, lam = 100, grae_build = "original", seed = 42):
+def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = "original", lam = 100, seed = 42):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
     """
 
     #Create a TMA spoof class
-    data = split_data(dataset + ".csv", split)
+    data = split_data(dataset + ".csv", split, anchor_percent=anchor_percent)
 
     # Ensure both domains share the same shuffled indices
     indices = np.arange(len(data.split_A))
@@ -147,6 +147,8 @@ def get_embeddings(method, dataset, split, params, anchor_percent, lam = 100, gr
     data.split_A = np.vstack([X_A_train, X_A_test])
     data.split_B = np.vstack([X_B_train, X_B_test])
     data.labels = np.hstack([y_A_train, y_A_test]) #This will equal the same for B
+    data.anchors = create_unique_pairs(len(X_A_train), int(len(X_A_train) * anchor_percent)) #NOTE: we choose to keep the same amount of anchors. 
+
 
     #Create a custom MDS where we keep only 1 job (Not to have nested parrelization)
     n_comps = max(min(data.split_A.shape[1], data.split_B.shape[1]), 2) #Ensures the min is 2 or the lowest data split dimensions
@@ -162,7 +164,6 @@ def get_embeddings(method, dataset, split, params, anchor_percent, lam = 100, gr
 
     """GET GRAE's EMBEDDING below"""
     # Reformat data using x train
-    data.anchors = create_unique_pairs(len(X_A_train), int(data.split_A.shape[0] * anchor_percent)) #NOTE: we choose to keep the same amount of anchors. 
     data.split_A = X_A_train
     data.split_B = X_B_train
     data.labels = y_A_train # y_A_train will equal y_B_train
@@ -176,7 +177,7 @@ def get_embeddings(method, dataset, split, params, anchor_percent, lam = 100, gr
     #GRAE on domain A
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
 
-    if grae_build == "original":
+    if grae_build != "original":
         if grae_build[-3:] == "050":
             myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=50)
         elif grae_build[-3:] == "100":
@@ -238,7 +239,7 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
             return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent,  grae_build = grae_build, seed = seed)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent =  anchor_percent,  grae_build = grae_build, seed = seed)
 
         # Calculate MSE between embeddings
         train_len = len(labels[0])
