@@ -92,12 +92,12 @@ def create_tasks_for_parrelization(df):
                     dataset = row["csv_file"]
                     split = row["split"]
 
-                #Create the task
-                task = (method, dataset, split, params, anchor_percent, grae_build, seed)
+                    #Create the task
+                    task = (method, dataset, split, params, anchor_percent, grae_build, seed)
 
-                #Append the task to the tasks list
-                if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
-                    tasks.append(task)  
+                    #Append the task to the tasks list
+                    if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+                        tasks.append(task)  
 
     return tasks
 
@@ -323,6 +323,11 @@ def read_all_graeBuild_results():
             file_path = os.path.join(results_dir, file)
             with open(file_path, "r") as f:
                 data = json.load(f)
+
+            # Only rename if the key exists in the dictionary
+            if "Anchor_percent" in data:
+                data["Anchor_Percent"] = data.pop("Anchor_percent")
+
             all_data.append(data)
 
     return pd.DataFrame(all_data)

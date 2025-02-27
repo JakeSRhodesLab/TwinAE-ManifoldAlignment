@@ -2210,7 +2210,7 @@ class EmbeddingProber:
 
         return z, metrics
 
-def get_GRAE_networks(dataA, dataB, emb, n_comp = 2, labelsA = None, labelsB = None):  
+def get_GRAE_networks(dataA, dataB, emb, n_comp = 2, anchors = [], labelsA = None, labelsB = None):  
     """
     Generate two GRAE networks from dataA and dataB.
     Parameters
@@ -2247,12 +2247,16 @@ def get_GRAE_networks(dataA, dataB, emb, n_comp = 2, labelsA = None, labelsB = N
         labelsB = np.zeros(len(dataB))
 
     split_A = BaseDataset(x = dataA, y = np.array(labelsA), split_ratio = 0.8, random_state = 42, split = "none")
-    myGraeA = GRAEBase(n_components = n_comp)
-    myGraeA.fit(split_A, emb= emb[:len(dataA)]) 
+    myGraeA = anchorGRAE(n_components = n_comp)
+    myGraeA.fit(split_A, emb= emb[:len(dataA)], anchors = anchors) 
 
+
+    #We need to flip the anchors
+    anchors = np.array(anchors)
+    anchors[:, 0], anchors[:, 1] = anchors[:,1], anchors [:, 0]
 
     split_B = BaseDataset(x = dataB, y = np.array(labelsB), split_ratio = 0.8, random_state = 42, split = "none")
-    myGraeB = GRAEBase(n_components = n_comp)
-    myGraeB.fit(split_B, emb= emb[len(dataA):])
+    myGraeB = anchorGRAE(n_components = n_comp)
+    myGraeB.fit(split_B, emb= emb[len(dataA):], anchors = anchors)
 
     return myGraeA, myGraeB

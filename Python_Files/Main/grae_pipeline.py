@@ -18,7 +18,7 @@ random.shuffle(tasks)
 print("Tasks created.")
 
 with tqdm_joblib(tqdm(total=len(tasks))): #This includes a progress bar :)
-    with Parallel(n_jobs=-5) as parallel:
+    with Parallel(n_jobs=-10) as parallel:
         parallel(
             delayed(GRAE_tests)(*task)
             for task in tasks
