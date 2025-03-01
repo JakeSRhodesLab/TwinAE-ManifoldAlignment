@@ -323,10 +323,10 @@ def adjust_tma_labels(emb, tma):
     
     return tma.labels, tma.labels_doubled
 
-def MAGAN_fit(self, tma, anchors):
+def MAGAN_fit(self, tma, anchors, return_MAGAN=False):
 
     #Fit, and initilize model
-    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate)
+    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate, return_MAGAN= return_MAGAN)
 
     #Reshape the domains
     domain_a, domain_b = get_pure_distance(domain_a, domain_b)
