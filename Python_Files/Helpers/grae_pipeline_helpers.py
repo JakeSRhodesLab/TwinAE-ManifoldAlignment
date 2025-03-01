@@ -101,6 +101,30 @@ def create_tasks_for_parrelization(df):
 
     return tasks
 
+def create_tasks_for_DTA_MAGAN_MASH(df):
+    #Create the task list
+    tasks = []
+
+    #Iterate through the dataframe
+    for index, row in df.iterrows():
+
+        for seed in [42, 4921, 1906]:
+            for anchor_percent in [0.1, 0.5, 1]:
+                #Get the parameters, method, and dataset
+                params = row["Best_Params"]
+                method = row["method"]
+                dataset = row["csv_file"]
+                split = row["split"]
+
+                #Create the task
+                task = (method, dataset, split, params, anchor_percent, "Alternate", seed)
+
+                #Append the task to the tasks list
+                if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"] and method in ["DTA", "MAGAN", "MASH", "RF-MASH"]:
+                    tasks.append(task)  
+
+    return tasks
+
 # To keep code cleaner
 def create_and_fit_method(method_data, data, params):
     if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
@@ -109,6 +133,11 @@ def create_and_fit_method(method_data, data, params):
         method_class.optimize_by_creating_connections(threshold = params["threshold"], connection_limit = params["connection_limit"], epochs = params["epochs"],
                                                       hold_out_anchors = data.anchors[:len(data.anchors)//2])
 
+    elif method_data["Name"] == "MAGAN":
+        method_class = method_data["Model"](**params)
+        method_class, magan = method_data["Fit"](method_class, data, data.anchors, return_MAGAN = True)    
+        method_data["magan"] = magan
+
     else:
         method_class = method_data["Model"](**params)
         method_class = method_data["Fit"](method_class, data, data.anchors)
@@ -116,7 +145,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = "original", lam = 100, seed = 42):
+def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42, lam = 100):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
@@ -159,6 +188,7 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
     method_data = method_dict[method]
     method_class = create_and_fit_method(method_data, data, params)
 
+  
     #Get the true embedding
     emb_full = mds.fit_transform(method_data["Block"](method_class))
 
@@ -170,10 +200,17 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
 
     method_class = create_and_fit_method(method_data, data, params)
 
+
     #Get the partial embedding
     emb_partial = mds.fit_transform(method_data["Block"](method_class))
     #print("Partial Embedding Complete")
     
+    if grae_build == "alternate":
+        
+        emb_pred = get_alt_pred_embedding(method_class, dataset, split, method_data, params, mds, n_comps, seed, lam, X_A_train, X_A_test, y_A_train, y_A_test, X_B_train, X_B_test, emb_partial)
+        return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
+
+
     #GRAE on domain A
     split_A = BaseDataset(x = X_A_train, y = y_A_train, split_ratio = 0.8, random_state = 42, split = "none")
 
@@ -221,6 +258,44 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
  
     return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
+
+def get_alt_pred_embedding(method_class, dataset, split, method_data, params, mds, n_comps, seed, lam, X_A_train, X_A_test, y_A_train, y_A_test, X_B_train, X_B_test, emb_partial, anchor_percent):
+
+    if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
+
+        pass
+    elif method_data["Name"] == "MAGAN":
+        # Translate test points
+        A_to_B = method_data["magan"].translate_1_to_2(X_A_test)
+        B_to_A = method_data["magan"].translate_2_to_1(X_B_test)
+
+        #Calculate mse
+        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
+
+        #Save results
+        save_GRAE_Build_results("MAGAN", dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
+
+    elif method_data["Name"] == "DTA":
+        #Translate test points
+        B_to_A = method_class.T.T @ X_B_test
+        A_to_B = method_class.T @ X_A_test
+
+        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
+
+        #Save results
+        save_GRAE_Build_results("DTA", dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
+
+    else:
+        #Translate test points
+        B_to_A = method_class.projectionAB @ X_B_test
+        A_to_B = method_class.projectionBA @ X_A_test
+
+        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
+
+        #Save results
+        save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
+        
+
 def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
 
     """
@@ -240,6 +315,10 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
         
         #Get the embeddings
         emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent =  anchor_percent,  grae_build = grae_build, seed = seed)
+
+        if grae_build == "alternate":
+            #Magan results return early
+            return True
 
         # Calculate MSE between embeddings
         train_len = len(labels[0])
@@ -273,7 +352,7 @@ def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pr
 
     file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}_an{str(anchor_percent)}.json"
     file_path = os.path.join(results_dir, file_name)
-
+        
     full_rf_oob, full_knn_scoreA, full_rf_scoreA, full_knn_metricA, full_rf_metricA, full_knn_scoreB, full_rf_scoreB, full_knn_metricB, full_rf_metricB = emb_full_scores
     pred_rf_oob, pred_knn_scoreA, pred_rf_scoreA, pred_knn_metricA, pred_rf_metricA, pred_knn_scoreB, pred_rf_scoreB, pred_knn_metricB, pred_rf_metricB = emb_pred_scores
 
