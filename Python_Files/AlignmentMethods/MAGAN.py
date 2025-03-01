@@ -392,20 +392,6 @@ class MAGAN(object):
         }
         return self.sess.run(tbn('xb2_reconstructed:0'), feed_dict=feed)
 
-    def translate_to_z1(self, b1_data):
-        feed = {
-            tbn('xb1:0'): b1_data,
-            tbn('is_training:0'): False
-        }
-        return self.sess.run(tbn('D1_h5:0'), feed_dict=feed)
-
-    def translate_to_z2(self, b2_data):
-        feed = {
-            tbn('xb2:0'): b2_data,
-            tbn('is_training:0'): False
-        }
-        return self.sess.run(tbn('D2_h5:0'), feed_dict=feed)
-    
 class Generator(tf.keras.Model):
     """MAGAN's generator."""
 
