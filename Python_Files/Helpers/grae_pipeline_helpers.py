@@ -117,7 +117,7 @@ def create_tasks_for_DTA_MAGAN_MASH(df):
                 split = row["split"]
 
                 #Create the task
-                task = (method, dataset, split, params, anchor_percent, "Alternate", seed)
+                task = (method, dataset, split, params, anchor_percent, "alternate", seed)
 
                 #Append the task to the tasks list
                 if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"] and method in ["DTA", "MAGAN", "MASH", "RF-MASH"]:
@@ -207,8 +207,8 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
     
     if grae_build == "alternate":
         
-        emb_pred = get_alt_pred_embedding(method_class, dataset, split, method_data, params, mds, n_comps, seed, lam, X_A_train, X_A_test, y_A_train, y_A_test, X_B_train, X_B_test, emb_partial)
-        return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
+        get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_test,  X_B_test, anchor_percent)
+        return None, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
 
     #GRAE on domain A
@@ -259,12 +259,9 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
     return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
 
-def get_alt_pred_embedding(method_class, dataset, split, method_data, params, mds, n_comps, seed, lam, X_A_train, X_A_test, y_A_train, y_A_test, X_B_train, X_B_test, emb_partial, anchor_percent):
+def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_test,  X_B_test, anchor_percent):
 
-    if method_data["Name"] == "MASH" or method_data["Name"] == "RF-MASH":
-
-        pass
-    elif method_data["Name"] == "MAGAN":
+    if method_data["Name"] == "MAGAN":
         # Translate test points
         A_to_B = method_data["magan"].translate_1_to_2(X_A_test)
         B_to_A = method_data["magan"].translate_2_to_1(X_B_test)
