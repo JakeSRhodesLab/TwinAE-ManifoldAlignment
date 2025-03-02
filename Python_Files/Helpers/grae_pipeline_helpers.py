@@ -267,8 +267,7 @@ def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_
         B_to_A = method_data["magan"].translate_2_to_1(X_B_test)
 
         #Calculate mse
-        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
-
+        mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
         #Save results
         save_GRAE_Build_results("MAGAN", dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
 
@@ -277,17 +276,18 @@ def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_
         B_to_A = method_class.T.T @ X_B_test
         A_to_B = method_class.T @ X_A_test
 
-        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
+        mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
 
         #Save results
         save_GRAE_Build_results("DTA", dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
 
     else:
         #Translate test points
-        B_to_A = method_class.projectionAB @ X_B_test
-        A_to_B = method_class.projectionBA @ X_A_test
+        projection = method_class.get_linear_transformation()
+        B_to_A =  (projection @ X_B_test.T).T
+        A_to_B = X_A_test @ projection
 
-        mse = mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test)
+        mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
 
         #Save results
         save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
