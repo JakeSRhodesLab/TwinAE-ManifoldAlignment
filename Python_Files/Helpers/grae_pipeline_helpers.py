@@ -101,6 +101,31 @@ def create_tasks_for_parrelization(df):
 
     return tasks
 
+def create_tasks_MSE(df):
+    #Create the task list
+    tasks = []
+
+    #Iterate through the dataframe
+    for index, row in df.iterrows():
+
+        for grae_build in ["just_MSE"]:
+            for seed in [42, 4921, 1906]:
+                for anchor_percent in [0.1, 0.5, 1]:
+                    #Get the parameters, method, and dataset
+                    params = row["Best_Params"]
+                    method = row["method"]
+                    dataset = row["csv_file"]
+                    split = row["split"]
+
+                    #Create the task
+                    task = (method, dataset, split, params, anchor_percent, grae_build, seed)
+
+                    #Append the task to the tasks list
+                    if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+                        tasks.append(task)  
+
+    return tasks
+
 def create_tasks_for_DTA_MAGAN_MASH(df):
     #Create the task list
     tasks = []
@@ -236,28 +261,42 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
 
     if grae_build != "original":
         if grae_build[-3:] == "050":
-            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=50)
+            myGraeB = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=50)
         elif grae_build[-3:] == "100":
-            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=100)
+            myGraeB = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=100)
         else:
-            myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=150)
+            myGraeB = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=150)
 
-        myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):], anchors = data.anchors)
+        myGraeB.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):], anchors = data.anchors)
 
     else:
-        myGrae = GRAEBase(lam = lam, n_components = n_comps)
-        myGrae.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
+        myGraeB = GRAEBase(lam = lam, n_components = n_comps)
+        myGraeB.fit(split_B, emb = emb_partial[int(len(emb_partial)/2):])
 
     testB = BaseDataset(x = X_B_test, y = y_B_test, split_ratio = 0.8, random_state = 42, split = "none")
-    pred_B, _ = myGrae.score(testB)
-    
+    pred_B, _ = myGraeB.score(testB)
+
+    if grae_build == "just_MSE":
+        #Transform test points to other domain
+        A_to_z = myGrae.transform(testA)
+        B_to_z = myGraeB.transform(testB)
+
+        A_to_B = myGraeB.inverse_transform(A_to_z)
+        B_to_A = myGrae.inverse_transform(B_to_z)
+
+        #Calculate mse
+        mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
+
+        save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="just_MSE", seed = seed, anchor_percent=anchor_percent)
+        return None, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
+
+
     #Grab the scores
     A_train = emb_partial[:int(len(emb_partial)/2)]
     B_train = emb_partial[int(len(emb_partial)/2):]
     emb_pred = np.vstack([A_train, pred_A, B_train, pred_B]) #NOTE: Train on just train
  
     return emb_pred, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
-
 
 def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_test,  X_B_test, anchor_percent):
 
@@ -272,9 +311,21 @@ def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_
         save_GRAE_Build_results("MAGAN", dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
 
     elif method_data["Name"] == "DTA":
+        #Rescale to work for test data
+        # Perform PCA on projectionBA
+        from sklearn.decomposition import PCA
+
+        pca = PCA(n_components=X_A_test.shape[1])
+        projection = pca.fit_transform(method_class.T.T).T
+
+        pca = PCA(n_components=X_B_test.shape[1])
+        projection = pca.fit_transform(projection)
+
+        projection = 2 * (projection - projection.min()) / (projection.max() - projection.min()) - 1
+
         #Translate test points
-        B_to_A = method_class.T.T @ X_B_test
-        A_to_B = method_class.T @ X_A_test
+        B_to_A =  (projection @ X_B_test.T).T
+        A_to_B = X_A_test @ projection
 
         mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
 
@@ -292,7 +343,6 @@ def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_
         #Save results
         save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
         
-
 def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
 
     """
@@ -314,6 +364,10 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
         emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent =  anchor_percent,  grae_build = grae_build, seed = seed)
 
         if grae_build == "alternate":
+            #Magan results return early
+            return True
+        
+        if grae_build == "just_MSE":
             #Magan results return early
             return True
 
