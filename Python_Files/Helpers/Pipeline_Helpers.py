@@ -326,13 +326,19 @@ def adjust_tma_labels(emb, tma):
 def MAGAN_fit(self, tma, anchors, return_MAGAN=False):
 
     #Fit, and initilize model
-    domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate, return_MAGAN= return_MAGAN)
+    if return_MAGAN:
+        domain_a, domain_b, domain_ab, domain_ba, magan = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate, return_MAGAN= True)
+    else:
+        domain_a, domain_b, domain_ab, domain_ba = run_MAGAN(tma.split_A, tma.split_B, anchors, self.learning_rate, return_MAGAN= False)
 
     #Reshape the domains
     domain_a, domain_b = get_pure_distance(domain_a, domain_b)
     domain_ab, domain_ba = get_pure_distance(domain_ab, domain_ba)
     
     #Return a different thing back to calculate FOSCTTM and CE
+    if return_MAGAN:
+        return [domain_a, domain_b, domain_ab, domain_ba], magan
+    
     return [domain_a, domain_b, domain_ab, domain_ba]
 
 def get_MAGAN_block(block_pieces):
