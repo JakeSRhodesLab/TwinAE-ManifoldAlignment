@@ -176,8 +176,8 @@ class MAGAN(object):
             self._restore(restore_folder)
             return
 
-        self.xb1 = placeholder(tf.float32, shape=[self.dim_1, self.dim_b1], name='xb1')
-        self.xb2 = placeholder(tf.float32, shape=[self.dim_2, self.dim_b2], name='xb2')
+        self.xb1 = placeholder(tf.float32, shape=[None, self.dim_b1], name='xb1')
+        self.xb2 = placeholder(tf.float32, shape=[None, self.dim_b2], name='xb2')
 
         self.lr = placeholder(tf.float32, shape=[], name='lr')
         self.is_training = placeholder(tf.bool, shape=[], name='is_training')
@@ -368,7 +368,8 @@ class MAGAN(object):
             tbn('xb1:0'): b1_data,
             tbn('is_training:0'): False
         }
-        # Fetch the tensor "Gb2:0" instead of the op "Gb2"
+        # Adjust the placeholder shape to accommodate different batch sizes
+        #self.sess.graph.get_tensor_by_name('xb1:0').set_shape([b1_data.shape[0], self.dim_b1])
         return self.sess.run(tbn('Gb2:0'), feed_dict=feed)
 
     def translate_2_to_1(self, b2_data):
@@ -376,6 +377,8 @@ class MAGAN(object):
             tbn('xb2:0'): b2_data,
             tbn('is_training:0'): False
         }
+        # Adjust the placeholder shape to accommodate different batch sizes
+        #self.sess.graph.get_tensor_by_name('xb2:0').set_shape([b2_data.shape[0], self.dim_b2])
         return self.sess.run(tbn('Gb1:0'), feed_dict=feed)
     
     def reconstruct_2(self, b2_data):
