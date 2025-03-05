@@ -109,20 +109,21 @@ def create_tasks_MSE(df):
     for index, row in df.iterrows():
 
         for grae_build in ["just_MSE"]:
-            for seed in [42, 4921, 1906]:
-                for anchor_percent in [0.1, 0.5, 1]:
-                    #Get the parameters, method, and dataset
-                    params = row["Best_Params"]
-                    method = row["method"]
-                    dataset = row["csv_file"]
-                    split = row["split"]
+            for ancor_lam in [0, 50, 100, 150]:
+                for seed in [42, 4921, 1906]:
+                    for anchor_percent in [0.1, 0.5, 1]:
+                        #Get the parameters, method, and dataset
+                        params = row["Best_Params"]
+                        method = row["method"]
+                        dataset = row["csv_file"]
+                        split = row["split"]
 
-                    #Create the task
-                    task = (method, dataset, split, params, anchor_percent, grae_build, seed)
+                        #Create the task
+                        task = (method, dataset, split, params, anchor_percent, grae_build, seed, ancor_lam)
 
-                    #Append the task to the tasks list
-                    if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
-                        tasks.append(task)  
+                        #Append the task to the tasks list
+                        if dataset not in ["S-c", "b", "blobs", "blob", "S-curve"]:
+                            tasks.append(task)  
 
     return tasks
 
@@ -170,7 +171,7 @@ def create_and_fit_method(method_data, data, params):
     return method_class
 
 # Create function to create the embeddings (One with excluded test points) from Mash or SPUD
-def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42, lam = 100):
+def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42, anchor_lam = 100, lam = 100):
     """
     Returns embeddings for the full and partial datasets using the specified method.
     Also returns the heatmap.
@@ -249,6 +250,10 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
 
         myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)], anchors = data.anchors)
 
+    elif anchor_lam != 0:
+        myGrae = anchorGRAE(lam = lam, n_components = n_comps, anchor_lam=anchor_lam)
+        myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)], anchors = data.anchors)
+
     else:
         myGrae = GRAEBase(lam = lam, n_components = n_comps)
         myGrae.fit(split_A, emb = emb_partial[:len(X_A_train)])
@@ -287,7 +292,7 @@ def get_embeddings(method, dataset, split, params, anchor_percent, grae_build = 
         #Calculate mse
         mse = (mean_squared_error(A_to_B, X_B_test) + mean_squared_error(B_to_A, X_A_test))/2
 
-        save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="just_MSE", seed = seed, anchor_percent=anchor_percent)
+        save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="just_MSE", lam = anchor_lam, seed = seed, anchor_percent=anchor_percent)
         return None, emb_full, (y_A_train, y_A_test, y_B_train, y_B_test)
 
 
@@ -343,7 +348,7 @@ def get_alt_pred_embedding(method_class, dataset, split, method_data, seed, X_A_
         #Save results
         save_GRAE_Build_results(method_data["Name"], dataset, split, mse, [None]*9, [None]*9, grae_build="alternate", seed = seed, anchor_percent=anchor_percent)
         
-def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42): #DON'T Delete any of these parameters - though you can add your own if you want
+def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "original", seed = 42, anchor_lam = 100): #DON'T Delete any of these parameters - though you can add your own if you want
 
     """
     Perform a Mantel test to compute the correlation between two embeddings
@@ -355,13 +360,13 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
     try:
 
         #Return null values if file already exsists
-        if file_already_exists(method, dataset, split, grae_build, seed, anchor_percent = anchor_percent):
+        if file_already_exists(method, dataset, split, grae_build, seed, lam = anchor_lam, anchor_percent = anchor_percent):
             print(f"Results already exist for {method}, {dataset}, {split}.")
 
             return False #indicating already ran
         
         #Get the embeddings
-        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent =  anchor_percent,  grae_build = grae_build, seed = seed)
+        emb_pred, emb_full, labels = get_embeddings(method, dataset, split, params, anchor_percent =  anchor_percent,  grae_build = grae_build, seed = seed, anchor_lam=anchor_lam)
 
         if grae_build == "alternate":
             #Magan results return early
@@ -390,7 +395,7 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
 
         #Check to see what functions we can hookly doo upto
 
-        save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, seed = seed, anchor_percent=anchor_percent)
+        save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, grae_build=grae_build, lam = anchor_lam, seed = seed, anchor_percent=anchor_percent)
         
         return True #Indicating sucessful run    
     except Exception as e:
