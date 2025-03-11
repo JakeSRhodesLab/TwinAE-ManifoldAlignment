@@ -124,10 +124,10 @@ def get_results(csv_file, seed, split):
 
     """Domain A"""
     knn_score, rf_score, knn_rmse, rf_rmse, knn_score2, rf_score2, knn_rmse2, rf_rmse2 = get_embedding_scores(embA, labelsA, seed)
-    knn_score = np.mean(knn_score + knn_score2)
-    rf_score = np.mean(rf_score + rf_score2)
-    knn_rmse = np.mean(knn_rmse + knn_rmse2)
-    rf_rmse = np.mean(rf_rmse + rf_rmse2)
+    knn_score = (knn_score + knn_score2) /2
+    rf_score = (rf_score +  rf_score2)/2
+    knn_rmse = (knn_rmse+  knn_rmse2)/2
+    rf_rmse = (rf_rmse + rf_rmse2)/2
     rf_oob = get_RF_score(embA, labelsA, seed)
     knn = cross_embedding_knn(embA, np.hstack(labelsA))
 
@@ -143,10 +143,10 @@ def get_results(csv_file, seed, split):
     
     """Domain B"""
     knn_score, rf_score, knn_rmse, rf_rmse, knn_score2, rf_score2, knn_rmse2, rf_rmse2 = get_embedding_scores(embB, labelsB, seed)
-    knn_score = np.mean(knn_score + knn_score2)
-    rf_score = np.mean(rf_score + rf_score2)
-    knn_rmse = np.mean(knn_rmse + knn_rmse2)
-    rf_rmse = np.mean(rf_rmse + rf_rmse2)
+    knn_score = (knn_score + knn_score2) /2
+    rf_score = (rf_score + rf_score2)/2
+    knn_rmse = (knn_rmse + knn_rmse2)/2
+    rf_rmse = (rf_rmse + rf_rmse2)/2
     rf_oob = get_RF_score(embB, labelsB, seed)
     knn = cross_embedding_knn(embB, np.hstack(labelsB))
 
@@ -231,7 +231,7 @@ else:
 
 # Get the results and show progress
 with tqdm_joblib(tqdm(desc="Processing tasks", total=len(csv_seed_list))) as progress_bar:
-    results = Parallel(n_jobs=10)(delayed(method)(csv, seed, split) for csv, seed, split in csv_seed_list)
+    results = Parallel(n_jobs=-5)(delayed(method)(csv, seed, split) for csv, seed, split in csv_seed_list)
 
 #Unpack and make into dataframe
 if test_to_run:
