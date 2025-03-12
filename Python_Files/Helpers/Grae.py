@@ -1412,7 +1412,7 @@ class GRAEBase(AE):
 class anchorGRAE(GRAEBase):
     """Simply GRAE but with anchor loss applied in the embedding space."""
 
-    def __init__(self, anchor_lam=100, **kwargs):
+    def __init__(self, anchor_lam=0, **kwargs):
         super().__init__(**kwargs)
         self.anchor_lam = anchor_lam
 
