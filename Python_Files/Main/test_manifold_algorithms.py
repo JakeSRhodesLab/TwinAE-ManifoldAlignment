@@ -5,14 +5,6 @@
 Supercomputers Access: carter, collings, cox, hilton, rencher, and tukey
 Resource Monitor Websitee: http://statrm.byu.edu/
 KanbanFlow: https://kanbanflow.com/board/g25iW5x
-
-Plot:
-1. Show the difference between the poor domain (Score on just that domain) and the embedding score using GRAE for that domain 
-2. Show the last scatter plot reconstruction together with Anchor-Loss, no anchor loss, Magan, DTA, and MASH
-3. Create error bars for "Loss to recreate Data in the other domain"
-4. Update the plots in the paper to be ready :)
-
-
 """
 #I should fix these imports to be more localized
 #Import libraries
