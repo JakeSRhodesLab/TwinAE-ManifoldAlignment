@@ -88,7 +88,14 @@ This package provides a comprehensive implementation of **Twin Autoencoders** us
 - Python 3.8+
 - pip or conda
 
-### Install from source
+### Direct installation from GitHub
+
+```bash
+# Install latest version directly from GitHub
+pip install git+https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment.git
+```
+
+### Install from source (for development)
 
 ```bash
 git clone https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment.git
