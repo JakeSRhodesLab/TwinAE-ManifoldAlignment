@@ -255,18 +255,8 @@ python -m pytest tests/
 
 If you use this package in your research, please cite our MMAI 2025 paper:
 
-```bibtex
-@inproceedings{rhodes2025guided,
-  title={Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders},
-  author={Rhodes, Jake S. and Rustad, Adam G. and Nielsen, Marshall S. and McClellan, Morgan and Gardner, Dallan and Hedges, Dawson},
-  booktitle={Proceedings of the 5th IEEE International Workshop on Multimodal AI (MMAI)},
-  year={2025},
-  organization={IEEE},
-  venue={ICDM 2025 Workshop},
-  address={Abu Dhabi, UAE},
-  url={https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment}
-}
-```
+CITATION TBD AFTER PUBLICATION
+
 
 ## License
 
