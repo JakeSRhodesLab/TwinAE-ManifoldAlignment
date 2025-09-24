@@ -1,0 +1,1 @@
+{"file": "seeds", "n_comp": 2, "knn": 3, "method": "SPUD", "split": "even", "random_state": 42, "FOSCTTM": 0.00025251887578596504, "CE": null, "RF_oob": 0.9020100502512562}

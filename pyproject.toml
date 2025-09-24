@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graph-manifold-alignment"
+version = "0.1.0"
+authors = [
+    {name = "Jake Rhodes Lab", email = "your.email@institution.edu"},
+]
+description = "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders - Novel GRAE approach accepted at MMAI 2025 @ IEEE ICDM"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Multimedia",
+]
+dependencies = [
+    # Core dependencies will be read from requirements.txt
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=21.0",
+    "flake8>=3.8",
+    "mypy>=0.800",
+]
+notebooks = [
+    "jupyter>=1.0",
+    "ipython>=7.0",
+    "matplotlib>=3.0",
+    "seaborn>=0.11",
+]
+
+[project.urls]
+Homepage = "https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment"
+Repository = "https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment"
+Issues = "https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment/issues"
+
+[project.scripts]
+gma-pipeline = "graph_manifold_alignment.scripts.run_pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md", "*.yml", "*.yaml"]
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+include = '\.pyi?$'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=graph_manifold_alignment",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true

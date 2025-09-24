@@ -1,0 +1,1233 @@
+#MASH (Manifold Alignment with Diffusion)
+"""
+Adam's Notes
+-------------
+
+Parameters in question of keeping: (In order of least helpful to more helpful)
+-> Burn in: It seems unhelpfull all the time except when you get lucky. It doens't seem the worth of effort.
+-> Page Rank: It's effects are minimal. Rarely does anything. 
+-> Density Normalization: While it is clear what it does, it doesn't seem that helpful.
+-> DTM: Has its cases when it is uses to change to hellinger. Maybe add more variations or methods of transformation?
+
+-> Surprisingly, across the data the connection limit seems to have little impact. See Picture MASH_con_lim_effect
+
+MASH - Supervised Idea:
+-----------------------
+Question: How can we improve the optimize_by_connections method if MASH is supervised?
+
+Ideas: 
+1. What if we rigged similar to a neural network? Where the network was automatically built from any given node. It is a functional 
+network meaning that each layer would connect to a different node as the paths could go. It would then reach any node and could use the value
+received from that path to predict the label of that node. If its right, strengthen the connections, and wrong, weaken the connections (typical 
+of a nueral network.) We wouldn't have to do this is a neural network approach either. (NEEDS more thought.)
+
+2. Some kind of extended KNN prediction model? -> Maybe using Jaccard similarities measure? 
+If the node guess the label correctly, stregthen the path? (NEEDS more thought)
+
+3. For each node, find all of the nodes it could possibly reach. If the labels between the two nodes macth, we could strengthen the paths
+between those nodes. However, if the classes between those nodes don't macth, we can weaken the paths between those nodes. This should increase
+CE dramatically, and hopefully FOSCTTM too. (Simple, seems plausible. Maybe requires lots of computational power? We could just do it for those designated as anchors.)
+
+
+anchors = [1, 2, _, 3]
+          [2, _, 2, _]
+"""
+
+
+#Import the needed libraries
+import graphtools
+import numpy as np
+from pandas import Categorical
+import seaborn as sns
+from Helpers.vne import find_optimal_t
+from itertools import takewhile
+import matplotlib.pyplot as plt
+from sklearn.manifold import MDS
+from scipy.spatial.distance import pdist, squareform, _METRICS
+from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from time import time
+
+#Temporary
+import igraph as ig
+
+
+class MASH: #Manifold Alignment with Diffusion
+    def __init__(self, t = -1, knn = 5, distance_measures = "auto", page_rank = "None",
+                 IDC = 1, density_normalization = False, DTM = "log", burn_in = 0,
+                 verbose = 0, **kwargs):
+        """
+        Parameters:
+            :t: the power to which we want to raise our diffusion matrix. If set to 
+                negative 1 or any string, MASH will find the optimal t value.
+
+            :KNN: should be an integer. Represents the amount of nearest neighbors to 
+                construct the graphs.
+
+            :distance_measure_A: Is a list with each position as a function, "default", "precomputed" or SciKit_learn metric strings for 
+                the domain intended for it to relate to. If it is a function, then it should
+                be formated like my_func(data) and returns a distance measure between points.
+                If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
+                function uses Euclidian distance, but this may manually changed through kwargs assignment.
+                If set to "default" it will use the graph created kernals. 
+
+            :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
+                to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
+                representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
+                deemed too strong, the user may choose to assign the IDC < 1.
+
+            :density_normalization: A boolean value. If set to true, it will apply a density
+                normalization to the joined domains. 
+
+            :DTM: Diffusion Transformation method. Can be set to "hellinger", "kl" or "log"
+            :kwargs: Key word arguments for graphtools.Graph functions. 
+         """
+
+
+        #Store the needed information
+        self.t = t
+        self.knn = knn
+        self.normalize_density = density_normalization
+        self.DTM = DTM.lower()
+        self.distance_measures = distance_measures
+        self.verbose = verbose
+        self.kwargs = kwargs
+        self.IDC = IDC
+        self.burn_in = burn_in
+
+        #Set self.emb to be None
+        self.embeddings = None
+    
+    def fit(self, domains, known_anchors):
+        """
+        Parameters:
+            :domains: should be a tuple-like set of each domain.  
+            :Known Anchors: It should be an array shaped (n, m) where n is the number of
+                corresponding nodes, and m is the number of domains. For each position in m,
+                it should be the anchor node within that domain that connects to the others. 
+                For example [1, 3, 5] means node 1 in the first domain corresponds to node 3 
+                in the second domain and node 5 in the third domain. If [1, np.nan, 3] is given, 
+                there is no corresponding anchor in domain two.
+        """
+
+        #Print timing data
+        if self.verbose > 3:
+           print("Time Data Below")
+
+        #Convert to array
+        self.known_anchors = np.array(known_anchors)
+
+        #Add the data. Note, it will later be normalized
+        self.domains = domains
+        self.domain_count = len(domains)
+
+        if self.distance_measures == "auto":
+            self.distance_measures = ["default" for i in range(self.domain_count)]
+
+        #Check to see if the dimensions of known anchors macth.
+        if self.domain_count != known_anchors.shape[1]:
+            raise RuntimeError("The shape of known anchors (n, m) is not correct: m should equal the amount of domains given. ")
+
+        #Cache the lengths of the domains
+        self.len_domains = [len(domain) for domain in self.domains]
+
+        #Build graphs and kernals
+        self.build_graphs()
+            
+        #Change known_anchors to correspond to off diagonal matricies
+        self.known_anchors_adjusted = np.array(self.known_anchors)
+        for i, length in enumerate(self.len_domains):
+            if i == self.domain_count - 1:
+                break
+            else:
+                self.known_anchors_adjusted += np.concatenate((np.repeat(0, i+1), np.repeat(length, self.domain_count -(i+1))))
+
+        #Connect the graphs
+        self.print_time()
+        self.graphAB = self.merge_graphs()
+        self.print_time(" Time it took to compute merge_graphs function:  ")
+        
+        #Get Similarity matri
+        self.print_time()
+        self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
+        self.print_time(" Time it took to compute similarity_matrix function:  ")
+
+        #Get Diffusion Matrix. int_diff_dist stands for the integrated diffusion distance.
+        self.print_time()
+        self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
+        self.print_time(" Time it took to compute diffusion process:  ")
+
+        if self.verbose > 0:
+            print("Fit process finished. We recommend calling optimize_by_creating_connections.")
+
+    """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+    def FOSCTTM(self, off_diagonal): 
+        """
+        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
+        
+        Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
+        to each other through the alignment process. If a method perfectly aligns all corresponding 
+        points, the average FOSCTTM score would be 0. 
+
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
+        of the block matrix. 
+        """
+        n1, n2 = np.shape(off_diagonal)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = off_diagonal
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+    
+    def partial_FOSCTTM(self, off_diagonal, anchors):
+        """Follows the smae format as FOSCTTM.
+        
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
+        of the block matrix. 
+        
+        This calculates only a subset of points. It is intended to be used with hold-out anchors to help 
+        us gauge whether new connections yielded in a better alignment."""
+
+        n1, n2 = np.shape(off_diagonal)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = off_diagonal
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
+    
+    def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+        """
+        Returns the classification score by training on one domain and predicting on the the other.
+        This will test on both domains, and return the average score.
+        
+        Parameters:
+            :embedding: the manifold alignment embedding. 
+            :Labels: a concatenated list of labels for domain A and labels for domain B
+            :knn_args: the key word arguments for the KNeighborsClassifier."""
+
+        (labels1, labels2) = Labels
+
+        n1 = len(labels1)
+
+        #initialize the model
+        knn = KNeighborsClassifier(**knn_args)
+
+        #Fit and score predicting from domain A to domain B
+        knn.fit(embedding[:n1, :], labels1)
+        score1 =  knn.score(embedding[n1:, :], labels2)
+
+        #Fit and score predicting from domain B to domain A, and then return the average value
+        knn.fit(embedding[n1:, :], labels2)
+        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
+
+    """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+    def print_time(self, print_statement =  ""):
+        """A function that times the algorithms and returns a string of how
+        long the function was last called."""
+
+        #Only do this if the verbose is higher than 4
+        if self.verbose > 3:
+
+            #Start time. 
+            if not hasattr(self, 'start_time'):
+                self.start_time = time()
+
+            #Check to see if it equals None
+            elif self.start_time == None:
+                self.start_time = time()
+
+            else:
+                #We need to end the time
+                end_time = time()
+
+                #Create a string to return
+                time_string = str(round(end_time - self.start_time, 5))
+
+                #Reset the start time
+                self.start_time = None
+
+                print(print_statement + time_string)
+    
+    def normalize_0_to_1(self, value):
+        return (value - value.min()) / (value.max() - value.min())
+    
+    def build_graphs(self):
+        """
+        Builds the graph objecy and kernal.
+        """
+
+        #Create a list to store the kernals
+        self.kernals = []
+
+        #Create a list to store the graphs
+        self.graphs = []
+
+        #------------------------    Build dependencies for each domain    ------------------------  
+        for i in range(self.domain_count):  
+            if self.distance_measures[i] != "default":
+
+                #Create kernals
+                self.print_time()
+                self.kernals.append(self.get_SGDM(self.domains[i], self.distance_measures[i])) #TODO: Do I add a 1- to keep this uniformly similarites?
+                
+                self.print_time(f" Time it took to execute SGDM for domain {i}:  ")
+
+                #Create Graphs using our precomputed kernals
+                self.print_time()
+                self.graphs.append(graphtools.Graph(self.kernals[i], knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs))
+                self.print_time(f" Time it took to execute the graph for domain {i}:  ")
+
+            else: 
+                #Create Graphs and allow it to use the normal data
+                self.print_time()
+                self.domains[i] = self.normalize_0_to_1(self.domains[i])
+                self.graphs.append(graphtools.Graph(self.domains[i], knn = self.knn, knn_max = self.knn, decay = 40, **self.kwargs))
+                self.print_time(f" Time it took to execute the graph for domain {i}:  ")
+
+                #Get the Kernal Data from the graphs
+                self.print_time()
+                self.kernals.append(np.array(self.graphs[i].K.toarray()))
+                self.print_time(f" Time it took to compute kernal {i}:  ")
+    
+    def apply_aggregation(self, matrix):
+        """Apply the aggregation function to a powered diffusion operator"""
+        
+        #The Hellinger algorithm requires that the matricies have the same shape
+        if self.DTM == "hellinger" and len(np.unique(self.len_domains)) < 2:
+            #Apply the hellinger process
+            agg_matix = self.hellinger_distance_matrix(matrix)
+
+        elif self.DTM == "kl" and len(np.unique(self.len_domains)) < 2:
+            #Apply the hellinger process
+            agg_matix = self.kl_divergence_matrix(matrix)
+
+        else:
+            if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
+                print("Unable to compute hellinger or kl because datasets are not the same size.")
+
+            #Squareform it :) --> TODO: Test the -np.log to see if that helps or not... we can see if we can use sqrt and nothing as well. :)
+            agg_matix = (squareform(pdist((-np.log(0.00001+matrix))))) #We can drop the -log and the 0.00001, but we seem to like it
+    
+            #Normalize the matrix
+            agg_matix = self.normalize_0_to_1(agg_matix)
+
+        return agg_matix
+
+    def get_SGDM(self, data, distance_measure):
+        """SGDM - Same Graph Distance Matrix.
+        This returns the normalized distances within each domain."""
+
+        #Check to see if it is a function
+        if callable(distance_measure):
+            return distance_measure(self, data)
+
+        #If the distances are precomputed, return the data. 
+        elif distance_measure.lower() == "precomputed":
+            return data
+        
+        #Euclidian and other sci-kit learn methods
+        elif distance_measure.lower() in _METRICS:
+
+            #Additional error checking
+            if distance_measure.lower() == "cosine" and np.array(data).shape[-1] == 1:
+                raise RuntimeError("Cannot compute cosine distances with only one feature.")
+
+            #Check to make sure we have no NaNs. If we do, we will change the algorihm
+            if np.isnan(data).any(): #NOTE: Test ignoring infinites as well
+
+                if self.verbose > 0:
+                    print("Warning. NaN's dectected. Calculating distances by ignoring NaN positions, and normalizing. May take longer.")
+
+                #Proceed with the NanN adjustments by creating a custom nan function we can pass into pdist
+                def nan_metric(row_a, row_b, metric):
+
+                    # Mask for valid (non-NaN) entries
+                    valid_mask = ~np.isnan(row_a) & ~np.isnan(row_b)
+
+                    if np.sum(valid_mask) == 0:
+                        return np.inf  # If no valid entries, return inf.
+                
+                    # Calculate the distance using the specified metric only on valid entries
+                    dist = metric(row_a[valid_mask], row_b[valid_mask])
+
+                    # Normalize by the number of valid entries
+                    return dist / np.sum(valid_mask) #NOTE: This will create bias for Euclidean distance
+                
+                dists = squareform(pdist(data, metric = lambda u, v: nan_metric(u, v, metric = _METRICS[distance_measure.lower()].dist_func)))
+                
+            else:
+                #Just using a normal distance matrix without Igraph
+                dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
+
+        else:
+            raise RuntimeError(f"Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
+
+        #Normalize it and return the data
+        return self.normalize_0_to_1(dists)
+        
+    def row_normalize_matrix(self, matrix):
+        """Returns a row normalized matrix"""
+
+        #Get the sum for each row
+        row_sums = matrix.sum(axis=1)
+
+        #Prefrom the row-normalized division
+        return matrix / row_sums[:, np.newaxis]
+
+    def get_similarity_matrix(self, matrix):
+        """Applies adjustments to get the similarity Matrix
+        
+        Returns the similarity matrix"""
+
+        #Apply density normalization
+        if self.normalize_density:
+            matrix = self.density_normalized_kernel(matrix)
+        
+        #Normalize the matrix
+        matrix = self.normalize_0_to_1(matrix)
+
+        return matrix
+
+    def kl_divergence_matrix(self, matrix):
+        """
+        Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
+
+        Link to KL divergence formula and definition: https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence
+
+        Parameters:
+        matrix (numpy.ndarray): This should be the diffused matrix
+
+        Returns:
+        numpy.ndarray: Divergence matrix
+        """
+
+        # Ensure there are no zero values to avoid division by zero
+        matrix = np.where(matrix == 0, 1e-10, matrix)
+
+        #Normalize and do all the math to preform the KL divergence
+        matrix = self.normalize_0_to_1(squareform(pdist(np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2))))
+
+        #Return the block matrix!
+        return matrix 
+    
+    def density_normalized_kernel(self, K):
+        """
+        Compute the density-normalized kernel matrix.
+
+        Parameters:
+        K (numpy.ndarray): The original kernel matrix (n x n).
+
+        Returns:
+        numpy.ndarray: The density-normalized kernel matrix (n x n).
+        """
+
+        # Compute the density estimates p by summing the values of each row
+        p = np.sum(K, axis=1)
+        
+        # Ensure p is a column vector
+        p = p.reshape(-1, 1)
+        
+        # Compute the outer product of the density estimates
+        p_outer = np.sqrt(p @ p.T)
+        
+        # Compute the density-normalized kernel
+        K_norm = K / p_outer
+        
+        return K_norm
+    
+    def hellinger_distance_matrix(self, matrix):
+        """
+        This compares each row to each other row in the matrix with the Hellinger
+        algorithm -- determining similarities between distributions. 
+        
+        Parameters:
+        matrix (numpy.ndarray): Matrix for the computation. Is expected to be the block.
+        
+        Returns:
+        numpy.ndarray: Distance matrix.
+        """
+
+        #Get the sgdms from the matrix
+        SGDMs = [matrix[:self.len_domains[0], :self.len_domains[0]]]
+        for i in range(self.domain_count-1):
+            SGDMs.append(matrix[self.len_domains[i]: sum(self.len_domains[:i+2]), self.len_domains[i]: sum(self.len_domains[:i+2])])
+
+        #Stack each of the sgdm so they become one graph
+        stacked_matrix = np.array([])
+        for i in range(self.domain_count):
+            stacked_matrix = np.vstack([stacked_matrix, SGDMs[i]])
+
+        #Reshape the maticies
+        sqrt_matrix1 = np.sqrt(stacked_matrix[:, np.newaxis, :])
+        sqrt_matrix2 = np.sqrt(stacked_matrix[np.newaxis, :, :])
+
+        # Calculate the squared differences
+        squared_diff = (sqrt_matrix1 - sqrt_matrix2) ** 2
+        
+        # Sum along the last axis to get the sum of squared differences
+        sum_squared_diff = np.sum(squared_diff, axis=2)
+        
+        # Calculate the Hellinger distances
+        distances = np.sqrt(sum_squared_diff) / np.sqrt(2)
+        
+        return distances
+
+    def find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
+        """A helper function that finds and returns a list of the closest connections and their associated wieghts after alignment.
+            
+        Parameters:
+            :connection_limit: should be an integer. If set, the function will find no more than the connection amount specified. 
+            :threshold: should be a float.
+                The threshold determines how similar a point has to be to another to be kept as a connection. 
+            :pruned_connections: should be a list formated like (n1, n2) where n1 is a point in Domain A, and n2 is a point in Domain B.
+                The node connections in this list will not be considered for possible connections. 
+            
+        returns the possible connections"""
+
+        #Keep Track of known-connections by creating a mask of everywhere we have a connection
+        known_connections = self.similarity_matrix > 0
+
+        if self.verbose > 0:
+            print(f"Total number of Known_connections: {np.sum(known_connections)}")
+
+        
+        #This is made into an array to ensure the self.int_diff_dist is not changed
+        array = np.array(self.int_diff_dist)
+
+        #Set our Known-connections to inf values so they are not found and changed
+        array[known_connections] = np.inf
+
+        #Modify our array just to be the off-diagonal portion
+        array = array[:self.len_A, self.len_A:]
+
+        #Set the pruned_connections to be infinite as well
+        array[pruned_connections] = np.inf
+
+        #Set the connection_limit to be 1/3 of available connections if no limit was given
+        if connection_limit == None:
+            connection_limit = int((np.min(array.shape) - len(self.known_anchors)) / 3)
+
+        """ This section below actually finds and then curates potential anchors """
+
+        
+        # Flatten the array
+        array_flat = array.flatten()
+
+        # Sort the array so we can find the smallest values
+        smallest_indices = np.argsort(array_flat)
+
+        # Select the indices of the first smallest values equal to the connection limit
+        smallest_indices = smallest_indices[:connection_limit]
+
+        # Convert the flattened indices to tuple coordinates (row, column)
+        coordinates = [np.unravel_index(index, array.shape) for index in smallest_indices]
+
+        #Add in coordinate values as the third index in the tuple (row, column, value)
+        coordinates = [(int(coordinate[0]), int(coordinate[1]), array[coordinate[0], coordinate[1]]) for coordinate in coordinates]
+
+        #Select only coordinates whose values are less than the given threshold
+        coordinates = np.array(list(takewhile(lambda x: x[2] < threshold, coordinates)))
+
+        return coordinates
+
+    """THE PRIMARY FUNCTIONS"""
+    def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
+        """Creates a new graph (called graphAB) from graphs A and B using the known_anchors,
+        adding an edge set with weight of 1 (as it is a similarity measure).
+        
+        Returns the kernal array of graphAB"""
+
+        #convert Graphs to Igraphs
+        igraphs = []
+        for graph in self.graphs:
+            igraphs.append(graph.to_igraph())
+
+
+        #Merge the all the graphs together in a disjoint way
+        merged = igraphs[0]
+        for igraph in igraphs[1:]:
+            merged = merged.disjoint_union(igraph)
+
+        #For each anchor we want to find its neighbors (so we can connect those same edges to the anchor in the other domain).
+        for anchor in self.known_anchors: 
+
+            #Count the valid anchors
+            num_valid_anchors = 0
+            for pos in anchor:
+                if ~np.isnan(pos):
+                    num_valid_anchors += 1
+
+            #Find the neighbors for each anchor
+            neighbors = []
+            for i in range(self.domain_count):
+
+                #Check to make sure this is a valid anchor
+                if ~np.isnan(anchor[i]):
+
+                    #Add the neighbors for graph a
+                    neighbors.append(tuple(set(igraphs[i].neighbors(int(anchor[i]), mode="out")))) #Converting this to an int is so inefficient... sigh
+                
+                else: #Append an empty list if it is not an anchor
+                    neighbors.append([])
+
+            #We add the edge weights first to a list so we can bulk add them later... NOTE: Since we are taking the weights from the kernal and not the graph object, it may be slightly different. It looks worse when we test the Projections, but the FOSCTTM score seems to be higher
+            weights_to_add = np.array([])
+
+            for i in range(self.domain_count):
+                #Check to make sure this is a valid anchor
+                if ~np.isnan(anchor[i]): #NOTE: We may have to encode something to add these for each array that has this as an anchor? Leaving out "_"
+                    weights_to_add = np.concatenate((weights_to_add,
+                                                np.repeat( #We do this one because we need to add these weights to each other domain 
+                                                        self.kernals[i][neighbors[i], np.repeat( #This one is to get it so the anchor connects to each position
+                                                                                    int(anchor[i]), len(neighbors[i])
+                                                                                    )], 
+                                                        num_valid_anchors-1
+                                                )
+                                               )) #Looks like [0.65, 0.02, 0.06... 0.65, 0.02, 0.06... 0.65, 0.02, 0.06... 0.84, 0.2, 0.2... 0.84, 0.2, 0.2... 0.84, 0.2, 0.2...] if there are three domains
+
+            #Debugger
+            if self.verbose > 5:
+                print(f"Length of weights to add: {len(weights_to_add)}")
+
+            #Bulk add the Edges
+            edges_to_add = []
+
+            for i in range(self.domain_count):
+
+                #loop through the anchor positions -> So we add the edges for each domain to each other domain the anchor correlates with
+                for anchor_pos in range(self.domain_count):
+                    
+                    #Check to make sure its valid
+                    if ~np.isnan(anchor[anchor_pos]) and anchor_pos != i:
+
+                        #Finally add the edges
+                        edges_to_add.append(
+                                            list(zip(np.full_like(neighbors[i], int(anchor[anchor_pos])) + sum(self.len_domains[:anchor_pos]), #We adjust this by the anchor_pos value 
+                                                        np.array(neighbors[i]) + sum(self.len_domains[:i]))
+                                                    )
+                                            ) #We adjsut this one by i
+
+            #Add each set of edges
+            for edges in edges_to_add:
+                merged.add_edges(edges)
+
+                #Debugger
+                if self.verbose > 5:
+                    print(f"Length of edges to add: {len(edges)}")
+                
+            #Add the weights
+            merged.es[-len(weights_to_add):]["weight"] = weights_to_add
+
+        #Now add the edges between anchors. We do this last so if we don't override an anchor in the previous step if multiple points in a domain correlate to a single point in the other domain.
+        for i in range(self.domain_count): #Loop through each domain
+            for j in range(i + 1, self.domain_count): #Loop through each other domain
+
+                # Check for NaN values in both arrays and create a mask
+                mask = ~np.isnan(self.known_anchors_adjusted[:, i]) & ~np.isnan(self.known_anchors_adjusted[:, j])
+
+                # Apply mask to filter out valid values (non-NaN)
+                valid_i = self.known_anchors_adjusted[:, i][mask].astype(int)
+                valid_j = self.known_anchors_adjusted[:, j][mask].astype(int)
+
+                #Check to make sure its not empty: 
+                if len(valid_i) > 0:
+
+                    # Add edges only for valid pairs
+                    merged.add_edges(list(zip(valid_i, valid_j)))
+
+                    # Set weights for the new edges
+                    merged.es[-len(valid_i):]["weight"] = np.repeat(self.IDC, len(valid_i))
+
+
+        if self.verbose > 4:
+
+            # Plot the graph
+            fig, ax = plt.subplots(figsize = (18, 16))
+            ig.plot(merged, layout=merged.layout("kk"), target=ax)
+            plt.show()
+
+        #Convert back to graphtools
+        merged_graphtools = graphtools.api.from_igraph(merged)
+
+        return merged_graphtools.K.toarray()
+    
+    def get_diffusion(self, matrix): 
+        """
+        Returns the powered diffusion opperator from the given matrix.
+        Also returns the projection matrix from domain A to B, and then the projection matrix from domain B to A. 
+        """
+
+        #Find best T value if t is set to auto
+        if self.t == -1 or type(self.t) != int:
+            self.t = find_optimal_t(matrix) 
+
+            #If we found a T
+            if self.verbose > 0:
+                print(f"Using optimal t value of {self.t}")
+
+        # Row normalize the matrix
+        normalized_matrix = self.row_normalize_matrix(matrix)
+
+        #Raise the normalized matrix to the t power
+        diffusion_matrix = np.linalg.matrix_power(normalized_matrix, self.t)
+
+
+        #Apply the aggregation function
+        diffused = self.apply_aggregation(diffusion_matrix)
+
+        return diffused
+        
+    def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
+        """
+        In an interative process, it gets the potential anchors after alignment, and then recalculates the similarity matrix and 
+        diffusion opperator. It then tests this new alignment, and if it is better, keeps the alignment.
+
+        Returns True if a new alignment was made, otherwise it returns False
+        
+        Parameters:
+            :connection_limit: should be an integer. If set, it will cap out the max amount of anchors found. 
+                Best values to try: 1/10, 1/5, or 10x the length of the data, or None. 
+            :threshold: should be a float. If auto, the algorithm will determine it. It can not be higher than the median value of the dataset.
+                The threshold determines how similar a point has to be to another to be considered an anchor
+            :hold_out_anchors: Should be in the same format as known_anchors. These are used to validate the new alignment. Can be given 
+                anchors already used, but it preforms best if these are unseen anchors. 
+            :epochs: the number of iterations the cycle will go through. 
+        """
+
+        #Create value to return
+        added_connections = False
+
+        #Show the original connections
+        if self.verbose > 1:
+            print("<><><><><> Beggining Tests. Original Connections show below <><><><><>")
+            plt.imshow(self.similarity_matrix)
+            plt.show()
+
+        
+        #Set pruned_connections to equal hold_out_anchhor connections if they exist, empty otherwise
+        if len(hold_out_anchors) > 0: 
+
+            #Create a list of dictionaries that will hold the anchor's neighbors (because these are also known connections)
+            hold_neighbors = [{} for i in range(self.domain_count)]
+
+            #Add in the the connections of each neighbor to each anchor by looping through each possible connection
+            for i in range(self.domain_count):
+                
+                #Cache Igraph
+                igraph = self.graphs[i].to_igraph()
+
+                #Loop through each anchor
+                for anchor_pair in self.known_anchors[:, i]:
+
+                    if not np.isnan(anchor_pair):
+
+                        #Convert to int
+                        anchor_pair = int(anchor_pair)
+
+                        #This creates a list like: [[1, 25], [1, 45]], [[6, 75], [6, 87]]... Where each one is just its own neighbors
+                        hold_neighbors[i][anchor_pair] = np.array([neighbor for neighbor in set(igraph.neighbors(anchor_pair, mode="out"))]) + np.sum(self.len_domains[:i])
+
+            #Add to pruned connecitons
+            keys = []
+            values = []
+
+            for i in range(self.domain_count):
+                # Step 2: Vectorized population of keys and values
+                for key, value_array in hold_neighbors[i].items():
+                    keys.append(np.full(len(value_array), key))  # Create an array filled with the key
+                    values.append(value_array)  # Collect the value arrays
+
+            # Step 3: Convert the list of arrays into one large array using np.concatenate
+            keys = np.concatenate(keys)
+            values = np.concatenate(values)
+
+            # Step 4: Combine keys and values as a NumPy array of pairs
+            pruned_connections = np.column_stack((keys, values))
+
+            #Add connections between each domain
+            for domain_connections in range(self.domain_count):
+                #Now loop through other domain connections
+                for domain_connections2 in range(domain_connections + 1, self.domain_count):
+
+                    #Now loop from their connections
+                    connection_pair = hold_neighbors[domain_connections] #Each connection pair is a dictionary
+                    connection_pair2 = hold_neighbors[domain_connections2]
+
+                   # Step 1: Iterate over the keys in dict1
+                    for key in connection_pair.keys():
+                        if key in connection_pair2:
+
+                            # Step 2: Fetch the arrays from both dictionaries
+                            arr1 = connection_pair[key]
+                            arr2 = connection_pair2[key]
+
+                            # Step 3: Perform Cartesian product using np.meshgrid and np.column_stack
+                            a, b = np.meshgrid(arr1, arr2, indexing='ij')
+                            pairs = np.column_stack([a.ravel(), b.ravel()])  # Flatten and combine the arrays
+
+                            # Step 4: Add the result to the list
+                            pruned_connections = np.concatenate([pruned_connections, pairs])
+            
+        else:
+            pruned_connections = []  #THIS FUNCTION MAY NOT BE FEASIBLE --> Too much memory data
+
+        #THIS IS TEMPORARY
+        return pruned_connections
+
+        if threshold == "auto":
+            #Set the threshold to be the 10% limit of the connections
+            threshold = np.sort(self.int_diff_dist.flatten())[:int(len(self.int_diff_dist.flatten()) * .1)][-1]
+
+        if connection_limit == "auto":
+            #Set the connection limit to be 10x the shape (while not always the best value, its consistently good and much faster due to the need of using less epochs)
+            connection_limit = 10 * self.len_A
+
+        #Get the current score of the alignment, by calculating the FOSCTTM scores that correlate with the hold_out_anchors
+        current_score = np.mean([self.partial_FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(self.int_diff_dist[:self.len_A, self.len_A:], hold_out_anchors)])
+
+        #Find the Max value for new connections to be set to
+        max_weight = np.median(self.similarity_matrix[self.similarity_matrix != 0])
+
+        #Make sure we aren't finding values greater than the max_weight
+        if threshold > max_weight:
+            max_weight = threshold + 0.01
+        
+        if self.verbose > 0:
+            print(f"Edges wont be set with similarity measure above: {max_weight}")
+
+        #-----------------------------------------------------------------      Rebuild Class for each epoch        -----------------------------------------------------------------    
+        for epoch in range(0, epochs):
+            
+            if self.verbose > 0:
+                print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
+
+            #Find predicted anchors
+            new_connections = self.find_new_connections(pruned_connections, threshold = threshold, connection_limit = connection_limit)
+
+            #If no new connections are found, quit the process
+            if len(new_connections) < 1:
+                if self.verbose > 0:
+                    print("No new_connections. Exiting process")
+
+                #Add in the known anchors and reset the known_anchors, similarity_matrix, and diffusion matrix
+                if len(hold_out_anchors) > 0:
+
+                    #Cached info 
+                    adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
+
+                    #Set the connections values to the top right block
+                    self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+                    self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+
+                    #Set the connection values to the bottom left block
+                    self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+                    self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+                    #Set the anchors
+                    self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = self.IDC
+                    self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
+
+                    #Reset the Diffusion Matrix
+                    self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
+
+                    #Add in the hold out anchors to the known_anchors
+                    self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
+
+                #Return True if we had found a new alignment, otherwise false
+                return added_connections
+
+            #Continue to show connections
+            if self.verbose > 0:
+                print(f"New connections found: {len(new_connections)}")
+
+            #Copy Similarity matrix
+            new_similarity_matrix = np.array(self.similarity_matrix) #We do this redudant conversion to an array to ensure we aren't copying over a reference
+
+            #Add the new connections
+            new_similarity_matrix[new_connections[:, 0].astype(int), (new_connections[:, 1] + self.len_A).astype(int)] = max_weight - new_connections[:, 2] #The max_weight minus is supposed to help go from distance to similarities
+            new_similarity_matrix[(new_connections[:, 0] + self.len_A).astype(int) , new_connections[:, 1].astype(int)] = max_weight - new_connections[:, 2] #This is so we get the connections in the other off-diagonal block
+
+            #Show the new connections
+            if self.verbose > 1:
+                plt.imshow(new_similarity_matrix)
+                plt.show()
+
+            #Get new Diffusion Matrix
+            new_int_diff_dist = self.get_diffusion(new_similarity_matrix, return_projection = False)
+
+            #Get the new alignment score
+            new_score = np.mean([self.partial_FOSCTTM(new_int_diff_dist[self.len_A:, :self.len_A], hold_out_anchors), self.partial_FOSCTTM(new_int_diff_dist[:self.len_A, self.len_A:], hold_out_anchors)])
+
+            #See if the extra connections helped
+            if new_score < current_score or len(hold_out_anchors) < 1:
+
+                if self.verbose > 0:
+                    print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
+
+                #Reset all the class variables. We don't worry about the calculating the projection matricies until the last epoch.
+                self.similarity_matrix = new_similarity_matrix
+                self.int_diff_dist = new_int_diff_dist
+
+                #Reset the score
+                current_score = new_score
+
+                #Change Added connections to True
+                added_connections = True
+
+            else:
+                if self.verbose > 0:
+                    print(f"The new connections worsened the alignment by {new_score - current_score}\n-----------     Pruning the new connections. Continuing...    -----------\n")
+
+                #Add the added connections to the the pruned_connections
+                if len(pruned_connections) < 1:
+                    pruned_connections = new_connections[:, :2].astype(int)
+                else:
+                    pruned_connections = np.concatenate([pruned_connections, new_connections[:, :2]]).astype(int)
+
+        #On the final epoch, we can evaluate with the hold_out_anchors and then assign them as anchors. Also we need to ensure we calculate the projection matricies
+        if epoch == epochs - 1:
+
+            #Add in hold_out_anchors if applicable
+            if len(hold_out_anchors) > 0:
+                #Cached info 
+                adjusted_hold_neighbors_B = hold_neighbors_B + self.len_A
+
+                #Set the connections values to the top right block
+                self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1] + self.len_A] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+                self.similarity_matrix[hold_neighbors_A[:, 0] + self.len_A, hold_neighbors_A[:, 1]] = self.similarity_matrix[hold_neighbors_A[:, 0], hold_neighbors_A[:, 1]]
+
+                #Set the connections values to the bottom left block
+                self.similarity_matrix[hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+                self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], hold_neighbors_B[:, 1]] = self.similarity_matrix[adjusted_hold_neighbors_B[:, 0], adjusted_hold_neighbors_B[:, 1]]
+
+                #Set the anchors
+                self.similarity_matrix[hold_out_anchors[:, 0], hold_out_anchors[:, 1] + self.len_A] = self.IDC
+                self.similarity_matrix[hold_out_anchors[:, 0] + self.len_A, hold_out_anchors[:, 1]] = self.IDC
+
+            #Recalculate diffusion matrix
+            self.int_diff_dist = self.get_diffusion(self.similarity_matrix)
+
+            #Show the final connections
+            if self.verbose > 1:
+                print("Added Hold Out Anchor Conections")
+                plt.imshow(self.similarity_matrix)
+                plt.show()
+            
+        #Process Finished
+        if self.verbose > 0:
+            print("<><><><><><><><><><<><><><><<> Epochs Finished <><><><><><><><><><><><><><><><><>")
+
+        #Add in the hold out anchors to the known_anchors
+        self.known_anchors += hold_out_anchors
+
+        return added_connections
+
+    """PREDICTING FEATURE FUNCTIONS"""
+    def predict_feature(self, predict_with = "A"):
+        """
+        Predicts the the feature values from one domain to the other using the projection matricies. 
+
+        Arguments:
+        predict_with should be which graph data you want to use. 'A' for graph A and 'B' for graph B.
+        
+        Return the predicted features in an array
+        """
+
+        if predict_with == "A":
+            known_features = self.dataA
+            projection_matrix = self.projectionBA #Bottom Left
+        elif predict_with == "B":
+            known_features = self.dataB
+            projection_matrix = self.projectionAB #Top Right
+        else:
+            print("Please specify which features you want to predict. Graph 'A' or Graph 'B'")
+            return None
+        
+        
+        predicted_features = (projection_matrix[:, :, np.newaxis] * known_features[np.newaxis, :, :]).sum(axis = 1)
+        
+        return predicted_features
+    
+    def get_merged_data_set(self):
+        """Adds the predicted features to the datasets with the missing features. 
+        Returns a combined dataset that includes the predicted features"""
+
+        #Add the predicted features to each data set
+        full_data_A = np.hstack([self.predict_feature(predict = 'A'), self.dataB])
+        full_data_B = np.hstack([self.dataA, self.predict_feature(predict = 'B')])
+
+        #Combine the datasets
+        completeData = np.vstack([full_data_A, full_data_B])
+
+        return completeData
+
+    """VISUALIZE AND TEST FUNCTIONS"""
+    def plot_heat_maps(self):
+        """
+        Plots and shows the heat maps for the similarity matrix, powered diffusion opperator,
+        and projection matrix.
+        """
+        fig, axes = plt.subplots(1, 3, figsize = (13, 9))
+
+        #Similarity matrix
+        axes[0].imshow(self.similarity_matrix)
+        axes[0].set_title("Similarity Matrix")
+
+        #Diffusion matrix
+        axes[1].imshow(self.int_diff_dist)
+        axes[1].set_title("Integrated Diffusion Distance Matricies")
+
+        plt.show()
+
+    def get_scores(self, labels, n_comp = 2):
+        """ Stores the the FOSCTTM and CE scores in a cross tab table. (Is cross tab the right defintion? Check...)"""
+
+        #Check if the scores already exsist
+        if  hasattr(self, "F_scores") and hasattr(self, "CE_scores"):
+            if self.verbose > 0:
+                print("Scores have already been calculated.")
+            
+            return False
+        
+        #Create the scores
+        self.F_scores = np.zeros(shape = (self.domain_count, self.domain_count)) #To represent comparisions to themselves
+        self.CE_scores = np.ones(shape = (self.domain_count, self.domain_count))
+
+
+
+        #Check to see if we already have created our embedding, else create the embedding.
+        if type(self.embeddings) == type(None):
+            #Convert to a MDS
+            mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = 42, n_components= n_comp)
+            emb = mds.fit_transform(self.int_diff_dist)
+
+            #Sort out the embedding by domains
+            self.embeddings = [emb[:self.len_domains[0], :]]
+
+            for i in range(1, self.domain_count):
+                self.embeddings.append(emb[sum(self.len_domains[:i]):sum(self.len_domains[:i+1]),:])
+
+        #Print out each of the domains scores
+        for i in range(self.domain_count):
+            #Compare domain I to each other domain
+            for k in range(i+1, self.domain_count):
+
+                #Check to make sure we have labels
+                if len(labels) == self.domain_count:
+                    print(f"Scores from domain {i+1} to {k+1}: ")
+
+                    try: #Will fail if the domain shapes aren't equal
+                        self.CE_scores[i, k] =self.cross_embedding_knn(
+                                                                                np.vstack([self.embeddings[i], self.embeddings[k]]),
+                                                                                (labels[i], labels[k]),
+                                                                                knn_args = {'n_neighbors': 4}
+                                                                                    )
+                        self.CE_scores[k, i] = self.CE_scores[i, k]
+                        print(f"""    Cross Embedding: {self.CE_scores[i, k]}""")
+                    except:
+                        print("    Can't calculate the Cross Embedding score")
+
+                else: 
+                    if self.verbose > 0:
+                        print("Provided labels do not match. Will only calculate the FOSCTTM scores")
+                                        
+                #Calculate FOSCTTM score
+                try:    
+                    #Show the heat map of the comparison
+                    if self.verbose > 5:
+                        plt.imshow(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1])])
+                        plt.show()
+
+                    self.F_scores[i, k] = self.FOSCTTM(self.int_diff_dist[sum(self.len_domains[:k]):sum(self.len_domains[:k+1]), sum(self.len_domains[:i]):sum(self.len_domains[:i+1]) ])
+                    self.F_scores[k, i] = self.F_scores[i, k]
+                    print(f"    FOSCTTM: {self.F_scores[i, k]}") #This gets the off-diagonal part
+                except: #This will run if the domains are different shapes
+                    print(f"    Can't compute FOSCTTM with different domain shapes. Domain {i + 1}: {self.domains[i].shape}. Domain {k+1}: {self.domains[k].shape}")
+        
+    def plot_emb(self, labels = None, n_comp = 2, show_legend = True, **kwargs): 
+        """A useful visualization function to veiw the embedding.
+        
+        Arguments:
+            :labels: should be a tuple-like of the labes for each domain. For example (labels_domain_1, labels_domain_2, labels_domain_3...)
+            :n_comp: The amount of components or dimensions for the MDS function.
+            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
+                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
+            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
+                that is an anchor. 
+            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
+
+        self.get_scores(labels, n_comp)
+
+        #Create artificial labels? 
+        if len(labels)!= self.domain_count:
+            #Set all labels to be the same
+            labels = np.ones(shape = (len(np.concatenate(self.embeddings))))
+
+        #Set the styles to show if a point comes from the first domain or the second domain
+        #styles = [f"Domain {i+1}" for i, sublist in enumerate(self.embeddings) for _ in sublist]
+
+        # Create the figure and axes
+        fig, ax = plt.subplots(figsize=(14, 8))
+
+        #Create a list of markers
+        if not hasattr(self, "markers"):
+            self.markers = [
+                            'o',  # circle marker
+                            '^',  # triangle_up marker
+                            '*',  # star marker
+                            's',  # square marker
+                            'p',  # pentagon marker
+                            'h',  # hexagon1 marker
+                            'd',  # thin_diamond marker
+                            '<',  # triangle_left marker
+                            '>',  # triangle_right marker
+                            '1',  # tri_down marker
+                            '2',  # tri_up marker
+                            '3',  # tri_left marker
+                            '4',  # tri_right marker
+                            'v',  # triangle_down marker
+                            'H',  # hexagon2 marker
+                            '+',  # plus marker
+                            'D',  # diamond marker
+                            '.',  # point marker
+                            'x',  # x marker
+                        ]
+
+        #Now plot the points with correct labels
+        for emb, label, i in zip(self.embeddings, labels, range(0, self.domain_count)):
+            sns.scatterplot(x = emb[:, 0], y = emb[:, 1], ax = ax, hue = Categorical(label), s=120, style = np.repeat(("Domain " + str(i+1)), repeats = self.len_domains[i]), markers = self.markers[i%len(self.markers)], **kwargs)
+
+        #Set the title and plot Legend
+        ax.set_title("MASH", fontsize = 25)
+        plt.xticks(fontsize=16)
+        plt.yticks(fontsize=16)
+
+        #Plot Legend
+        if show_legend:
+            ax.legend()
+
+        # #To plot line connections
+        # if show_lines:
+            
+        #     #Since this assumes 1 to 1 correpsondence, we must chech that the domains sizes are the same
+        #     if self.len_A == self.len_B:
+        #       for i in range(self.len_B):
+        #           ax.plot([self.emb[0 + i, 0], self.emb[self.len_A + i, 0]], [self.emb[0 + i, 1], self.emb[self.len_A + i, 1]], alpha = 0.65, color = 'lightgrey') #alpha = .5
+        #     else:
+        #        raise AssertionError("To show the lines, domain A and domain B must be the same size.")
+             
+        # #Put black dots on the Anchors
+        # if show_anchors:
+            
+        #     #For each anchor set, plot lines between them
+        #     for i in self.known_anchors_adjusted:
+        #       ax.plot([self.emb[i[0], 0], self.emb[i[1], 0]], [self.emb[i[0], 1], self.emb[i[1], 1]], color = 'grey')
+            
+        #     #Create a new style guide so every other point is a triangle or circle
+        #     styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
+
+        #     #Plot the black triangles or circles on the correct points
+        #     sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
+        
+        #Show plot
+        plt.show()
+
+        # #Show the predicted points
+        # if show_pred and type(labels) != type(None):
+
+        #     #Instantial model, fit on domain A, and predict for domain B
+        #     knn_model = KNeighborsClassifier(n_neighbors=4)
+        #     knn_model.fit(self.emb[:self.len_A, :], first_labels)
+        #     second_pred = knn_model.predict(self.emb[self.len_A:, :])
+
+        #     #Create the figure
+        #     plt.figure(figsize=(14, 8))
+
+        #     #Now plot the points
+        #     ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+
+        #     #Set the title
+        #     ax.set_title("Predicted Labels",  fontsize = 25)
+        #     plt.xticks(fontsize=16)
+        #     plt.yticks(fontsize=16)
+
+        #     plt.show()
+
+    def plot_all_embeddings(self, labels, **kwargs):
+        """To be called only after plot_emb.
+        
+        Plots the embedding for each domain."""
+
+        if self.embeddings == None:
+            print("Call 'plot_emb' before this fucntion.")
+            return False
+
+        #Now plot the points with correct labels
+        for emb, label, i in zip(self.embeddings, labels, range(self.domain_count)):
+            sns.scatterplot(x = emb[:, 0], y = emb[:, 1], hue = Categorical(label), s=120, style = np.repeat(("Domain " + str(i+1)), repeats = self.len_domains[i]), markers= self.markers[i%len(self.markers)], **kwargs)
+
+            plt.show()
+
+    def plot_t_grid(self, rate = 3):
+        """Plots the powered diffusion operator many times each with a different t value. Also plots
+        the associated projection matrix. 
+        
+        Arguments:
+            :rate: the value by which to increment t for each iteration.
+            
+        It has no return.
+        """
+
+        #Store the original t value
+        t_str = str(self.t)
+        
+        #Create the figure
+        fig, axes = plt.subplots(nrows=4, ncols=5, figsize=(20, 16))
+
+        #Create an empty list to store the FOSCTTM scores
+        F_scores = np.array([])
+
+        for i in range(1, 11):
+            # Calculate the row and column index for the current subplot
+            row = (i - 1) // 5
+            col = (i - 1) % 5
+            
+            # Perform the diffusion operation
+            self.t = i * rate
+            diffused_array = self.get_diffusion(self.similarity_matrix)
+
+            #Calculate FOSCTTM score
+            F_scores = np.append(F_scores, self.FOSCTTM(diffused_array))
+            
+            # Plotting the diffused array
+            ax = axes[row, col]
+            ax.imshow(diffused_array)
+            ax.set_title(f'T value {self.t}, FOSCTTM {(F_scores[i-1]):.4g}')
+            ax.axis('off')
+
+            #Plotting the associated Projections
+            ax = axes[row+2, col]
+            ax.imshow(projectionAB)
+            ax.set_title(f'ProjectionAB: T value {self.t}')
+            ax.axis('off')
+            
+        #Show the plot
+        plt.tight_layout()
+        plt.show()
+
+        #Restore t value
+        self.t = int(t_str)
+
+        print(f"The best T value is {(F_scores.argmin() +1) * rate} with a FOSCTTM of {(F_scores.min()):.4g}")
