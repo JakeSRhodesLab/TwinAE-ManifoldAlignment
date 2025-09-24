@@ -19,12 +19,14 @@ __paper__ = "Guided Manifold Alignment with Geometry-Regularized Twin Autoencode
 
 from . import alignment_methods
 from . import helpers
-from . import adni
-from . import autoencoder
+
+# Skip imports that require additional dependencies
+# from . import autoencoder  # Requires torch
+# from . import adni  # Requires data files
 
 __all__ = [
     "alignment_methods",
-    "helpers", 
-    "adni",
-    "autoencoder"
+    "helpers"
+    # "autoencoder",  # Requires torch
+    # "adni",  # Requires data files
 ]

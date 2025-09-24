@@ -93,7 +93,12 @@ This package provides a comprehensive implementation of **Twin Autoencoders** us
 ```bash
 # Install latest version directly from GitHub
 pip install git+https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment.git
+
+# Or install a specific branch/tag
+pip install git+https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment.git@main
 ```
+
+**Note**: This will automatically install all dependencies including the `mashspud` package for MASH and SPUD functionality.
 
 ### Install from source (for development)
 

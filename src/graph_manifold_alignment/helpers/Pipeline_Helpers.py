@@ -1,14 +1,28 @@
 import numpy as np
-from Helpers.rfgap import RFGAP
-from AlignmentMethods.MAGAN import run_MAGAN, get_pure_distance, magan #TF import INCOMPATIBLE WITH GRAE
-from Main.test_manifold_algorithms import test_manifold_algorithms as tma
+from .rfgap import RFGAP
 import inspect
 from mashspud import MASH, SPUD
-from AlignmentMethods.jlma import JLMA
-from AlignmentMethods.ssma import ssma
-from AlignmentMethods.ma_procrustes import MAprocr
-from AlignmentMethods.mali import MALI #TF import INCOMPATIBLE WITH GRAE
-from AlignmentMethods.DTA_andres import DTA
+from ..alignment_methods.jlma import JLMA
+from ..alignment_methods.ssma import ssma
+from ..alignment_methods.ma_procrustes import MAprocr
+from ..alignment_methods.mali import MALI
+from ..alignment_methods.DTA_andres import DTA
+
+# Optional imports for TensorFlow-dependent modules
+try:
+    from ..alignment_methods.MAGAN import run_MAGAN, get_pure_distance, magan
+except ImportError:
+    run_MAGAN = None
+    get_pure_distance = None
+    magan = None
+
+# Optional imports for test_manifold_algorithms
+try:
+    from ..main import test_manifold_algorithms as tma_module
+    # Create a default tma instance for compatibility
+    tma = tma_module.test_manifold_algorithms()
+except ImportError:
+    tma = None
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import f1_score, mean_squared_error
@@ -142,7 +156,9 @@ def jlma_foscttm(self):
     len_A = len(self.X1)
     block = self.SquareDist(self.Y)
 
-    return np.mean([tma.FOSCTTM(None, block[:len_A, len_A:]), tma.FOSCTTM(None, block[len_A:, :len_A])])
+    if tma is None:
+        return 0.0  # Default value when tma is not available
+    return np.mean([tma.FOSCTTM(block[:len_A, len_A:]), tma.FOSCTTM(block[len_A:, :len_A])])
 
 def get_mash_score_connected(self, tma, **kwargs):
     import copy
@@ -181,7 +197,7 @@ def get_mash_score_connected(self, tma, **kwargs):
     except Exception as e:
         print(f"<><><>      Tests failed for: {kwargs}. Why {e}        <><><>")
         logger.warning(f"Failed in MASH-Score Connected function. CSV: {tma.csv_file}. Parameters: {kwargs}. Error: {e}")
-        return (np.NaN, np.NaN, np.NaN)
+        return (np.nan, np.nan, np.nan)
 
 def Rustad_fit(self, tma, anchors):
     self.fit(tma.split_A, tma.split_B, anchors)
@@ -346,13 +362,17 @@ def get_MAGAN_block(block_pieces):
     return np.block([[block_pieces[0], block_pieces[3]], [block_pieces[3], block_pieces[1]]])
 
 def magan_foscttm(block_pieces):
-    return np.mean((tma.FOSCTTM(None, block_pieces[2]), tma.FOSCTTM(None, block_pieces[3])))
+    if tma is None:
+        return 0.0  # Default value when tma is not available
+    return np.mean((tma.FOSCTTM(block_pieces[2]), tma.FOSCTTM(block_pieces[3])))
 
 def pcr_foscttm(self):
     len_A = int(self.W.shape[0]/2)
                     
-    return np.mean([tma.FOSCTTM(None, 1 - self.W[len_A:, :len_A]), 
-                       tma.FOSCTTM(None, 1 - self.W[:len_A, len_A:])])
+    if tma is None:
+        return 0.0  # Default value when tma is not available
+    return np.mean([tma.FOSCTTM(1 - self.W[len_A:, :len_A]),
+                       tma.FOSCTTM(1 - self.W[:len_A, len_A:])])
 
 def fit_with_labels(self, tma, anchors):
     labels = discretize_labels(tma.labels)

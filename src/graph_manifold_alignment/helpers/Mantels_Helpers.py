@@ -1,17 +1,20 @@
 #Imports 
-from Helpers.regression_helpers import read_json_files_to_dataframe
+from .regression_helpers import read_json_files_to_dataframe
+from .path_utils import (
+    get_classification_csv_path, get_regression_csv_path, 
+    get_splits_data_path, get_results_path, get_mantel_path, get_mantel_lam_path
+)
 import os
 import numpy as np
 import pandas as pd
-from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs
+from .Pipeline_Helpers import method_dict, create_unique_pairs
 from sklearn.manifold import MDS
-from sklearn.model_selection import train_test_split
-from Helpers.Grae import GRAEBase, BaseDataset
+
+from .Grae import GRAEBase, BaseDataset
 from scipy.stats import pearsonr
 import seaborn as sns
 import matplotlib.pyplot as plt
 import json
-import os
 from scipy.spatial.distance import pdist, squareform
 
 class split_data():
@@ -21,9 +24,9 @@ class split_data():
 
         #Get the labels
         try:
-            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Classification_CSV/" + csv_file)
-        except:
-            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
+            df = pd.read_csv(get_classification_csv_path() / csv_file)
+        except Exception:
+            df = pd.read_csv(get_regression_csv_path() / csv_file)
 
         #If categorical strings :)
         if df[df.columns[0]].dtype == 'object':
@@ -42,8 +45,7 @@ def split_features(csv_file, split, seed):
 
         #Step 1. Check if a file exists already
         #Create filename 
-        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/Splits_Data/" + csv_file[:-4] + "/"
-        filename += split[0] + str(seed) + ".npz"
+        filename = get_splits_data_path() / csv_file[:-4] / (split[0] + str(seed) + ".npz")
 
         #Step 2b. If so, simply load the files into split A and split B
         if os.path.exists(filename):
@@ -55,7 +57,7 @@ def split_features(csv_file, split, seed):
             return data['split_a'], data["split_b"]
         
         else:
-            from Main.test_manifold_algorithms import test_manifold_algorithms as tma
+            from ..main import test_manifold_algorithms as tma
             tma(csv_file, random_state= seed, split = split)
             print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
             return split_features(csv_file, split, seed)
@@ -63,7 +65,7 @@ def split_features(csv_file, split, seed):
 # Create function to Extract best fit information from the results
 def extract_all_files():
     #Get the regression results and classification results
-    df = read_json_files_to_dataframe("/yunity/arusty/Graph-Manifold-Alignment/Results")
+    df = read_json_files_to_dataframe(str(get_results_path()))
 
     files = ["EnergyEfficiency",  
     "AutoMPG", "ComputerHardware", "diabetes", "tic-tac-toe", 'Medicaldataset',
@@ -222,7 +224,7 @@ def mantel_test(method, dataset, split, params, lam = 100, *, permutations = 100
     try:
 
         #Return null values if file already exsists
-        if repeat_results == False:
+        if not repeat_results:
             if file_already_exists(method, dataset, split, lam):
                 #print(f"Results already exist for {method}, {dataset}, {split}.")
                 
@@ -254,7 +256,7 @@ def mantel_test(method, dataset, split, params, lam = 100, *, permutations = 100
         perm_r = np.array(perm_r)
         p_value = np.sum(perm_r >= r_obs) / permutations
         
-        if plot == True:
+        if plot:
             # Plot the smoothed distribution curve of the null distribution of correlations
             plt.figure(figsize=(10, 6))
             sns.kdeplot(perm_r, color='blue', lw=2)  # KDE line
@@ -274,12 +276,12 @@ def mantel_test(method, dataset, split, params, lam = 100, *, permutations = 100
         
         return r_obs, p_value #Results are saved above
     
-    except:
+    except Exception:
         return np.nan, np.nan
 
 def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r, lam = 100):
 
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam"
+    results_dir = str(get_mantel_lam_path())
 
     if lam == 100:
         file_name = f"{method}_{dataset}_{str(split)}.json"
@@ -314,7 +316,7 @@ def save_mantel_results(method, dataset, split, r_obs, p_value, perm_r, lam = 10
     print(f"Mantel results saved to: {file_path}")
 
 def read_all_mantel_results():
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel"
+    results_dir = str(get_mantel_path())
     all_data = []
 
     for file in os.listdir(results_dir):
@@ -327,7 +329,7 @@ def read_all_mantel_results():
     return pd.DataFrame(all_data)
 
 def read_all_mantel_results_lam():
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam"
+    results_dir = str(get_mantel_lam_path())
     all_data = []
 
     for file in os.listdir(results_dir):
@@ -372,7 +374,7 @@ def file_already_exists(method, dataset, split, lam):
 
     if lam == 100:
         file_name = f"{method}_{dataset}_{str(split)}.json"
-        return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel", file_name))
+        return os.path.isfile(os.path.join(str(get_mantel_path()), file_name))
 
     file_name = f"{method}_{dataset}_{str(split)}_lam_{lam}.json"
-    return os.path.isfile(os.path.join("/yunity/arusty/Graph-Manifold-Alignment/Results/Mantel_lam", file_name))
+    return os.path.isfile(os.path.join(str(get_mantel_lam_path()), file_name))

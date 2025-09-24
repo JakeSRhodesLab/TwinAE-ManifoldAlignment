@@ -2,9 +2,9 @@
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
+
 import numpy as np
-from Helpers.utils import subset_df, plot_in_fig
+from .utils import subset_df
 
 
 #If there is no new data, we could just read in the old csvfile
@@ -18,7 +18,7 @@ rf_df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Results/ManifoldDat
 
 def create_DataFrames():
     """Uploads and creates dataframe files"""
-    import Main.test_manifold_algorithms as tma
+    from ..main import test_manifold_algorithms as tma
 
     global df
     global og_df
@@ -342,7 +342,7 @@ def compare_with_baseline(scoring = "Combined_Metric", verbose = 0,  **kwargs):
 
     # Iterate over each column (besides Split_A, Split_B, and baselines)
     for col in comparison_columns:
-        total = np.array(np.isnan(rankdf[col]) == False).sum() / 100 #To get it as a percent
+        total = np.array(~np.isnan(rankdf[col])).sum() / 100 #To get it as a percent
         if total == 0:
             rf_scores_both[col] = np.nan
             rf_scores_one[col] = np.nan
@@ -569,10 +569,10 @@ def line_plot_methods(df_subset, argument = "Percent_of_Anchors", metric = "Comb
     plt.ylabel(metric.replace('_', " "), fontsize = 20)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    if plt_legend != False:
+    if plt_legend:
         plt.legend(fontsize=16, loc = plt_legend, ncol = 3)
 
-    if custom_title != False:
+    if custom_title:
         plt.title(custom_title, fontsize = 25)
 
 def plot_param_heat_map(df, parameters, method, metric = "Combined_Metric", figsize=(18, 10)):

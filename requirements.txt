@@ -145,3 +145,10 @@ wcwidth==0.2.13
 Werkzeug==3.0.4
 wrapt==1.16.0
 wurlitzer==3.1.1
+
+# Additional packages identified from demonstration notebooks
+# MASH and SPUD functionality for manifold alignment demonstrations
+mashspud @ git+https://github.com/rustadadam/mashspud.git
+
+# Excel file reading support (used in demonstration notebooks)
+openpyxl>=3.0.0

@@ -1,13 +1,16 @@
 #Imports 
-from Helpers.regression_helpers import read_json_files_to_dataframe
+from .regression_helpers import read_json_files_to_dataframe
+from .path_utils import (
+    get_classification_csv_path, get_regression_csv_path, 
+    get_splits_data_path, get_results_path, get_grae_builds_path
+)
 import os
 import numpy as np
 import pandas as pd
-from Helpers.Pipeline_Helpers import method_dict, create_unique_pairs, get_RF_score, get_embedding_scores
+from .Pipeline_Helpers import method_dict, create_unique_pairs, get_RF_score, get_embedding_scores
 from sklearn.manifold import MDS
-from Helpers.Grae import GRAEBase, anchorGRAE, BaseDataset
+from .Grae import GRAEBase, anchorGRAE, BaseDataset
 import json
-import os
 from sklearn.metrics import mean_squared_error
 
 class split_data():
@@ -17,9 +20,9 @@ class split_data():
 
         #Get the labels
         try:
-            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Classification_CSV/" + csv_file)
-        except:
-            df = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/Resources/Regression_CSV/" + csv_file)
+            df = pd.read_csv(get_classification_csv_path() / csv_file)
+        except Exception:
+            df = pd.read_csv(get_regression_csv_path() / csv_file)
 
         #If categorical strings :)
         if df[df.columns[0]].dtype == 'object':
@@ -38,8 +41,7 @@ def split_features(csv_file, split, seed):
 
         #Step 1. Check if a file exists already
         #Create filename 
-        filename = "/yunity/arusty/Graph-Manifold-Alignment/Results/Splits_Data/" + csv_file[:-4] + "/"
-        filename += split[0] + str(seed) + ".npz"
+        filename = get_splits_data_path() / csv_file[:-4] / (split[0] + str(seed) + ".npz")
 
         #Step 2b. If so, simply load the files into split A and split B
         if os.path.exists(filename):
@@ -51,7 +53,7 @@ def split_features(csv_file, split, seed):
             return data['split_a'], data["split_b"]
         
         else:
-            from Main.test_manifold_algorithms import test_manifold_algorithms as tma
+            from ..main import test_manifold_algorithms as tma
             tma(csv_file, random_state= seed, split = split)
             print(f"Splitting {csv_file} with seed {seed} and split {split} complete.")
             return split_features(csv_file, split, seed)
@@ -59,7 +61,7 @@ def split_features(csv_file, split, seed):
 # Create function to Extract best fit information from the results
 def extract_all_files():
     #Get the regression results and classification results
-    df = read_json_files_to_dataframe("/yunity/arusty/Graph-Manifold-Alignment/Results")
+    df = read_json_files_to_dataframe(str(get_results_path()))
 
     files = ["EnergyEfficiency",  
     "AutoMPG", "ComputerHardware", "diabetes", "tic-tac-toe", 'Medicaldataset',
@@ -404,7 +406,7 @@ def GRAE_tests(method, dataset, split, params, anchor_percent, grae_build = "ori
 
 def save_GRAE_Build_results(method, dataset, split, mse, emb_full_scores, emb_pred_scores, lam = 100, grae_build = "original", anchor_percent = 0.3, seed = 42):   
 
-    results_dir = "/yunity/arusty/Graph-Manifold-Alignment/Results/Grae_Builds"
+    results_dir = str(get_grae_builds_path())
 
     file_name = f"{method}_{dataset}_{str(split)}_graeBuild_{grae_build}_lam_{lam}_seed{str(seed)}_an{str(anchor_percent)}.json"
     file_path = os.path.join(results_dir, file_name)
