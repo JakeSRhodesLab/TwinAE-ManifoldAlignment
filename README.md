@@ -268,18 +268,6 @@ If you use this package in your research, please cite our MMAI 2025 paper:
 }
 ```
 
-For the software package:
-
-```bibtex
-@software{graph_manifold_alignment,
-  author = {Jake Rhodes Lab},
-  title = {Graph Manifold Alignment: Geometry-Regularized Twin Autoencoders Implementation},
-  year = {2025},
-  url = {https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment},
-  note = {Implementation of "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders" - MMAI 2025}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
