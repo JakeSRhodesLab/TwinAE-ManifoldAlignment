@@ -1,6 +1,17 @@
 # Graph Manifold Alignment
 
-**Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders** - A novel approach using Geometric Regularized Autoencoders (GRAE) for multimodal data alignment.
+**Guided Manifold Al### **Novel Contributions**
+- 🎯 **Out-of-Sample Extension**: Addresses key limitation of traditional MA methods that cannot generalize to unseen data
+- 🔗 **Geometry-Regularized Architecture**: Twin autoencoders with multitask learning combining reconstruction and embedding prediction
+- ⚓ **Pre-trained Alignment Integration**: Incorporates existing MA models as guidance within the autoencoder framework
+- 🔄 **Cross-Domain Mapping**: Enables direct translation between domains through decoder swapping mechanism
+- 📊 **Structured Regularization**: Three-component loss function: reconstruction, alignment, and anchor losses
+
+### **Experimental Results**
+- ✅ **Superior Embedding Consistency**: High Mantel correlations (0.68-0.80) for JLMA, SPUD, MASH regularization
+- 🧠 **Clinical Validation**: Successfully translates between ADAS-Cog 13 and FAQ assessments (RMSE: 1.12-1.48)
+- 📈 **Cross-Domain Mapping**: Outperforms MAGAN, DTA, and MASH in mapping accuracy across test datasets
+- 🎯 **Predictive Enhancement**: Consistent performance improvements in downstream classification tasks
 
 [![MMAI 2025](https://img.shields.io/badge/MMAI%202025-Accepted-brightgreen)](https://icdmw25mmai.github.io/)
 [![IEEE ICDM](https://img.shields.io/badge/IEEE%20ICDM-Workshop-blue)](https://icdm2025.org/)
@@ -11,35 +22,45 @@
 
 This repository contains the implementation of our paper "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders" accepted for presentation at the 5th IEEE International Workshop on Multimodal AI (MMAI) at ICDM 2025.
 
+**Authors:** Jake S. Rhodes¹, Adam G. Rustad², Marshall S. Nielsen¹, Morgan McClellan¹, Dallan Gardner¹, Dawson Hedges³  
+¹Department of Statistics, Brigham Young University  
+²Department of Computer Science, Brigham Young University  
+³Department of Psychology, Brigham Young University
+
+**Abstract:** Manifold alignment (MA) involves a set of techniques for learning shared representations across domains, yet many traditional MA methods are incapable of performing out-of-sample extension, limiting their real-world applicability. We propose a guided representation learning framework leveraging a geometry-regularized twin autoencoder (AE) architecture to enhance MA while enabling generalization to unseen data. Our method enforces structured cross-modal mappings to maintain geometric fidelity in learned embeddings. By incorporating a pre-trained alignment model and a multitask learning formulation, we improve cross-domain generalization and representation robustness while maintaining alignment fidelity. We evaluate our approach using several MA methods, showing improvements in embedding consistency, information preservation, and cross-domain transfer. Additionally, we apply our framework to Alzheimer's disease diagnosis, demonstrating its ability to integrate multi-modal patient data and enhance predictive accuracy in cases limited to a single domain by leveraging insights from the multimodal problem.
+
+**Keywords:** manifold alignment, regularized autoencoders, out-of-sample extension, multimodal methods
+
 ## Overview
 
-This package provides a comprehensive implementation of **Twin Autoencoders** using **Geometric Regularized Autoencoders (GRAE)** for manifold alignment, along with multiple baseline alignment methods for comparison:
+This package provides a comprehensive implementation of **Twin Autoencoders** using **Geometry Regularized Autoencoders (GRAE)** for manifold alignment, along with multiple baseline alignment methods for comparison:
 
 ### 🎯 **Main Contribution: Guided Manifold Alignment**
-- **GRAE (Geometry-Regularized Autoencoders)**: Novel autoencoder architecture with geometric regularization
-- **Anchor Guidance**: Leverages known correspondences to guide the alignment process
-- **Twin Architecture**: Paired autoencoders for bidirectional domain translation
-- **Geometric Preservation**: Maintains local neighborhood structure during alignment
-- **Multimodal Integration**: Support for various data modalities (text, images, tabular data)
+- **Geometry-Regularized Twin Autoencoders**: Novel twin autoencoder architecture with geometry regularization for manifold alignment
+- **Out-of-Sample Extension**: Enables generalization to unseen data points, addressing a key limitation of traditional MA methods
+- **Guided Representation Learning**: Incorporates pre-trained alignment models within a multitask learning formulation
+- **Cross-Modal Mappings**: Enforces structured mappings between domains while maintaining geometric fidelity
+- **Robust Generalization**: Improves cross-domain generalization and representation robustness
 
 ### 🔧 **Baseline Alignment Methods**
-- **DTA (Domain Transfer Analysis)**: Statistical domain adaptation
-- **JLMA (Joint Latent Manifold Alignment)**: Joint embedding space learning
-- **Procrustes**: Classical orthogonal transformation alignment
-- **MAGAN**: Manifold Alignment with Generative Adversarial Networks
-- **MALI**: Manifold Alignment Learning Interface
-- **MASH**: Manifold Alignment via Stochastic Hashing
-- **SSMA**: Semi-Supervised Manifold Alignment
+- **DTA (Diffusion Transport Alignment)**: Integrates diffusion processes with regularized optimal transport
+- **JLMA (Joint Laplacian Manifold Alignment)**: Joint graph Laplacian constructed from domain-specific similarity matrices
+- **MAPA (Manifold Alignment via Procrustes Analysis)**: Uses Laplacian Eigenmaps with Procrustes analysis for alignment
+- **MAGAN (Manifold Alignment GAN)**: Semi-supervised manifold alignment using generative adversarial networks
+- **MASH (Manifold Alignment via Stochastic Hopping)**: Graph-based method using diffusion operators and random walks
+- **SPUD (Shortest Paths on Union of Domains)**: Estimates geodesic distances via shortest paths in combined graphs
+- **SSMA (Semi-Supervised Manifold Alignment)**: Classical semi-supervised approach using partial correspondences
 
 ### 📊 **Research Applications**
-- **ADNI Dataset Analysis**: Alzheimer's Disease Neuroimaging Initiative data processing
-- **Multimodal Data Fusion**: Cross-modal learning and alignment
-- **Biomedical Applications**: Neuroimaging and clinical data integration
+- **Alzheimer's Disease Assessment**: Translation between ADAS-Cog 13 and FAQ cognitive/functional assessments
+- **Biomedical Data Integration**: Multi-modal patient data alignment for enhanced diagnosis
+- **Cross-Domain Prediction**: Leveraging multimodal insights when only single-domain data is available
+- **Clinical Decision Support**: Predicting functional impairments from cognitive evaluations
 
 ## 🌟 Research Highlights
 
 ### **Novel Contributions**
-- 🎯 **Guided Alignment Framework**: Novel approach combining geometric regularization with anchor guidance
+- 🎯 **Guided Alignment Framework**: Novel approach combining Geometry regularization with anchor guidance
 - 🔗 **Geometry-Regularized Autoencoders**: Preserves local neighborhood structure during alignment
 - ⚓ **Intelligent Guidance System**: Leverages known correspondences to improve alignment quality
 - 🔄 **Twin Architecture**: Enables symmetric bidirectional domain transformation
@@ -147,32 +168,32 @@ Graph-Manifold-Alignment/
 
 ### **Guided Manifold Alignment (Our Novel Approach)**
 
-#### **Geometry-Regularized Autoencoders (GRAE)**
-- **Architecture**: Deep autoencoder with geometric regularization in latent space
-- **Innovation**: Enforces geometric consistency between original and embedded spaces
-- **Loss Function**: Combined reconstruction + geometric regularization
-- **Applications**: Manifold learning with preserved geometric structure
+#### **Geometry-Regularized Twin Autoencoders**
+- **Architecture**: Two independent autoencoders (AE_X, AE_Y) with encoder-decoder pairs (f_X, g_X) and (f_Y, g_Y)
+- **Innovation**: Multitask learning combining reconstruction with pre-aligned embedding prediction
+- **Loss Function**: ℒ = ℒ_recon + λℒ_align + ℒ_anchor
+- **Applications**: Manifold alignment with out-of-sample extension capability
 
-#### **Anchor Guidance System**
-- **Framework**: Intelligent use of known correspondences to guide alignment
-- **Advantage**: Leverages partial correspondence information for improved quality
-- **Implementation**: GRAEAnchor class with anchor-specific loss terms
-- **Performance**: Superior alignment quality through guided learning
+#### **Three-Component Loss System**
+- **Reconstruction Loss**: Ensures accurate data reconstruction from embedding space
+- **Alignment Loss**: Enforces consistency with pre-computed aligned embeddings
+- **Anchor Loss**: Maintains alignment fidelity for known correspondences
+- **Regularization**: λ parameter controls geometric alignment strength
 
-#### **Twin Architecture**
-- **Concept**: Paired geometry-regularized autoencoders for bidirectional translation
-- **Benefit**: Enables symmetric A↔B domain transformations
-- **Consistency**: Cycle consistency loss for stable alignment
-- **Robustness**: Handles domain asymmetries effectively
+#### **Cross-Domain Translation**
+- **Mechanism**: Decoder swapping enables A→B and B→A domain translation
+- **Process**: Encode with domain-specific encoder, decode with opposite decoder
+- **Advantage**: Direct cross-modal mapping without retraining
+- **Flexibility**: Compatible with any underlying MA method for guidance
 
 ### **Baseline Alignment Methods**
-- **DTA (Domain Transfer Analysis)**: Statistical alignment with optimal transport
-- **JLMA (Joint Latent Manifold Alignment)**: Spectral embedding alignment
-- **Procrustes**: Classical orthogonal transformation alignment
-- **MAGAN**: Generative adversarial approach to manifold alignment
-- **MALI**: Semi-supervised manifold alignment interface
-- **MASH**: Stochastic hashing for scalable alignment
-- **SSMA**: Semi-supervised approach with unlabeled data utilization
+- **DTA (Diffusion Transport Alignment)**: Integrates diffusion processes with regularized optimal transport
+- **JLMA (Joint Laplacian Manifold Alignment)**: Joint graph Laplacian from domain-specific similarity matrices
+- **MAPA (Manifold Alignment via Procrustes Analysis)**: Laplacian Eigenmaps with Procrustes analysis
+- **MAGAN (Manifold Alignment GAN)**: Generative adversarial networks with correspondence loss
+- **MASH (Manifold Alignment via Stochastic Hopping)**: Diffusion-based approach with random walks
+- **SPUD (Shortest Paths on Union of Domains)**: Geodesic distance estimation via shortest paths
+- **SSMA (Semi-Supervised Manifold Alignment)**: Classical approach with partial correspondences
 
 ## 📚 Usage Examples & Documentation
 
@@ -187,7 +208,7 @@ Graph-Manifold-Alignment/
 - **[Research Paper Draft](TwinAEDraft.pdf)** - "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders" (MMAI 2025)
 
 ### Key Demonstrations
-- **GRAE Tutorial**: Basic geometric regularized autoencoder usage
+- **GRAE Tutorial**: Basic Geometry regularized autoencoder usage
 - **Twin Architecture**: Bidirectional domain alignment examples
 - **ADNI Analysis**: Neuroimaging data processing pipeline
 - **Comparative Study**: Performance vs. baseline methods
@@ -225,11 +246,12 @@ If you use this package in your research, please cite our MMAI 2025 paper:
 ```bibtex
 @inproceedings{rhodes2025guided,
   title={Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders},
-  author={Rhodes, Jake and [Additional Authors]},
+  author={Rhodes, Jake S. and Rustad, Adam G. and Nielsen, Marshall S. and McClellan, Morgan and Gardner, Dallan and Hedges, Dawson},
   booktitle={Proceedings of the 5th IEEE International Workshop on Multimodal AI (MMAI)},
   year={2025},
   organization={IEEE},
   venue={ICDM 2025 Workshop},
+  address={Abu Dhabi, UAE},
   url={https://github.com/JakeSRhodesLab/Graph-Manifold-Alignment}
 }
 ```

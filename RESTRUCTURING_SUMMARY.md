@@ -133,7 +133,7 @@
 - **🔧 Development Ready** - Setup for modern Python development workflow
 - **📈 Scalable** - Structure can grow with the project
 
-The repository is now transformed from a messy collection of files into a professional, research-grade Python package that properly represents the MMAI 2025 accepted paper "Twin Autoencoders for Manifold Learning"!
+The repository is now transformed from a messy collection of files into a professional, research-grade Python package that properly represents the MMAI 2025 accepted paper "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders"!
 
 ## 🎓 Research Integration Complete
 

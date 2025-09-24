@@ -6,9 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "graph-manifold-alignment"
 version = "0.1.0"
 authors = [
-    {name = "Jake Rhodes Lab", email = "your.email@institution.edu"},
+    {name = "Jake S. Rhodes", email = "rhodes@stat.byu.edu"},
+    {name = "Adam G. Rustad", email = "arusty@byu.edu"},
+    {name = "Marshall S. Nielsen", email = "msn39@byu.edu"},
+    {name = "Morgan McClellan", email = "mchase11@byu.edu"},
+    {name = "Dallan Gardner", email = "dg1254@byu.edu"},
+    {name = "Dawson Hedges", email = "dawson_hedges@byu.edu"},
 ]
-description = "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders - Novel GRAE approach accepted at MMAI 2025 @ IEEE ICDM"
+description = "Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders - Out-of-sample extension for manifold alignment accepted at MMAI 2025 @ IEEE ICDM"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [

@@ -15,8 +15,8 @@ with open(os.path.join(this_directory, 'requirements.txt'), encoding='utf-8') as
 setup(
     name="graph-manifold-alignment",
     version="0.1.0",
-    author="Jake Rhodes Lab",
-    author_email="rhodes@stat.byu.edu",  # Update with actual email
+    author="Jake S. Rhodes, Adam G. Rustad, Marshall S. Nielsen, Morgan McClellan, Dallan Gardner, Dawson Hedges",
+    author_email="rhodes@stat.byu.edu",
     description="Guided Manifold Alignment with Geometry-Regularized Twin Autoencoders - MMAI 2025 @ IEEE ICDM",
     long_description=long_description,
     long_description_content_type="text/markdown",

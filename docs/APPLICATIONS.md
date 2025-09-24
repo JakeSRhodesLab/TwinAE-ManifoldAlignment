@@ -2,17 +2,22 @@
 
 ## 🧠 Biomedical Applications
 
-### ADNI Neuroimaging Analysis
-The Alzheimer's Disease Neuroimaging Initiative (ADNI) provides a rich multimodal dataset for evaluating our Twin Autoencoder approach:
+### ADNI Alzheimer's Disease Assessment (Paper Application)
+The Alzheimer's Disease Neuroimaging Initiative (ADNI) clinical assessment data demonstrates our Twin Autoencoder approach for healthcare applications:
 
-- **MRI Structural Data**: T1-weighted anatomical images
-- **Clinical Assessments**: MMSE, CDR, neuropsychological tests  
-- **Biomarker Data**: CSF proteins, plasma markers
-- **Genetic Information**: APOE genotyping, genome-wide data
+**Data Domains**:
+- **ADAS-Cog 13**: Cognitive assessment battery (13 clinical tests for memory, language, orientation)
+- **FAQ**: Functional Activities Questionnaire (10 essential daily tasks assessment)
+- **Patient Population**: ~1,200 patients from ADNI3 cohort with longitudinal visit histories
 
-**Challenge**: Integrate heterogeneous data types with different dimensionalities and distributions to create unified patient representations for disease progression modeling.
+**Challenge**: Enable translation between cognitive and functional assessments when only one domain is available, addressing the common clinical scenario where comprehensive testing is costly or impractical.
 
-**Solution**: Twin Autoencoders learn aligned manifold representations that preserve biological relationships across modalities while enabling cross-modal prediction and analysis.
+**Solution**: Twin Autoencoders trained with MASH manifold alignment achieve accurate cross-domain translation:
+- ADAS-Cog 13 → FAQ: RMSE 1.48 (predicting functional impairment from cognitive tests)  
+- FAQ → ADAS-Cog 13: RMSE 1.12 (inferring cognitive status from functional assessment)
+- Classification accuracy maintained: 62.6-66.1% (comparable to original 63.0-70.6%)
+
+**Clinical Impact**: Enables prediction of care requirements and functional limitations from cognitive assessments, supporting personalized treatment planning.
 
 ### Medical Data Integration
 - **Multi-omics Analysis**: Genomics, proteomics, metabolomics alignment
@@ -62,17 +67,17 @@ The Alzheimer's Disease Neuroimaging Initiative (ADNI) provides a rich multimoda
 
 ## 🤖 Machine Learning Enhancement
 
-### Transfer Learning
-- **Domain Adaptation**: Source to target domain knowledge transfer
-- **Few-shot Learning**: Leverage aligned representations for rapid learning
-- **Meta-Learning**: Cross-task knowledge sharing
-- **Continual Learning**: Maintain alignment across learning episodes
+### Out-of-Sample Extension Applications
+- **Test Set Integrity**: Proper train/test separation without data leakage in ML pipelines
+- **New Data Processing**: Extend pre-trained alignment models to process incoming data
+- **Real-time Deployment**: Apply learned alignments to streaming data without retraining
+- **Scalable Inference**: Process large datasets incrementally using fixed alignment models
 
-### Feature Engineering
-- **Dimensionality Reduction**: Manifold-preserving feature extraction
-- **Data Augmentation**: Generate aligned synthetic samples
-- **Missing Data Imputation**: Cross-modal information recovery
-- **Noise Reduction**: Multi-modal denoising approaches
+### Cross-Domain Prediction
+- **Single-Domain Inference**: Predict in expensive domain using only cheap domain data
+- **Cost-Effective Assessment**: Leverage high-quality domain insights when only low-cost data available
+- **Missing Modality Imputation**: Cross-modal information recovery for incomplete multimodal data
+- **Domain Translation**: Direct mapping between feature spaces via decoder swapping
 
 ## 📈 Performance Advantages
 
@@ -91,10 +96,10 @@ The Alzheimer's Disease Neuroimaging Initiative (ADNI) provides a rich multimoda
 ## 🎯 Industry Applications
 
 ### Healthcare Industry
-- **Drug Discovery**: Multi-modal molecular data alignment
-- **Diagnostic Systems**: Multi-source medical data integration
-- **Treatment Planning**: Personalized medicine approaches
-- **Clinical Decision Support**: Real-time multi-modal analysis
+- **Clinical Assessment Translation**: Convert between different evaluation instruments (like ADAS-Cog ↔ FAQ)
+- **Diagnostic Cost Reduction**: Predict expensive test results from cheaper assessments
+- **Care Planning**: Predict functional limitations from cognitive tests for personalized treatment
+- **Multi-site Studies**: Align assessments across different clinical protocols and institutions
 
 ### Technology Sector
 - **Recommendation Systems**: Multi-platform user behavior alignment
